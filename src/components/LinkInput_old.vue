@@ -1,3 +1,6 @@
+<!--не работает импорт из файла Js-->
+
+
 <template>
   <div class="input-module">
     <div class="input-container">
@@ -21,7 +24,9 @@
 
 <script>
 import { ref } from 'vue';
-// import getPageInfo from "./exp_nu.js";
+// import { getPageInfo } from "./expNu.js";
+// const getPageInfo = require('exp_nu');
+import getPageInfo from "./expNu.js";
 // import getPageInfo from "../../moduls/exp.js";
 // import getPageInfo from 'moduls/exp.js'; // Импорт функции getPageInfo из exp.js
 export default {
@@ -30,24 +35,18 @@ export default {
     const url = ref('');
     const pageInfo = ref('');
     const linkInfo = ref(''); // Новая реактивная переменная для информации о странице
+
     const isValidURL = (string) => {
       const regex = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i; // Обновленное регулярное выражение для проверки URL
       return regex.test(string);
     };
+
     const fetchPageInfo = async () => {
       if (url.value) {
         if (isValidURL(url.value)) {
           // Если это корректный URL, сохраняем его в pageInfo
           pageInfo.value = url.value;
-          // Вызываем getPageInfo и сохраняем результат в linkInfo
-          try {
-            // console.log('Загрузка страницы')
-            linkInfo.value = await getPageInfo(pageInfo.value);
-            alert("Hurr@!");
-          } catch (error) {
-            linkInfo.value = 'Ошибка при получении информации о странице'; // Обработка ошибок
-            console.error('Error fetching page info:', error);
-          }
+          linkInfo.value = ''; // Очищаем linkInfo, чтобы оно оставалось пустым
         } else {
           // Если это не URL, показываем сообщение
           pageInfo.value = 'This not URL';
@@ -58,23 +57,28 @@ export default {
         linkInfo.value = ''; // Очищаем linkInfo, если поле пустое
       }
     };
+
     const getInfo = async () => {
-      if (pageInfo.value) {
+      if (isValidURL(pageInfo.value)) {
         try {
+          alert(pageInfo.value)
           linkInfo.value = await getPageInfo(pageInfo.value);
         } catch (error) {
-          linkInfo.value = 'Ошибка при получении информации о странице'; // Обработка ошибок
+          linkInfo.value = error; // Обработка ошибок
+          // linkInfo.value = 'Ошибка при получении информации о странице'; // Обработка ошибок
           console.error('Error fetching page info:', error);
         }
       } else {
         linkInfo.value = 'Сначала получите информацию о странице.'; // Сообщение, если нет информации о странице
       }
     };
+
     const clearFields = () => {
       url.value = ''; // Очищаем поле ввода
       pageInfo.value = ''; // Очищаем поле вывода
       linkInfo.value = ''; // Очищаем информацию о странице
     };
+
     return {
       url,
       pageInfo,

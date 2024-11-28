@@ -18,20 +18,20 @@
 
 <script>
 import { ref } from 'vue';
-import translate from 'translate-google';// Убедитесь, что путь к функции перевода правильный
+// import translate from 'translate-google';// Убедитесь, что путь к функции перевода правильный
 import axios from 'axios';
 import cheerio from 'cheerio';
 // import translateText from 'text_processor.js';
 
 
-const translateText = async (text) => {
-  try {
-    return await translate(text, { to: 'ru' });
-  } catch (err) {
-    // console.error(err);
-    return 'Without translate'
-  }
-};
+// const translateText = async (text) => {
+//   try {
+//     return await translate(text, { to: 'ru' });
+//   } catch (err) {
+//     // console.error(err);
+//     return 'Without translate'
+//   }
+// };
 
 
 async function getPageInfo(url) {

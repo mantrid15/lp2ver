@@ -2,7 +2,8 @@
 import HelloWorld from './components/HelloWorld.vue'
 // import TheWelcome from './components/TheWelcome.vue'
 
-import LinkInput from "@/components/LinkInput_old.vue";
+import LinkInput from "@/components/LinkInput_old_2.vue";
+// import LinkInput from "@/components/LinkInput_old_3.vue";
 
 
 // import LinkInput from "@/components/LinkInput.vue";
