@@ -3,7 +3,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 // import translateToRussian from text_processor.js
-import translateText from '../text_processor.js';
+import translateText from '@/components/text_processor.js';
 async function getPageDescription(url) {
     try {
         // Получаем HTML-контент страницы

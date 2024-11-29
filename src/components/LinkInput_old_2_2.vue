@@ -1,52 +1,36 @@
 vue
 <template>
-
-<!--  <div class="input-module">-->
-<!--    <div class="input-container">-->
-<!--      <button @click="clearFields" class="clear-button">Очистить</button>-->
-<!--      <input v-model="url" class="url-input" placeholder="Введите URL" />-->
-<!--      <button @click="fetchPageInfo" class="red-button">Проверить URL</button>-->
-<!--    </div>-->
-<!--    <div class="link-output">{{ pageInfo }}</div>-->
-<!--    <div class="textarea-container">-->
-<!--      <textarea v-model="linkInfo" class="link-info" readonly></textarea>-->
-<!--      <button @click="getInfo" class="get-info-button">Получить информацию</button>-->
-<!--    </div>-->
-<!--  </div>-->
-
     <div class="input-module">
       <div class="input-container">
         <button @click="clearFields" class="clear-button">Очистить</button>
-        <input v-model="url" class="url-input" placeholder="Введите URL" />
-        <button @click="fetchPageInfo" class="red-button">Проверить URL</button>
+        <input
+            ref="urlInput"
+            v-model="url"
+            class="url-input"
+            placeholder="Введите URL"
+            @keydown.enter="handleEnter"
+        />
+        <button
+            @click="fetchPageInfo"
+            class="red-button"
+            :class="{ 'active': isFetching }"
+        >
+          Проверить URL
+        </button>
+        <button @click="getInfo" class="get-info-button">Получить информацию</button>
       </div>
       <div class="link-output">{{ pageInfo }}</div>
       <div class="textarea-container">
         <textarea v-model="linkInfo" class="link-info" readonly></textarea>
-        <button @click="getInfo" class="get-info-button">Получить информацию</button>
+
       </div>
     </div>
 </template>
 
 <script>
-import {ref} from 'vue';
-// import translate from 'translate-google';
-// import axios from '../../libraries_exo/axios.min.js';
-// import * as cheerio from '../../libraries_exo/cheerio.min.js';
+import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-// import translateText from "./text_processor.js";
-//
-//
-//
-// const translateText = async (text) => {
-//   try {
-//     return await translate(text, { to: 'ru' });
-//   } catch (err) {
-//     // console.error(err);
-//     return 'Without translate'
-//   }
-// };
 
 export default {
   name: 'LinkUrl',
@@ -54,6 +38,7 @@ export default {
     const url = ref('');
     const pageInfo = ref('');
     const linkInfo = ref('');
+    const urlInput = ref(null); // Ссылка на элемент input
 
     const isValidURL = (string) => {
       const regex = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
@@ -61,11 +46,8 @@ export default {
     };
 
     const getPageInfo = async (url) => {
-      // alert(url);
-
       try {
         const response = await axios.get(url);
-        // alert(response.data);
         const $ = cheerio.load(response.data);
         const info = {
           url,
@@ -73,8 +55,6 @@ export default {
           description: $('meta[name="description"]').attr('content') || '',
           keywords: $('meta[name="keywords"]').attr('content') || '',
         };
-
-        // info.descriptionRu = translateText(info.description)
         return info;
       } catch (error) {
         console.error('Ошибка при получении информации о странице:', error);
@@ -101,7 +81,7 @@ export default {
       if (isValidURL(pageInfo.value)) {
         try {
           const info = await getPageInfo(pageInfo.value);
-          linkInfo.value = JSON.stringify(info, null, 2); // Преобразуем информацию в строку для отображения
+          linkInfo.value = JSON.stringify(info, null, 2);
         } catch (error) {
           linkInfo.value = error;
           console.error('Ошибка при получении информации о странице:', error);
@@ -117,6 +97,26 @@ export default {
       linkInfo.value = '';
     };
 
+    const handleContextMenu = (event) => {
+      event.preventDefault();
+      navigator.clipboard.readText().then((text) => {
+        url.value = text; // Вставка текста из буфера обмена
+      });
+    };
+
+    const handleEnter = () => {
+      if (url.value) {
+        fetchPageInfo();
+      }
+    };
+
+    onMounted(() => {
+      // Автоматически помещаем курсор в поле ввода
+      urlInput.value.focus();
+      // Добавляем обработчик для правого клика
+      urlInput.value.addEventListener('contextmenu', handleContextMenu);
+    });
+
     return {
       url,
       pageInfo,
@@ -124,6 +124,8 @@ export default {
       fetchPageInfo,
       clearFields,
       getInfo,
+      urlInput,
+      handleEnter,
     };
   },
 };
@@ -150,13 +152,24 @@ export default {
   margin-right: 20px; /* Отступ между инпутом и кнопкой */
   padding: 5px; /* Отступ внутри инпута */
 }
+.button-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Равномерное распределение кнопок */
+}
 .red-button {
   background-color: red;
   color: white;
   border: none;
-  height: 30px; /* Высота кнопки */
-  padding: 0 10px; /* Горизонтальные отступы для кнопки */
+  height: 30px;
+  padding: 0 10px;
   cursor: pointer;
+  margin-left: 10px;
+  border-radius: 5px; /* Закругление углов */
+  transition: background-color 0.3s; /* Плавный переход цвета */
+}
+.red-button.active {
+  background-color: purple; /* Цвет при активном состоянии */
 }
 .red-button:hover {
   background-color: darkred;
@@ -201,14 +214,13 @@ export default {
   box-sizing: border-box; /* Учитываем отступы и границы в ширине и высоте */
 }
 .get-info-button {
-  margin-top: 10px; /* Добавляем отступ сверху для кнопки */
+  margin-left: 10px; /* Отступ между кнопками */
   background-color: lightblue; /* Цвет кнопки Get Info */
   color: white;
   border: none;
   height: 30px; /* Высота кнопки */
   padding: 0 10px; /* Горизонтальные отступы для кнопки */
   cursor: pointer;
-  margin-left: 10px; /* Отступ между textarea и кнопкой */
 }
 .get-info-button:hover {
   background-color: deepskyblue; /* Цвет при наведении */

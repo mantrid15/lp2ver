@@ -1,8 +1,8 @@
 import translate from 'translate-google';
 
 
-const textic = 'Over the weekend I decided to try out Supabase and I can say it is a tool I would be using from henceforth. Supabase is an open source firebase alternative,'
-
+const textic = 'Sponsor open source projects you depend on\n' +
+    'Contributors are working behind the scenes to make open source better for everyone—give them the help and recognition they deserve.'
 const translateText = async (text) => {
     try {
         // const res = await translate(text, { to: 'ru' });
@@ -15,5 +15,5 @@ const translateText = async (text) => {
 };
 export default translateText;
 // Пример использования
-// const tru = await translateText(textic);
-// console.log(tru)
+const tru = await translateText(textic);
+console.log(tru)
