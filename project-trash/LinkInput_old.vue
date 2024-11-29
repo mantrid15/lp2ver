@@ -26,7 +26,7 @@
 import { ref } from 'vue';
 // import { getPageInfo } from "./expNu.js";
 // const getPageInfo = require('exp_nu');
-import getPageInfo from "./expNu.js";
+import getPageInfo from "@/components/expNu.js";
 // import getPageInfo from "../../moduls/exp.js";
 // import getPageInfo from 'moduls/exp.js'; // Импорт функции getPageInfo из exp.js
 export default {

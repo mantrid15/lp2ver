@@ -47,7 +47,7 @@ export default {
 
     const getPageInfo = async (url) => {
       try {
-        const response = await axios.get(url);
+        const response = await axios.get(`http://localhost:3000/proxy?url=${encodeURIComponent(url)}`);
         const $ = cheerio.load(response.data);
         const info = {
           url,
@@ -61,6 +61,7 @@ export default {
         return { error: 'Ошибка при получении информации' };
       }
     };
+
 
     const fetchPageInfo = async () => {
       if (url.value) {

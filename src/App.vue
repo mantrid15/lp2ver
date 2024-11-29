@@ -1,19 +1,9 @@
 <script setup>
 import HelloWorld from './components/HelloWorld.vue'
 // import TheWelcome from './components/TheWelcome.vue'
-
 import LinkInput from "@/components/LinkInput_old_2_2.vue";
 // import LinkInput from "@/components/LinkInput_old_2.vue";
 // import LinkInput from "@/components/LinkInput_old_3.vue";
-
-
-// import LinkInput from "@/components/LinkInput.vue";
-// import LinkInputUrl from "@/components/LinkInputUrl.vue";
-// import LinkInfo from "@/components/LinkInfoList.vue";
-// import LinkInput from "@/components/LinkInput_minimal_work_script.vue";
-// import LinkInput_l from "@/components/LinkInput_last.vue";
-// import LinkInput_ from "@/components/LinkInput_old.vue";
-// import LinkMod from './components/LinkMod.vue'
 </script>
 
 <template>
