@@ -62,6 +62,16 @@ export default {
       }
     };
 
+    const fetchMetaData = async (url) => {
+      console.log('Запрос к API:', url);
+      try {
+        const response = await axios.get(`https://tools.buzzstream.com/metaDataService?url=${encodeURIComponent(url)}`);
+        return response.data;
+      } catch (error) {
+        console.error('Ошибка при получении данных:', error);
+        return { error: 'Ошибка при получении информации' };
+      }
+    };
 
     const fetchPageInfo = async () => {
       if (url.value) {
@@ -78,10 +88,69 @@ export default {
       }
     };
 
+
+    const fetchMetaSerp = async (url) => {
+      // https://serp.tools/ru/tools/title-description-h1
+      try {
+        const response = await fetch('https://api.serp.tools/api/v1/tools/title-description-h1/', {
+          method: 'POST',
+          headers: {
+            'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,tr;q=0.6',
+            'content-type': 'application/json;charset=UTF-8',
+          },
+          body: JSON.stringify({
+            'links': [url]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const item = data.data.items[0]; // Извлекаем первый элемент из массива items
+        const content = item.content; // Получаем контент
+
+        // Формируем объект с нужными данными
+        const result = {
+          url: item.url,
+          title: content.title.value,
+          description: content.description.value,
+          keywords: '' // Здесь можно добавить логику для извлечения ключевых слов, если это необходимо
+        };
+
+        return result; // Возвращаем результат
+      } catch (error) {
+        console.error('Ошибка при выполнении запроса:', error);
+        return { error: 'Ошибка при получении информации' };
+      }
+    };
+
     const getInfo = async () => {
       if (isValidURL(pageInfo.value)) {
         try {
-          const info = await getPageInfo(pageInfo.value);
+          let info = await getPageInfo(pageInfo.value);
+
+          // Если getPageInfo возвращает ошибку, используем fetchMetaData
+          if (info.error) {
+            info = await fetchMetaData(pageInfo.value);
+          }
+
+          // Если fetchMetaData также возвращает ошибку
+          if (info.error) {
+            info = await fetchMetaSerp(pageInfo.value);
+          }
+
+          if (info.error) {
+            info = {
+              url: pageInfo.value,
+              title: '',
+              description: '',
+              keywords: ''
+            };
+          }
+
+
           linkInfo.value = JSON.stringify(info, null, 2);
         } catch (error) {
           linkInfo.value = error;
