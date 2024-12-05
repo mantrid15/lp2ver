@@ -3,7 +3,7 @@
 // import translate from 'translate-google';
 // import axios from '../../libraries_exo/axios.min.js';
 import axios from 'axios';
-import translateText from "./text_processor.js";
+import translateText from "moduls/text_processor.js";
 // import * as cheerio from '../../libraries_exo/cheerio.min.js';
 import * as cheerio from 'cheerio';
 

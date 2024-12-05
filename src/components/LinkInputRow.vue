@@ -1,6 +1,8 @@
 vue
 <template>
-    <div class="input-module">
+<!--  <div class="status-box">{{ statusMessage || ' ' }}</div> &lt;!&ndash; Новый элемент для отображения статуса &ndash;&gt;-->
+
+  <div class="input-module">
       <div class="input-container">
         <button @click="clearFields" class="clear-button">Очистить</button>
         <input
@@ -11,20 +13,22 @@ vue
             @keydown.enter="handleEnter"
         />
         <button
-            @click="fetchPageInfo"
-            class="red-button"
-            :class="{ 'active': isFetching }"
+        @click="fetchPageInfo"
+        class="red-button"
+        :class="{ 'active': isFetching }"
         >
           Проверить URL
         </button>
-        <button @click="getInfo" class="get-info-button">Получить информацию</button>
-      </div>
-      <div class="link-output">{{ pageInfo }}</div>
-      <div class="textarea-container">
-        <textarea v-model="linkInfo" class="link-info" readonly></textarea>
 
+
+        <button @click="getInfo" class="get-info-button">Получить информацию</button>
+        <button class="red-button status-box" @click="handleClearStatus">{{ statusMessage || ' ' }}</button>
       </div>
+    <div class="link-output">{{ pageInfo }}</div>
+    <div class="textarea-container">
+      <textarea v-model="linkInfo" class="link-info" readonly></textarea>
     </div>
+  </div>
 </template>
 
 <script>
@@ -38,6 +42,7 @@ export default {
     const url = ref('');
     const pageInfo = ref('');
     const linkInfo = ref('');
+    const statusMessage = ref(''); // Новый ref для статуса
     const urlInput = ref(null); // Ссылка на элемент input
 
     const isValidURL = (string) => {
@@ -130,17 +135,16 @@ export default {
       if (isValidURL(pageInfo.value)) {
         try {
           let info = await getPageInfo(pageInfo.value);
-
-          // Если getPageInfo возвращает ошибку, используем fetchMetaData
           if (info.error) {
+            statusMessage.value = '2'; // Устанавливаем статус для fetchMetaData
             info = await fetchMetaData(pageInfo.value);
+          } else {
+            statusMessage.value = '1'; // Устанавливаем статус для getPageInfo
           }
-
-          // Если fetchMetaData также возвращает ошибку
           if (info.error) {
+            statusMessage.value = '3'; // Устанавливаем статус для fetchMetaSerp
             info = await fetchMetaSerp(pageInfo.value);
           }
-
           if (info.error) {
             info = {
               url: pageInfo.value,
@@ -149,8 +153,6 @@ export default {
               keywords: ''
             };
           }
-
-
           linkInfo.value = JSON.stringify(info, null, 2);
         } catch (error) {
           linkInfo.value = error;
@@ -165,6 +167,7 @@ export default {
       url.value = '';
       pageInfo.value = '';
       linkInfo.value = '';
+      statusMessage.value = ''; // Сбрасываем статус
     };
 
     const handleContextMenu = (event) => {
@@ -186,16 +189,20 @@ export default {
       // Добавляем обработчик для правого клика
       urlInput.value.addEventListener('contextmenu', handleContextMenu);
     });
-
+    const handleClearStatus = () => {
+      statusMessage.value = ''; // Сбрасываем статус
+    };
     return {
       url,
       pageInfo,
       linkInfo,
+      statusMessage, // Возвращаем новый ref
       fetchPageInfo,
       clearFields,
       getInfo,
       urlInput,
       handleEnter,
+      handleClearStatus,
     };
   },
 };
@@ -294,5 +301,17 @@ export default {
 }
 .get-info-button:hover {
   background-color: deepskyblue; /* Цвет при наведении */
+
+.status-box {
+  background-color: red;
+  color: white;
+  border: none;
+  height: 30px;
+  padding: 0 10px;
+  cursor: pointer;
+  margin-left: 10px;
+  border-radius: 5px; /* Закругление углов */
+  transition: background-color 0.3s; /* Плавный переход цвета */
+  }
 }
 </style>

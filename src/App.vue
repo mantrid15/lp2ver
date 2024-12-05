@@ -1,38 +1,55 @@
 <script setup>
 import HelloWorld from './components/HelloWorld.vue'
 // import TheWelcome from './components/TheWelcome.vue'
-import LinkInput from "@/components/LinkInput_old_2_2.vue";
+
+import LinkInput from "@/components/LinkInputRow.vue";
+import Auth from'@/components/Auth.vue'
+// import Auth from'@/components/MyPlugin.vue'
 // import LinkInput from "@/components/LinkInput_old_2.vue";
 // import LinkInput from "@/components/LinkInput_old_3.vue";
 </script>
 
 <template>
   <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
+<!--    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />-->
     <div class="wrapper">
+
 <!--      <HelloWorld msg="You did it!" />-->
     </div>
   </header>
 
   <main>
-<!--    <TheWelcome />-->
-<!--    <LinkInputUrl clear-fields=""/>-->
-<!--    <LinkInfo clear-fields=""/>-->
+
+    <Auth/>
     <LinkInput/>
-<!--        <LinkInput_l/>-->
-<!--            <LinkInput_ />-->
-    <!--    <LinkMod />-->
+
   </main>
 </template>
 
 <style scoped>
 header {
   line-height: 1.5;
+  position: relative; /* Для абсолютного позиционирования логотипа */
+}
+
+.top-bar {
+  height: 10px; /* Высота узкой полосы */
+  background-color: #f0f0f0; /* Цвет полосы (можно изменить) */
 }
 
 .logo {
-  display: block;
-  margin: 0 auto 2rem;
+  position: absolute; /* Абсолютное позиционирование для логотипа */
+  top: 20px; /* Отступ от верхнего края */
+  left: 20px; /* Отступ от левого края */
+}
+
+.wrapper {
+  margin-left: 160px; /* Отступ для текста или других элементов в .wrapper */
+}
+
+main {
+  padding: 20px; /* Отступы вокруг содержимого main */
+  background-color: #ffffff; /* Цвет фона для main (можно изменить) */
 }
 
 @media (min-width: 1024px) {
@@ -41,11 +58,6 @@ header {
     place-items: center;
     padding-right: calc(var(--section-gap) / 2);
   }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
   header .wrapper {
     display: flex;
     place-items: flex-start;
