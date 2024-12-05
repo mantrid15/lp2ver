@@ -15,5 +15,5 @@ const translateText = async (text) => {
 };
 export default translateText;
 // Пример использования
-const tru = await translateText(textic);
-console.log(tru)
+// const tru = await translateText(textic);
+// console.log(tru)

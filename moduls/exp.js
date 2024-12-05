@@ -3,7 +3,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 // import translateToRussian from text_processor.js
-import translateText from 'moduls/text_processor.js';
+import translateText from './text_processor.js';
 async function getPageDescription(url) {
     try {
         // Получаем HTML-контент страницы
@@ -27,7 +27,7 @@ async function getPageDescription(url) {
     }
 }
 
-// const mainUrl= 'https://www.deep-ml.com/'
+const mainUrl= 'https://dzen.ru/a/ZnmCaiCDLT5M-3BQ'
 // const mainUrl= 'https://soft-file.ru/perestal-rabotat-goodbye-dpi-chto-delat/'
 // const mainUrl= 'https://1.downfiles.ru/999414-artem-shumeyko-kurs-po-backend-razrabotke-na-fastapi-2023-pcrec.html'
 // getPageDescription('https://www.youtube.com/watch?v=L36FgWGwlxU&ab_channel=NunyaKlah')
@@ -68,7 +68,7 @@ async function getPageDescription(url) {
 //         return 'Ошибка при получении информации';
 //     }
 // }
-export default async function getPageInfo(url) {
+async function getPageInfo(url) {
     // return `Info about URL: ${url}`;
     try {
         // Получаем HTML-контент страницы
@@ -97,5 +97,5 @@ export default async function getPageInfo(url) {
 // export default getPageInfo
 
 // Пример использованияgetPageInf
-// getPageInfo(mainUrl)
-//     .then(info => console.log(info));
+getPageInfo(mainUrl)
+    .then(info => console.log(info));

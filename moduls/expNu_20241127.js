@@ -1,7 +1,7 @@
 //  эксперементальная функция парсинга страницы.
 import fetch from 'node-fetch';
 import { JSDOM } from 'jsdom';
-const url= 'https://github.com/FranckFreiburger/vue3-sfc-loader/discussions/34'
+const url= 'https://dzen.ru/a/ZnmCaiCDLT5M-3BQ'
 
 const getPageInfo = async (url) => {
     try {
@@ -32,7 +32,7 @@ const getPageInfo = async (url) => {
         return { error: 'Ошибка при получении информации' };
     }
 };
-export default getPageInfo;
+// export default getPageInfo;
 // Пример использования
 getPageInfo(url).then(info => {
     console.log('Информация о странице:', info);

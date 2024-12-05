@@ -3,13 +3,13 @@
 // import translate from 'translate-google';
 // import axios from '../../libraries_exo/axios.min.js';
 import axios from 'axios';
-import translateText from "moduls/text_processor.js";
+import translateText from "./text_processor.js";
 // import * as cheerio from '../../libraries_exo/cheerio.min.js';
 import * as cheerio from 'cheerio';
 
 // const mainUrl= 'https://www.youtube.com/watch?v=fTU7wgUyE_o&ab_channel=%D0%A0%D0%A6%D0%98%D0%9C%D0%A4%D0%9A%D0%98%D0%A1%D0%A0%D0%B5%D0%B0%D0%B1%D0%B8%D0%BB%D0%B8%D1%82%D0%B0%D1%86%D0%B8%D0%BE%D0%BD%D0%BD%D1%8B%D0%B9%D1%86%D0%B5%D0%BD%D1%82%D1%80'
 // const mainUrl= 'https://github.com/vuetifyjs/vuetify'
-const mainUrl= 'https://habr.com/ru/articles/575050/'
+const mainUrl= 'https://dzen.ru/a/ZnmCaiCDLT5M-3BQ'
 // const mainUrl= 'https://github.com/FranckFreiburger/vue3-sfc-loader/discussions/34'
 // const mainUrl= 'https://github.com/FranckFreiburger/vue3-sfc-loader/issues/14#issuecomment-758794153'
 // const mainUrl= 'https://www.deep-ml.com/'
@@ -42,11 +42,11 @@ async function getPageInfo(url) {
     }
 }
 
-export default getPageInfo
+// export default getPageInfo
 
 // Пример использованияgetPageInf
-getPageInfo(mainUrl)
-    .then(info => console.log(info));
+// getPageInfo(mainUrl)
+//     .then(info => console.log(info));
 
 const getPageInfoTwo = async (url) => {
     try {
@@ -77,7 +77,7 @@ const getPageInfoTwo = async (url) => {
 };
 
 // Пример использования
-// getPageInfoTwo(mainUrl).then(info => {
-//     console.log('Информация о странице:', info); // Выводим информацию в консоль
-//     alert(JSON.stringify(info, null, 2)); // Выводим информацию в виде алерта
-// });
+getPageInfoTwo(mainUrl).then(info => {
+    console.log('Информация о странице:', info); // Выводим информацию в консоль
+    alert(JSON.stringify(info, null, 2)); // Выводим информацию в виде алерта
+});
