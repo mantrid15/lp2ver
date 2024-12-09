@@ -28,3 +28,7 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+/about.txt
+/libraries_exo/axios.min.js.map
+/libraries_exo/cheerio.min.js
+/libraries_exo/axios.min.js

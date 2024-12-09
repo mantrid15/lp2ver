@@ -1,27 +1,28 @@
 <script setup>
 import HelloWorld from './components/HelloWorld.vue'
 import LinkInput from "@/views/LinkInputRow.vue";
-import Home from "@/views/HomeView.vue"
-import Auth from '@/components/Auth.vue'
+import Auth from'@/components/Auth.vue'
 </script>
 
 <template>
-<!--  <header>-->
-<!--    &lt;!&ndash;    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />&ndash;&gt;-->
-<!--    <div class="wrapper">-->
+  <header>
+<!--    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />-->
+    <div class="wrapper">
 
-<!--      &lt;!&ndash;      <HelloWorld msg="You did it!" />&ndash;&gt;-->
-<!--    </div>-->
-<!--  </header>-->
+<!--      <HelloWorld msg="You did it!" />-->
+    </div>
+  </header>
 
   <main>
-    <Home/>
-<!--    <Auth/>-->
+    <Auth/>
   </main>
 </template>
 
 <style scoped>
-
+header {
+  line-height: 1.5;
+  position: relative; /* Для абсолютного позиционирования логотипа */
+}
 
 .top-bar {
   height: 10px; /* Высота узкой полосы */
@@ -43,18 +44,12 @@ main {
   background-color: #ffffff; /* Цвет фона для main (можно изменить) */
 }
 
-header {
-  line-height: 1.5;
-  position: relative; /* Для абсолютного позиционирования логотипа */
-}
-
 @media (min-width: 1024px) {
   header {
     display: flex;
     place-items: center;
     padding-right: calc(var(--section-gap) / 2);
   }
-
   header .wrapper {
     display: flex;
     place-items: flex-start;
