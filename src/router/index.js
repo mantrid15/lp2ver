@@ -1,63 +1,62 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '@/views/HomeView.vue'
-import LoginView from '@/views/LoginView.vue'
-import UnauthorizedView from '@/views/UnauthorizedView.vue'
+import { createRouter, createWebHistory } from 'vue-router';
+import HomeView from '@/views/HomeView.vue';
+import Auth from '@/components/Auth.vue';
+import LoginView from '@/views/LoginView.vue';
+import UnauthorizedView from '@/views/UnauthorizedView.vue';
 import LinkInputRow from "@/views/LinkInputRow.vue";
-import { supabase } from '@/clients/supabase'
+import { supabase } from '@/clients/supabase';
 
 let localUser;
 
-const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/home',
-      name: 'home',
-      component: HomeView
-    },
-	  // {
-		//   path: '/linkparser',
-		//   name: 'linkparser',
-		//   component: LinkInputRow
-	  // },
-    {
-      path: '/secret',
-      name: 'secret',
-      component: () => import('../views/LinkInputRow.vue'),
-	  meta: { requiresAuth: true }
-    },
+const routes = [
 	{
-      path: '/login',
-	  name: 'login',
-	  component: LoginView
+		path: '/',
+		name: 'home',
+		component: HomeView
 	},
 	{
-	  path: '/unauthorized',
-	  name: 'unauthorized',
-	  component: UnauthorizedView
+		path: '/auth',
+		name: 'auth',
+		component: Auth
+	},
+	{
+		path: '/secret',
+		name: 'secret',
+		component: LinkInputRow,
+		meta: { requiresAuth: true }
+	},
+	{
+		path: '/login',
+		name: 'login',
+		component: LoginView
+	},
+	{
+		path: '/unauthorized',
+		name: 'unauthorized',
+		component: UnauthorizedView
 	}
-  ]
-})
+];
+
+const router = createRouter({
+	history: createWebHistory(import.meta.env.BASE_URL),
+	routes
+});
 
 async function getUser(next) {
 	localUser = await supabase.auth.getSession();
 	if (localUser.data.session == null) {
-		next('/unauthorized')
-	}
-	else {
+		next('/unauthorized');
+	} else {
 		next();
 	}
 }
 
-
 router.beforeEach((to, from, next) => {
 	if (to.meta.requiresAuth) {
-		// console.log('requires Auth')
 		getUser(next);
-	}
-	else {
+	} else {
 		next();
 	}
-})
+});
 
-export default router
+export default router;

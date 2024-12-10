@@ -1,64 +1,110 @@
-<script setup>
-import HelloWorld from './components/HelloWorld.vue'
-import LinkInput from "@/views/LinkInputRow.vue";
-import Home from "@/views/HomeView.vue"
-import Auth from '@/components/Auth.vue'
-</script>
-
 <template>
-<!--  <header>-->
-<!--    &lt;!&ndash;    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />&ndash;&gt;-->
-<!--    <div class="wrapper">-->
+  <header class="menu">
+    <div class="left-menu">
+      <button class="menu-button" @click="handleClick">Main</button>
+      <button class="menu-button" @click="handleClick">Domain</button>
+      <button class="menu-button" @click="handleClick">Notyca</button>
+    </div>
+    <button class="menu-button" @click="goToAuth">Auth</button>
+  </header>
+  <MainTool />
+<!--  <div class="container">-->
 
-<!--      &lt;!&ndash;      <HelloWorld msg="You did it!" />&ndash;&gt;-->
-<!--    </div>-->
-<!--  </header>-->
+<!--  </div>-->
 
-  <main>
-    <Home/>
-<!--    <Auth/>-->
-  </main>
+  <div class="footer"></div>
 </template>
+
+<script setup>
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import MainTool from '@/views/MainTool.vue'; // Импортируем новый компонент
+
+const lastClickedButton = ref(null); // Хранит последнюю нажатую кнопку
+const router = useRouter();
+
+const handleClick = (event) => {
+  // Если есть предыдущая нажатая кнопка, возвращаем её к исходному состоянию
+  if (lastClickedButton.value) {
+    lastClickedButton.value.style.backgroundColor = 'purple'; // Исходный цвет кнопки
+    lastClickedButton.value.style.color = 'white'; // Исходный цвет текста
+  }
+
+  // Меняем цвет текущей кнопки на зеленый и текст на черный
+  event.target.style.backgroundColor = 'green';
+  event.target.style.color = 'black';
+
+  // Сохраняем ссылку на текущую нажатую кнопку
+  lastClickedButton.value = event.target;
+};
+
+const goToAuth = () => {
+  router.push({ name: 'auth' }); // Переход на страницу Auth
+};
+</script>
 
 <style scoped>
 
-
-.top-bar {
-  height: 10px; /* Высота узкой полосы */
-  background-color: #f0f0f0; /* Цвет полосы (можно изменить) */
+html, body {
+  height: 100%; /* Задаем высоту для html и body */
+  margin: 0; /* Убираем отступы */
 }
 
-.logo {
-  position: absolute; /* Абсолютное позиционирование для логотипа */
-  top: 20px; /* Отступ от верхнего края */
-  left: 20px; /* Отступ от левого края */
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0; /* Прижимаем к левому краю */
+  width: 100%; /* Полоса шириной 100% */
+  height: 20px; /* Высота полосы */
+  background-color: #007bff; /* базовый синий цвет */
 }
 
-.wrapper {
-  margin-left: 160px; /* Отступ для текста или других элементов в .wrapper */
+.menu {
+  display: flex;
+  align-items: center;
+  position: fixed;
+  top: 0; /* Меню поднято к самому верху */
+  left: 0; /* Прижимаем меню к левому краю */
+  width: 100%; /* Меню на всю ширину */
+  height: 60px; /* Высота меню */
+  background-color: #007bff; /* Синий фон меню */
+  z-index: 10;
+  padding: 0 10px; /* Отступы по 20 пикселей с левой и правой стороны */
 }
 
-main {
-  padding: 20px; /* Отступы вокруг содержимого main */
-  background-color: #ffffff; /* Цвет фона для main (можно изменить) */
+.left-menu {
+  display: flex;
+  margin-right: auto; /* Отодвигает блок с кнопками к левому краю */
 }
 
-header {
-  line-height: 1.5;
-  position: relative; /* Для абсолютного позиционирования логотипа */
+.menu-button {
+  width: 100px; /* Ширина кнопок */
+  height: 40px; /* Высота кнопок */
+  background-color: purple; /* Фиолетовый цвет кнопок */
+  color: white; /* Белый текст на кнопках */
+  border: none; /* Убираем бордер для кнопок */
+  border-radius: 5px;
+  cursor: pointer;
+  margin-right: 10px; /* Отступ между кнопками */
+  transition: all 0.3s ease; /* Плавный переход для увеличения */
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
+.menu-button:last-child {
+  margin-right: 0; /* Убираем отступ у последней кнопки */
+}
 
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+.menu-button:hover {
+  width: 110px; /* Увеличиваем ширину на 10 пикселей */
+  height: 50px; /* Увеличиваем высоту на 10 пикселей */
+}
+
+.container {
+  display: flex; /* Используем flex для управления внутренними элементами */
+  flex-grow: 1; /* Занимает оставшееся пространство между header и footer */
+  overflow: hidden; /* Убираем прокрутку */
+  position: relative; /* Позволяет использовать абсолютное позиционирование для дочерних элементов */
+  margin-top: 60px; /* Высота меню, чтобы контейнер не перекрывал меню */
+  margin-bottom: 20px; /* Высота футера, чтобы контейнер не перекрывал футер */
+  height: calc(100vh - 80px); /* Высота окна минус высоты header и footer */
 }
 </style>

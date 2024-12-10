@@ -9,12 +9,12 @@ vue
       </div>
       <button class="menu-button" @click="goToAuth">Auth</button>
     </header>
-    <div class="footer"></div>
+<!--    <div class="footer"></div>-->
   </div>
 </template>
 
 <script>
-import { router } from 'router'; // Импортируем useRouter
+import { useRouter } from 'vue-router'; // Импортируем useRouter
 export default {
   name: 'MainPage',
   data() {
@@ -39,7 +39,7 @@ export default {
     },
     goToAuth() {
       const router = useRouter();
-      router.push({ name: 'Auth' }); // Переход на страницу Auth
+      router.push({ name: 'auth' }); // Переход на страницу Auth
     },
   },
 };
