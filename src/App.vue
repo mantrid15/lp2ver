@@ -7,10 +7,10 @@
     </div>
     <button class="menu-button" @click="goToAuth">Auth</button>
   </header>
-  <MainTool />
-<!--  <div class="container">-->
 
-<!--  </div>-->
+  <div class="container">
+  <MainTool />
+  </div>
 
   <div class="footer"></div>
 </template>
@@ -48,6 +48,15 @@ const goToAuth = () => {
 html, body {
   height: 100%; /* Задаем высоту для html и body */
   margin: 0; /* Убираем отступы */
+}
+.container {
+  display: flex; /* Используем flex для управления внутренними элементами */
+  flex-grow: 1; /* Занимает оставшееся пространство между header и footer */
+  overflow: hidden; /* Убираем прокрутку */
+  position: relative; /* Позволяет использовать абсолютное позиционирование для дочерних элементов */
+  /*/margin-top: 100px; /* Отступ от header */
+  /*margin-bottom: 100px; /* Отступ от footer */
+  height: calc(100vh - 200px); /* Высота окна минус высоты header и footer */
 }
 
 .footer {
