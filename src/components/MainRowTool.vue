@@ -1,10 +1,10 @@
 <template>
   <v-container>
     <v-row justify="center">
-      <v-card-title>
-        <span class="headline">Проверка URL</span>
-      </v-card-title>
-      <v-btn @click="clearFields" class="clear-button">Очистить</v-btn>
+      <v-btn @click="clearFields" class="clear-button">
+        <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
+      </v-btn>
+      <!-- Используем иконку напрямую -->
       <v-text-field
           ref="urlInput"
           v-model="url"
@@ -14,20 +14,17 @@
           solo
       ></v-text-field>
       <v-btn
-          @click="fetchPageInfo"
+          @click="handleButtonClick"
           class="red-button"
           :class="{ 'active': isFetching }"
       >
+        <v-img src="/lpicon.png" alt="URL Icon" width="20" height="20" class="mr-2 ml-2" />
         {{ buttonLabel }}
       </v-btn>
-      <v-btn @click="getInfo" class="get-info-button">Получить информацию</v-btn>
+
       <v-btn class="red-button status-box" @click="handleClearStatus">{{ statusMessage || ' ' }}</v-btn>
-      <v-col>
-        <div class="link-output">{{ pageInfo }}</div>
-      </v-col>
-      <v-col>
-        <v-textarea v-model="linkInfo" class="link-info" readonly></v-textarea>
-      </v-col>
+      <v-textarea v-model="linkInfo" class="link-info" readonly></v-textarea>
+
     </v-row>
   </v-container>
 </template>
@@ -41,11 +38,11 @@ export default {
   name: 'LinkUrl',
   setup() {
     const url = ref('');
-    const pageInfo = ref('');
     const linkInfo = ref('');
     const statusMessage = ref('');
     const urlInput = ref(null);
-    const buttonLabel = ref('Проверить URL'); // Добавлено
+    const buttonLabel = ref('Проверить URL');
+    const buttonLabelOk = ref('LinkParser')
 
     const isValidURL = (string) => {
       const regex = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
@@ -62,10 +59,10 @@ export default {
           description: $('meta[name="description"]').attr('content') || '',
           keywords: $('meta[name="keywords"]').attr('content') || '',
         };
-        return info;
+        return JSON.stringify(info, null, 2); // Возвращаем информацию в виде строки
       } catch (error) {
         console.error('Ошибка при получении информации о странице:', error);
-        return { error: 'Ошибка при получении информации' };
+        return 'Ошибка при получении информации'; // Возвращаем сообщение об ошибке
       }
     };
 
@@ -76,25 +73,7 @@ export default {
         return response.data;
       } catch (error) {
         console.error('Ошибка при получении данных:', error);
-        return { error: 'Ошибка при получении информации' };
-      }
-    };
-
-    const fetchPageInfo = async () => {
-      if (url.value) {
-        if (isValidURL(url.value)) {
-          buttonLabel.value = 'YourLinkParser'; // Изменение текста кнопки
-          pageInfo.value = url.value;
-          linkInfo.value = '';
-        } else {
-          buttonLabel.value = 'Проверить URL'; // Возврат текста кнопки
-          pageInfo.value = 'Это не URL';
-          linkInfo.value = '';
-        }
-      } else {
-        buttonLabel.value = 'Проверить URL'; // Возврат текста кнопки
-        pageInfo.value = 'Пожалуйста, введите корректный URL.';
-        linkInfo.value = '';
+        return {error: 'Ошибка при получении информации'};
       }
     };
 
@@ -130,40 +109,44 @@ export default {
     };
 
     const getInfo = async () => {
-      if (isValidURL(pageInfo.value)) {
+      if (isValidURL(url.value)) {
         try {
-          let info = await getPageInfo(pageInfo.value);
-          if (info.error) {
-            statusMessage.value = '2';
-            info = await fetchMetaData(pageInfo.value);
-          } else {
-            statusMessage.value = '1';
-          }
-          if (info.error) {
-            statusMessage.value = '3';
-            info = await fetchMetaSerp(pageInfo.value);
-          }
-          if (info.error) {
-            info = {
-              url: pageInfo.value,
-              title: '',
-              description: '',
-              keywords: ''
-            };
-          }
-          linkInfo.value = JSON.stringify(info, null, 2);
+          let info = await getPageInfo(url.value);
+          linkInfo.value = info; // Устанавливаем результат в linkInfo
         } catch (error) {
           linkInfo.value = error;
           console.error('Ошибка при получении информации о странице:', error);
         }
       } else {
-        linkInfo.value = 'Сначала получите информацию о странице.';
+        linkInfo.value = 'Некорректный URL.';
+      }
+    };
+
+    const handleButtonClick = async () => {
+      if (buttonLabel.value === buttonLabelOk.value) {
+        await getInfo(); // Выполняем функцию получения информации
+      } else {
+        await fetchPageInfo(); // Выполняем проверку URL
+      }
+    };
+
+    const fetchPageInfo = async () => {
+      if (url.value) {
+        if (isValidURL(url.value)) {
+          buttonLabel.value = buttonLabelOk.value; // Изменение текста кнопки
+          linkInfo.value = ''; // Очищаем предыдущую информацию
+        } else {
+          buttonLabel.value = 'Проверить URL'; // Возврат текста кнопки
+          linkInfo.value = 'Это не URL';
+        }
+      } else {
+        buttonLabel.value = 'Проверить URL'; // Возврат текста кнопки
+        linkInfo.value = 'Пожалуйста, введите корректный URL.';
       }
     };
 
     const clearFields = () => {
       url.value = '';
-      pageInfo.value = '';
       linkInfo.value = '';
       statusMessage.value = '';
       buttonLabel.value = 'Проверить URL'; // Сброс текста кнопки
@@ -178,7 +161,7 @@ export default {
 
     const handleEnter = () => {
       if (url.value) {
-        fetchPageInfo();
+        handleButtonClick();
       }
     };
 
@@ -193,16 +176,15 @@ export default {
 
     return {
       url,
-      pageInfo,
       linkInfo,
       statusMessage,
-      fetchPageInfo,
+      handleButtonClick,
       clearFields,
-      getInfo,
       urlInput,
       handleEnter,
       handleClearStatus,
-      buttonLabel, // Добавлено
+      buttonLabel,
+      // mdiDelete, // Экспортируем иконку
     };
   },
 };
@@ -238,13 +220,6 @@ export default {
   color: white;
 }
 
-.link-output {
-  background-color: yellow;
-  border: 1px solid blue;
-  padding: 10px;
-  margin-top: 10px;
-}
-
 .link-info {
   background-color: pink;
   border: 1px solid blue;
@@ -253,11 +228,5 @@ export default {
   height: 150px;
   resize: both;
   box-sizing: border-box;
-}
-
-.get-info-button {
-  margin-left: 10px;
-  background-color: lightblue;
-  color: white;
 }
 </style>
