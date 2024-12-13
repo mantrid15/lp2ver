@@ -1,147 +1,56 @@
 <template>
-  <header class="menu">
-    <div class="left-menu">
-      <button class="menu-button" @click="handleClick">Main</button>
-      <button class="menu-button" @click="handleClick">Domain</button>
-      <button class="menu-button" @click="handleClick">Notyca</button>
-    </div>
-    <button class="menu-button" @click="goToAuth">Auth</button>
-  </header>
+  <v-app>
+  <v-toolbar density="compact" dark color="primary">
+    <v-app-bar-nav-icon></v-app-bar-nav-icon>
+    <v-toolbar-title >
+      <RouterLink to="/about">
+        About
+      </RouterLink>
+      <RouterLink to="/">
+        UshaMihaBot
+      </RouterLink>
+    </v-toolbar-title>
+    <v-spacer></v-spacer>
 
-  <div class="container">
-    <div class="main-block">
-      <div class="inner-block first"></div>
-      <div class="inner-block second"></div>
-      <div class="inner-block third"></div>
-    </div>
-  </div>
-
-  <div class="footer"></div>
+    <v-btn to="/login" variant="outlined" dark color="pink-darken-4" size="large">
+      Lo
+      <v-img src="/lpicon.png"
+             alt="Login Icon"
+             width="20"
+             height="20"
+             class="mr-2 ml-2"
+             color="white"
+      />
+      gin
+    </v-btn>
+  </v-toolbar>
+  <v-main>
+    <v-fade-transition>
+      <RouterView />
+    </v-fade-transition>
+  </v-main>
+    <v-footer
+        class="custom-footer"
+        dark
+        color="primary"
+        app
+    >
+      <v-row justify="center" no-gutters>
+        <v-col class="text-center" cols="12">
+          2024 — <strong>LinkParserVerTwo</strong>
+        </v-col>
+      </v-row>
+    </v-footer>
+  </v-app>
 </template>
 
 <script setup>
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import MainTool from '@/views/MainTool.vue'; // Импортируем новый компонент
+import { RouterView } from 'vue-router';
+// import { useRouter } from 'vue-router';
 
-const lastClickedButton = ref(null); // Хранит последнюю нажатую кнопку
-const router = useRouter();
-
-const handleClick = (event) => {
-  // Если есть предыдущая нажатая кнопка, возвращаем её к исходному состоянию
-  if (lastClickedButton.value) {
-    lastClickedButton.value.style.backgroundColor = 'purple'; // Исходный цвет кнопки
-    lastClickedButton.value.style.color = 'white'; // Исходный цвет текста
-  }
-
-  // Меняем цвет текущей кнопки на зеленый и текст на черный
-  event.target.style.backgroundColor = 'green';
-  event.target.style.color = 'black';
-
-  // Сохраняем ссылку на текущую нажатую кнопку
-  lastClickedButton.value = event.target;
-};
-
-const goToAuth = () => {
-  router.push({ name: 'auth' }); // Переход на страницу Auth
-};
 </script>
 
 <style scoped>
-
-html, body {
-  height: 100%; /* Задаем высоту для html и body */
-  margin: 0; /* Убираем отступы */
-}
-
-
-.footer {
-  position: fixed;
-  bottom: 0;
-  left: 0; /* Прижимаем к левому краю */
-  width: 100%; /* Полоса шириной 100% */
-  height: 20px; /* Высота полосы */
-  background-color: #007bff; /* базовый синий цвет */
-}
-
-.menu {
-  display: flex;
-  align-items: center;
-  position: fixed;
-  top: 0; /* Меню поднято к самому верху */
-  left: 0; /* Прижимаем меню к левому краю */
-  width: 100%; /* Меню на всю ширину */
-  height: 60px; /* Высота меню */
-  background-color: #007bff; /* Синий фон меню */
-  z-index: 10;
-  padding: 0 10px; /* Отступы по 20 пикселей с левой и правой стороны */
-}
-
-.left-menu {
-  display: flex;
-  margin-right: auto; /* Отодвигает блок с кнопками к левому краю */
-}
-
-.menu-button {
-  width: 100px; /* Ширина кнопок */
-  height: 40px; /* Высота кнопок */
-  background-color: purple; /* Фиолетовый цвет кнопок */
-  color: white; /* Белый текст на кнопках */
-  border: none; /* Убираем бордер для кнопок */
-  border-radius: 5px;
-  cursor: pointer;
-  margin-right: 10px; /* Отступ между кнопками */
-  transition: all 0.3s ease; /* Плавный переход для увеличения */
-}
-
-.menu-button:last-child {
-  margin-right: 0; /* Убираем отступ у последней кнопки */
-}
-
-.menu-button:hover {
-  width: 110px; /* Увеличиваем ширину на 10 пикселей */
-  height: 50px; /* Увеличиваем высоту на 10 пикселей */
-}
-
-.container {
-  display: flex; /* Используем flex для управления внутренними элементами */
-  flex-grow: 1; /* Занимает оставшееся пространство между header и footer */
-  overflow: hidden; /* Убираем прокрутку */
-  position: relative; /* Позволяет использовать абсолютное позиционирование для дочерних элементов */
-  margin-top: 60px; /* Высота меню, чтобы контейнер не перекрывал меню */
-  margin-bottom: 20px; /* Высота футера, чтобы контейнер не перекрывал футер */
-  height: calc(100vh - 80px); /* Высота окна минус высоты header и footer */
-}
-
-.main-block {
-  height: calc(100vh - 200px);
-  width: calc(100vw - 20px);
-  margin-top: 100px;
-  display: flex;
-}
-
-.inner-block {
-  border: 2px solid black;
-  border-radius: 5px;
-  height: 96%;
-  box-sizing: border-box;
-}
-
-.first {
-  width: 24%;
-  background-color: red;
-}
-
-.second {
-  width: 48%;
-  background-color: green;
-}
-
-.third {
-  width: 24%;
-  background-color: blue;
-}
-
-
 
 </style>

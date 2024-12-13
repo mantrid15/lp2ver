@@ -1,11 +1,22 @@
 <template>
-  <div class="main-block">
-    <div class="inner-block first"></div>
-    <div class="inner-block second"></div>
-    <div class="inner-block third"></div>
+  <div class="container text-center">
+    <div class="row">
+      <div class="col">
+        Column
+      </div>
+      <div class="col">
+        Column
+      </div>
+      <div class="col">
+        Column
+      </div>
+    </div>
   </div>
 </template>
+<script setup>
 
+
+</script>
 <style scoped>
 
 .main-block {

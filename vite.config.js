@@ -8,8 +8,10 @@ import path from 'path'; // Не забудьте импортировать pat
 export default defineConfig({
   plugins: [
     vue(),
-    vueDevTools(),
+    // vueDevTools(),
+
   ],
+
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)), // Указывает на папку src
@@ -23,7 +25,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''), // Удаляет '/api' из пути
       },
+
     },
+    hmr: {
+      overlay: false
+    }
   },
   build: {
     sourcemap: true // Включение source maps

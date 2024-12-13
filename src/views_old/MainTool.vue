@@ -1,14 +1,24 @@
 <template>
-  <div>MainTools
+  <div class="content">
+    <div class="levels">
+      <div class="first-level">
+        <!-- Содержимое первого уровня -->
+        <div class="inner-box red-box"></div>
+      </div>
+      <div class="main-level">
+        <!-- Содержимое основного уровня -->
+        <div class="inner-box orange-box"></div>
+      </div>
+      <div class="second-level">
+        <!-- Содержимое второго уровня -->
+        <div class="inner-box purple-box"></div>
+      </div>
+    </div>
   </div>
-  <RowTool></RowTool>
 </template>
 
 <script setup>
-import RowTool from '../components/MainRowTool.vue'
-// import RowTool from '../components/LinkInputRow.vue'
-// Здесь можно добавить любые необходимые импорты и ло
-//гику
+// Здесь можно добавить любые необходимые импорты и логику
 </script>
 
 <style scoped>
@@ -18,6 +28,7 @@ import RowTool from '../components/MainRowTool.vue'
   display: flex; /* Устанавливаем флекс-контейнер */
   flex-direction: column; /* Переход на вертикальную верстку */
   /*margin-top: 100px; /* Отступ от header */
+  margin-bottom: 100px; /* Отступ от footer */
 }
 
 .levels {
