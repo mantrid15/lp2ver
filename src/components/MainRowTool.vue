@@ -1,47 +1,32 @@
-vue
 <template>
   <v-container>
     <v-row justify="center">
-      <v-col cols="12" md="8">
-        <v-card>
-          <v-card-title>
-            <span class="headline">Проверка URL</span>
-          </v-card-title>
-          <v-card-text>
-            <div class="input-module">
-              <v-row class="input-container" align="center">
-                <v-btn @click="clearFields" class="clear-button">Очистить</v-btn>
-                <v-text-field
-                    ref="urlInput"
-                    v-model="url"
-                    class="url-input"
-                    placeholder="Введите URL"
-                    @keydown.enter="handleEnter"
-                    solo
-                ></v-text-field>
-                <v-btn
-                    @click="fetchPageInfo"
-                    class="red-button"
-                    :class="{ 'active': isFetching }"
-                >
-                  Проверить URL
-                </v-btn>
-                <v-btn @click="getInfo" class="get-info-button">Получить информацию</v-btn>
-                <v-btn class="red-button status-box" @click="handleClearStatus">{{ statusMessage || ' ' }}</v-btn>
-              </v-row>
-              <v-row>
-                <v-col>
-                  <div class="link-output">{{ pageInfo }}</div>
-                </v-col>
-              </v-row>
-              <v-row>
-                <v-col>
-                  <v-textarea v-model="linkInfo" class="link-info" readonly></v-textarea>
-                </v-col>
-              </v-row>
-            </div>
-          </v-card-text>
-        </v-card>
+      <v-card-title>
+        <span class="headline">Проверка URL</span>
+      </v-card-title>
+      <v-btn @click="clearFields" class="clear-button">Очистить</v-btn>
+      <v-text-field
+          ref="urlInput"
+          v-model="url"
+          class="url-input"
+          placeholder="Введите URL"
+          @keydown.enter="handleEnter"
+          solo
+      ></v-text-field>
+      <v-btn
+          @click="fetchPageInfo"
+          class="red-button"
+          :class="{ 'active': isFetching }"
+      >
+        {{ buttonLabel }}
+      </v-btn>
+      <v-btn @click="getInfo" class="get-info-button">Получить информацию</v-btn>
+      <v-btn class="red-button status-box" @click="handleClearStatus">{{ statusMessage || ' ' }}</v-btn>
+      <v-col>
+        <div class="link-output">{{ pageInfo }}</div>
+      </v-col>
+      <v-col>
+        <v-textarea v-model="linkInfo" class="link-info" readonly></v-textarea>
       </v-col>
     </v-row>
   </v-container>
@@ -60,6 +45,7 @@ export default {
     const linkInfo = ref('');
     const statusMessage = ref('');
     const urlInput = ref(null);
+    const buttonLabel = ref('Проверить URL'); // Добавлено
 
     const isValidURL = (string) => {
       const regex = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
@@ -97,13 +83,16 @@ export default {
     const fetchPageInfo = async () => {
       if (url.value) {
         if (isValidURL(url.value)) {
+          buttonLabel.value = 'YourLinkParser'; // Изменение текста кнопки
           pageInfo.value = url.value;
           linkInfo.value = '';
         } else {
+          buttonLabel.value = 'Проверить URL'; // Возврат текста кнопки
           pageInfo.value = 'Это не URL';
           linkInfo.value = '';
         }
       } else {
+        buttonLabel.value = 'Проверить URL'; // Возврат текста кнопки
         pageInfo.value = 'Пожалуйста, введите корректный URL.';
         linkInfo.value = '';
       }
@@ -136,7 +125,7 @@ export default {
         return result;
       } catch (error) {
         console.error('Ошибка при выполнении запроса:', error);
-        return { error: 'Ошибка при получении информации' };
+        return {error: 'Ошибка при получении информации'};
       }
     };
 
@@ -177,6 +166,7 @@ export default {
       pageInfo.value = '';
       linkInfo.value = '';
       statusMessage.value = '';
+      buttonLabel.value = 'Проверить URL'; // Сброс текста кнопки
     };
 
     const handleContextMenu = (event) => {
@@ -212,6 +202,7 @@ export default {
       urlInput,
       handleEnter,
       handleClearStatus,
+      buttonLabel, // Добавлено
     };
   },
 };
@@ -227,27 +218,33 @@ export default {
   justify-content: center;
   margin-bottom: 20px;
 }
+
 .input-container {
   display: flex;
   align-items: center;
 }
+
 .url-input {
   margin-right: 20px;
 }
+
 .red-button {
   background-color: red;
   color: white;
 }
+
 .clear-button {
   background-color: purple;
   color: white;
 }
+
 .link-output {
   background-color: yellow;
   border: 1px solid blue;
   padding: 10px;
   margin-top: 10px;
 }
+
 .link-info {
   background-color: pink;
   border: 1px solid blue;
@@ -257,6 +254,7 @@ export default {
   resize: both;
   box-sizing: border-box;
 }
+
 .get-info-button {
   margin-left: 10px;
   background-color: lightblue;
