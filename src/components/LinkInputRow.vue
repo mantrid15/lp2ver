@@ -146,6 +146,7 @@ export default {
             info = await fetchMetaSerp(pageInfo.value);
           }
           if (info.error) {
+            statusMessage.value = '4';
             info = {
               url: pageInfo.value,
               title: '',

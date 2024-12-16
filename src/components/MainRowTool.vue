@@ -112,13 +112,31 @@ export default {
       if (isValidURL(url.value)) {
         try {
           let info = await getPageInfo(url.value);
-          linkInfo.value = info; // Устанавливаем результат в linkInfo
+          if (info.error) {
+            statusMessage.value = '2'; // Устанавливаем статус для fetchMetaData
+            info = await fetchMetaData(url.value);
+          } else {
+            statusMessage.value = '1'; // Устанавливаем статус для getPageInfo
+          }
+          if (info.error) {
+            statusMessage.value = '3'; // Устанавливаем статус для fetchMetaSerp
+            info = await fetchMetaSerp(url.value);
+          }
+          if (info.error) {
+            info = {
+              url: url.value,
+              title: '',
+              description: '',
+              keywords: '',
+            };
+          }
+          linkInfo.value = JSON.stringify(info, null, 2);
         } catch (error) {
           linkInfo.value = error;
           console.error('Ошибка при получении информации о странице:', error);
         }
       } else {
-        linkInfo.value = 'Некорректный URL.';
+        linkInfo.value = 'Сначала получите информацию о странице.';
       }
     };
 
