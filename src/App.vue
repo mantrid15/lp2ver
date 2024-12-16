@@ -1,6 +1,6 @@
 <template>
   <v-app>
-  <v-toolbar density="compact" dark color="primary">
+  <v-toolbar density="compact" dark color="primary" >
     <v-app-bar-nav-icon></v-app-bar-nav-icon>
     <v-toolbar-title >
       <RouterLink to="/about">

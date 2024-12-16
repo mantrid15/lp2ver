@@ -1,10 +1,53 @@
 <template>
   <v-container>
+    <!-- Таблица для вывода данных -->
+    <v-table theme="dark" density="compact" fixed-header
+             :style="{ height: 'auto', overflow: 'hidden' }">
+      <thead>
+      <tr>
+        <th class="table-header" :style="{ width: columnWidth + 'px' }">Fav</th>
+        <th class="table-header" :style="{ width: columnWidth + 'px' }">Date</th>
+        <th class="table-header" :style="{ width: columnWidth + 'px' }">Url</th>
+        <th class="table-header" :style="{ width: columnWidth + 'px' }">Title</th>
+        <th class="table-header" :style="{ width: columnWidth + 'px' }">Descr</th>
+        <th class="table-header" :style="{ width: columnWidth + 'px' }">Tag</th>
+
+        <th class="table-header" :style="{ width: columnWidth + 'px' }">Хэш</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr v-if="linkInfoParsed">
+        <td>
+          <div style="background-color: white; display: inline-block; padding: 2px;">
+            <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
+          </div>
+        </td>
+        <td v-tooltip="linkInfoParsed.date" data-tooltip-top>{{ new Date().toLocaleDateString() }}</td>
+        <td>
+          <a :href="linkInfoParsed.url" target="_blank" rel="noopener noreferrer">
+            {{ linkInfoParsed.url.length > 50 ? linkInfoParsed.url.substring(0, 50) + '...' : linkInfoParsed.url }}
+          </a>
+        </td>
+        <td v-tooltip="linkInfoParsed.title" data-tooltip-top>
+          <span style="white-space: nowrap;">{{ linkInfoParsed.title.length > 100 ? linkInfoParsed.title.substring(0, 100) + '...' : linkInfoParsed.title }}</span>
+        </td>
+        <td v-tooltip="linkInfoParsed.description" data-tooltip-top>
+          <span style="white-space: nowrap;">{{ linkInfoParsed.description.length > 50 ? linkInfoParsed.description.substring(0, 50) + '...' : linkInfoParsed.description }}</span>
+        </td>
+        <td v-tooltip="linkInfoParsed.keywords" data-tooltip-top>
+          <span style="white-space: nowrap;">{{ linkInfoParsed.keywords.length > 50 ? linkInfoParsed.keywords.substring(0, 50) + '...' : linkInfoParsed.keywords }}</span>
+        </td>
+
+        <td>{{ linkInfoParsed.hash }}</td>
+      </tr>
+      </tbody>
+    </v-table>
+    <!-- Полоса отделяющая таблицу от модуля -->
+    <div class="divider"></div>
     <v-row justify="center">
       <v-btn @click="clearFields" class="clear-button">
         <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
       </v-btn>
-      <!-- Используем иконку напрямую -->
       <v-text-field
           ref="urlInput"
           v-model="url"
@@ -21,13 +64,12 @@
         <v-img src="/lpicon.png" alt="URL Icon" width="20" height="20" class="mr-2 ml-2" />
         {{ buttonLabel }}
       </v-btn>
-
       <v-btn class="red-button status-box" @click="handleClearStatus">{{ statusMessage || ' ' }}</v-btn>
       <v-textarea v-model="linkInfo" class="link-info" readonly></v-textarea>
-
     </v-row>
   </v-container>
 </template>
+
 
 <script>
 import { ref, onMounted } from 'vue';
@@ -44,9 +86,44 @@ export default {
     const buttonLabel = ref('Проверить URL');
     const buttonLabelOk = ref('LinkParser')
 
+    // Переменная для ширины столбцов
+    const columnWidth = ref(50); // Ширина столбцов в пикселях
+
+
+    // Переменная для хранения разобранной информации из linkInfo
+    const linkInfoParsed = ref(null);
+
     const isValidURL = (string) => {
       const regex = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
       return regex.test(string);
+    };
+
+    // Функция для парсинга linkInfo
+    const parseLinkInfo = () => {
+      try {
+        console.log('linkInfo.value:', linkInfo.value); // Логируем исходное значение
+
+        // Удаляем лишние кавычки и символы новой строки
+        const rawValue = linkInfo.value.replace(/^"|"$/g, '').replace(/\\n/g, '');
+
+        const info = JSON.parse(rawValue); // Парсим JSON
+        console.log('Parsed Info:', info); // Логируем разобранные данные
+
+        // Логируем разобранные данные
+        linkInfoParsed.value = {
+          date: new Date().toLocaleString(),
+          url: info.url || '',
+          title: info.title || '',
+          description: info.description || '',
+          keywords: info.keywords || '',
+          favicon: info.favicon || null,
+          hash: 'hash', // Здесь можно добавить логику для генерации хэша, если это необходимо
+        };
+        console.log(linkInfoParsed.value);
+      } catch (error) {
+        console.error('Ошибка при парсинге linkInfo:', error);
+        linkInfoParsed.value = null; // Если возникла ошибка, обнуляем значение
+      }
     };
 
     const getPageInfo = async (url) => {
@@ -59,7 +136,8 @@ export default {
           description: $('meta[name="description"]').attr('content') || '',
           keywords: $('meta[name="keywords"]').attr('content') || '',
         };
-        return JSON.stringify(info, null, 2); // Возвращаем информацию в виде строки
+        return info
+        // return JSON.stringify(info, null, 2); // Возвращаем информацию в виде строки
       } catch (error) {
         console.error('Ошибка при получении информации о странице:', error);
         return 'Ошибка при получении информации'; // Возвращаем сообщение об ошибке
@@ -140,9 +218,12 @@ export default {
       }
     };
 
+
+
     const handleButtonClick = async () => {
       if (buttonLabel.value === buttonLabelOk.value) {
         await getInfo(); // Выполняем функцию получения информации
+        parseLinkInfo(); // Парсим данные после получения информации
       } else {
         await fetchPageInfo(); // Выполняем проверку URL
       }
@@ -201,6 +282,8 @@ export default {
       urlInput,
       handleEnter,
       handleClearStatus,
+      linkInfoParsed,
+      parseLinkInfo,
       buttonLabel,
       // mdiDelete, // Экспортируем иконку
     };
