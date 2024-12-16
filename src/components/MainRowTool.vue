@@ -4,20 +4,22 @@
     <v-table theme="dark" density="compact" fixed-header
              :style="{ height: 'auto', overflow: 'hidden' }">
       <thead>
-      <tr>
+      <tr v-if="linkInfoParsed">
         <th class="table-header" :style="{ width: columnWidth + 'px' }">Fav</th>
         <th class="table-header" :style="{ width: columnWidth + 'px' }">Date</th>
         <th class="table-header" :style="{ width: columnWidth + 'px' }">Url</th>
         <th class="table-header" :style="{ width: columnWidth + 'px' }">Title</th>
         <th class="table-header" :style="{ width: columnWidth + 'px' }">Descr</th>
         <th class="table-header" :style="{ width: columnWidth + 'px' }">Tag</th>
-
         <th class="table-header" :style="{ width: columnWidth + 'px' }">Хэш</th>
       </tr>
       </thead>
       <tbody>
       <tr v-if="linkInfoParsed">
         <td>
+          <v-btn @click="clearFields" class="clear-button" style="margin-right: 5px;">
+            <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
+          </v-btn>
           <div style="background-color: white; display: inline-block; padding: 2px;">
             <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
           </div>
@@ -37,17 +39,30 @@
         <td v-tooltip="linkInfoParsed.keywords" data-tooltip-top>
           <span style="white-space: nowrap;">{{ linkInfoParsed.keywords.length > 50 ? linkInfoParsed.keywords.substring(0, 50) + '...' : linkInfoParsed.keywords }}</span>
         </td>
-
         <td>{{ linkInfoParsed.hash }}</td>
+      </tr>
+      <tr v-else>
+        <td>
+          <v-btn @click="clearFields" class="clear-button" style="margin-right: 5px;">
+            <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
+          </v-btn>
+          <span class="placeholder-text">Fav</span>
+        </td>
+        <td class="placeholder-text">Date</td>
+        <td class="placeholder-text">Url</td>
+        <td class="placeholder-text">Title</td>
+        <td class="placeholder-text">Descr</td>
+        <td class="placeholder-text">Tag</td>
+        <td class="placeholder-text">Хэш</td>
       </tr>
       </tbody>
     </v-table>
     <!-- Полоса отделяющая таблицу от модуля -->
     <div class="divider"></div>
     <v-row justify="center">
-      <v-btn @click="clearFields" class="clear-button">
-        <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
-      </v-btn>
+<!--      <v-btn @click="clearFields" class="clear-button">-->
+<!--        <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>-->
+<!--      </v-btn>-->
       <v-text-field
           ref="urlInput"
           v-model="url"
@@ -249,6 +264,7 @@ export default {
       linkInfo.value = '';
       statusMessage.value = '';
       buttonLabel.value = 'Проверить URL'; // Сброс текста кнопки
+      linkInfoParsed.value = null; // Очистка таблицы
     };
 
     const handleContextMenu = (event) => {
@@ -300,6 +316,10 @@ export default {
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
+}
+
+.table-header {
+  display: none; /* Скрыть заголовки */
 }
 
 .input-container {
