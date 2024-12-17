@@ -41,7 +41,23 @@
           <td class="divider" v-tooltip="linkInfoParsed.keywords" data-tooltip-top :style="{ width: columnWidth + 'px' }">
             <span style="white-space: nowrap;">{{ linkInfoParsed.keywords.length > 50 ? linkInfoParsed.keywords.substring(0, 50) + '...' : linkInfoParsed.keywords }}</span>
           </td>
-          <td class="divider" :style="{ width: columnWidth50 + 'px' }">{{ linkInfoParsed.hash }}</td>
+          <td class="divider" :style="{ width: columnWidth50 + 'px' }">
+            <v-btn
+                @click="handleButtonClick"
+                class="red-button"
+                :class="{ 'active': isFetching }">
+              <v-img
+                  :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
+                  alt="URL Icon"
+                  width="20"
+                  height="20"
+                  class="mr-2 ml-2"
+              />
+              <span v-if="isProcessing">{{ buttonLabel }}</span>
+              <span v-else-if="statusMessage">{{ statusMessage }} {{ buttonLabelOk }}</span>
+              <span v-else>{{ buttonLabelOk }}</span>
+            </v-btn>
+          </td>
         </tr>
         <tr v-else>
           <td style="display: flex; align-items: center;" :style="{ width: columnWidth20 + 'px' }">
@@ -50,7 +66,7 @@
             </div>
           </td>
           <td class="divider placeholder-text" :style="{ width: columnWidth20 + 'px' }">Date</td>
-          <td class="divider" :style="{ width: columnWidth + 'px', height: '40px' }">
+          <td class="divider" :style="{ width: columnWidth + 'px', height: '10px' }">
             <v-text-field
                 ref="urlInput"
                 v-model="url"
@@ -58,40 +74,65 @@
                 placeholder="Введите URL"
                 @keydown.enter="handleEnter"
                 solo
-                :style="{ height: '100%', fontSize: '14px' }"
+
             ></v-text-field>
           </td>
           <td class="divider placeholder-text" :style="{ width: columnWidth + 'px' }">Title</td>
           <td class="divider placeholder-text" :style="{ width: columnWidth + 'px' }">Descr</td>
           <td class="divider placeholder-text" :style="{ width: columnWidth + 'px' }">Tag</td>
-          <td class="divider placeholder-text" :style="{ width: columnWidth50 + 'px' }">Хэш</td>
+          <td class="divider" :style="{ width: columnWidth50 + 'px' }">
+            <v-btn
+                @click="handleButtonClick"
+                class="red-button"
+                :class="{ 'active': isFetching }">
+              <v-img
+                  :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
+                  alt="URL Icon"
+                  width="20"
+                  height="20"
+                  class="mr-2 ml-2"
+              />
+              <span v-if="isProcessing">{{ buttonLabel }}</span>
+              <span v-else-if="statusMessage">{{ statusMessage }} {{ buttonLabelOk }}</span>
+              <span v-else>{{ buttonLabelOk }}</span>
+            </v-btn>
+          </td>
+
         </tr>
         </tbody>
       </v-table>
     </div>
 
     <!-- Полоса отделяющая таблицу от модуля -->
-    <div class="divider"></div>
-    <v-row justify="center">
-<!--      <v-text-field-->
-<!--          ref="urlInput"-->
-<!--          v-model="url"-->
-<!--          class="url-input"-->
-<!--          placeholder="Введите URL"-->
-<!--          @keydown.enter="handleEnter"-->
-<!--          solo-->
-<!--      ></v-text-field>-->
-      <v-btn
-          @click="handleButtonClick"
-          class="red-button"
-          :class="{ 'active': isFetching }"
-      >
-        <v-img src="/lpicon.png" alt="URL Icon" width="20" height="20" class="mr-2 ml-2" />
-        {{ buttonLabel }}
-      </v-btn>
-      <v-btn class="red-button status-box" @click="handleClearStatus">{{ statusMessage || ' ' }}</v-btn>
-      <v-textarea v-model="linkInfo" class="link-info" readonly></v-textarea>
-    </v-row>
+<!--    <div class="divider"></div>-->
+<!--    <v-row justify="center">-->
+<!--      <v-btn-->
+<!--          @click="handleButtonClick"-->
+<!--          class="red-button"-->
+<!--          :class="{ 'active': isFetching }">-->
+<!--        <v-img-->
+<!--            :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"-->
+<!--            alt="URL Icon"-->
+<!--            width="20"-->
+<!--            height="20"-->
+<!--            class="mr-2 ml-2"-->
+<!--        />-->
+<!--        <span v-if="isProcessing">{{ buttonLabel }}</span>-->
+<!--        <span v-else-if="statusMessage">{{ statusMessage }} {{  buttonLabelOk }}</span>-->
+<!--        <span v-else>{{ buttonLabelOk }}</span>-->
+<!--      </v-btn>-->
+
+<!--      <v-btn-->
+<!--          @click="handleButtonClick"-->
+<!--          class="red-button"-->
+<!--          :class="{ 'active': isFetching }"-->
+<!--      >-->
+<!--        <v-img src="/lpicon.png" alt="URL Icon" width="20" height="20" class="mr-2 ml-2" />-->
+<!--        {{ buttonLabel }}-->
+<!--      </v-btn>-->
+<!--      <v-btn class="red-button status-box" @click="handleClearStatus">{{ statusMessage || ' ' }}</v-btn>-->
+<!--      <v-textarea v-model="linkInfo" class="link-info" readonly></v-textarea>-->
+<!--    </v-row>-->
   </v-container>
 </template>
 
@@ -314,6 +355,7 @@ export default {
       linkInfoParsed,
       parseLinkInfo,
       buttonLabel,
+      buttonLabelOk,
       // mdiDelete, // Экспортируем иконку
     };
   },
