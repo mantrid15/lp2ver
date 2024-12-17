@@ -1,76 +1,86 @@
 <template>
   <v-container>
-    <!-- Таблица для вывода данных -->
-    <v-table theme="dark" density="compact" fixed-header
-             :style="{ height: 'auto', overflow: 'hidden' }">
-      <thead>
-      <tr v-if="linkInfoParsed">
-        <th class="table-header" :style="{ width: columnWidth + 'px' }">Fav</th>
-        <th class="table-header" :style="{ width: columnWidth + 'px' }">Date</th>
-        <th class="table-header" :style="{ width: columnWidth + 'px' }">Url</th>
-        <th class="table-header" :style="{ width: columnWidth + 'px' }">Title</th>
-        <th class="table-header" :style="{ width: columnWidth + 'px' }">Descr</th>
-        <th class="table-header" :style="{ width: columnWidth + 'px' }">Tag</th>
-        <th class="table-header" :style="{ width: columnWidth + 'px' }">Хэш</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr v-if="linkInfoParsed">
-        <td>
-          <v-btn @click="clearFields" class="clear-button" style="margin-right: 5px;">
-            <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
-          </v-btn>
-          <div style="background-color: white; display: inline-block; padding: 2px;">
-            <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
-          </div>
-        </td>
-        <td v-tooltip="linkInfoParsed.date" data-tooltip-top>{{ new Date().toLocaleDateString() }}</td>
-        <td>
-          <a :href="linkInfoParsed.url" target="_blank" rel="noopener noreferrer">
-            {{ linkInfoParsed.url.length > 50 ? linkInfoParsed.url.substring(0, 50) + '...' : linkInfoParsed.url }}
-          </a>
-        </td>
-        <td v-tooltip="linkInfoParsed.title" data-tooltip-top>
-          <span style="white-space: nowrap;">{{ linkInfoParsed.title.length > 100 ? linkInfoParsed.title.substring(0, 100) + '...' : linkInfoParsed.title }}</span>
-        </td>
-        <td v-tooltip="linkInfoParsed.description" data-tooltip-top>
-          <span style="white-space: nowrap;">{{ linkInfoParsed.description.length > 50 ? linkInfoParsed.description.substring(0, 50) + '...' : linkInfoParsed.description }}</span>
-        </td>
-        <td v-tooltip="linkInfoParsed.keywords" data-tooltip-top>
-          <span style="white-space: nowrap;">{{ linkInfoParsed.keywords.length > 50 ? linkInfoParsed.keywords.substring(0, 50) + '...' : linkInfoParsed.keywords }}</span>
-        </td>
-        <td>{{ linkInfoParsed.hash }}</td>
-      </tr>
-      <tr v-else>
-        <td>
-          <v-btn @click="clearFields" class="clear-button" style="margin-right: 5px;">
-            <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
-          </v-btn>
-          <span class="placeholder-text">Fav</span>
-        </td>
-        <td class="placeholder-text">Date</td>
-        <td class="placeholder-text">Url</td>
-        <td class="placeholder-text">Title</td>
-        <td class="placeholder-text">Descr</td>
-        <td class="placeholder-text">Tag</td>
-        <td class="placeholder-text">Хэш</td>
-      </tr>
-      </tbody>
-    </v-table>
+    <div style="display: flex; align-items: center;">
+      <!-- Кнопка удаления расположена слева от таблицы -->
+      <v-btn @click="clearFields" class="clear-button" style="margin-right: 5px; padding: 5px;" small>
+        <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
+      </v-btn>
+
+      <!-- Таблица для вывода данных -->
+      <v-table theme="dark" density="compact" fixed-header :style="{ height: 'auto', overflow: 'hidden' }">
+        <thead>
+        <tr v-if="linkInfoParsed">
+          <th class="table-header">Fav</th>
+          <th class="table-header">Date</th>
+          <th class="table-header">Url</th>
+          <th class="table-header">Title</th>
+          <th class="table-header">Descr</th>
+          <th class="table-header">Tag</th>
+          <th class="table-header">Хэш</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-if="linkInfoParsed">
+          <td class="fav-cell">
+            <div class="favicon-container">
+              <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
+            </div>
+          </td>
+          <td class="divider" v-tooltip="linkInfoParsed.date" data-tooltip-top :style="{ width: columnWidth20 + 'px' }">{{ new Date().toLocaleDateString() }}</td>
+          <td class="divider">
+            <a :href="linkInfoParsed.url" target="_blank" rel="noopener noreferrer">
+              {{ linkInfoParsed.url.length > 50 ? linkInfoParsed.url.substring(0, 50) + '...' : linkInfoParsed.url }}
+            </a>
+          </td>
+          <td class="divider" v-tooltip="linkInfoParsed.title" data-tooltip-top :style="{ width: columnWidth + 'px' }">
+            <span style="white-space: nowrap;">{{ linkInfoParsed.title.length > 100 ? linkInfoParsed.title.substring(0, 100) + '...' : linkInfoParsed.title }}</span>
+          </td>
+          <td class="divider" v-tooltip="linkInfoParsed.description" data-tooltip-top :style="{ width: columnWidth + 'px' }">
+            <span style="white-space: nowrap;">{{ linkInfoParsed.description.length > 50 ? linkInfoParsed.description.substring(0, 50) + '...' : linkInfoParsed.description }}</span>
+          </td>
+          <td class="divider" v-tooltip="linkInfoParsed.keywords" data-tooltip-top :style="{ width: columnWidth + 'px' }">
+            <span style="white-space: nowrap;">{{ linkInfoParsed.keywords.length > 50 ? linkInfoParsed.keywords.substring(0, 50) + '...' : linkInfoParsed.keywords }}</span>
+          </td>
+          <td class="divider" :style="{ width: columnWidth50 + 'px' }">{{ linkInfoParsed.hash }}</td>
+        </tr>
+        <tr v-else>
+          <td style="display: flex; align-items: center;" :style="{ width: columnWidth20 + 'px' }">
+            <div style="background-color: white; justify-content: left; align-items: flex-start">
+              <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
+            </div>
+          </td>
+          <td class="divider placeholder-text" :style="{ width: columnWidth20 + 'px' }">Date</td>
+          <td class="divider" :style="{ width: columnWidth + 'px', height: '40px' }">
+            <v-text-field
+                ref="urlInput"
+                v-model="url"
+                class="url-input"
+                placeholder="Введите URL"
+                @keydown.enter="handleEnter"
+                solo
+                :style="{ height: '100%', fontSize: '14px' }"
+            ></v-text-field>
+          </td>
+          <td class="divider placeholder-text" :style="{ width: columnWidth + 'px' }">Title</td>
+          <td class="divider placeholder-text" :style="{ width: columnWidth + 'px' }">Descr</td>
+          <td class="divider placeholder-text" :style="{ width: columnWidth + 'px' }">Tag</td>
+          <td class="divider placeholder-text" :style="{ width: columnWidth50 + 'px' }">Хэш</td>
+        </tr>
+        </tbody>
+      </v-table>
+    </div>
+
     <!-- Полоса отделяющая таблицу от модуля -->
     <div class="divider"></div>
     <v-row justify="center">
-<!--      <v-btn @click="clearFields" class="clear-button">-->
-<!--        <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>-->
-<!--      </v-btn>-->
-      <v-text-field
-          ref="urlInput"
-          v-model="url"
-          class="url-input"
-          placeholder="Введите URL"
-          @keydown.enter="handleEnter"
-          solo
-      ></v-text-field>
+<!--      <v-text-field-->
+<!--          ref="urlInput"-->
+<!--          v-model="url"-->
+<!--          class="url-input"-->
+<!--          placeholder="Введите URL"-->
+<!--          @keydown.enter="handleEnter"-->
+<!--          solo-->
+<!--      ></v-text-field>-->
       <v-btn
           @click="handleButtonClick"
           class="red-button"
@@ -84,6 +94,7 @@
     </v-row>
   </v-container>
 </template>
+
 
 
 <script>
@@ -102,7 +113,9 @@ export default {
     const buttonLabelOk = ref('LinkParser')
 
     // Переменная для ширины столбцов
-    const columnWidth = ref(50); // Ширина столбцов в пикселях
+    const columnWidth = ref(200);
+    const columnWidth50 = ref(100);// Ширина столбцов в пикселях
+    const columnWidth20 = ref(50);// Ширина столбцов в пикселях
 
 
     // Переменная для хранения разобранной информации из linkInfo
@@ -322,9 +335,21 @@ export default {
   display: none; /* Скрыть заголовки */
 }
 
-.input-container {
+.fav-cell {
   display: flex;
   align-items: center;
+  width: 50px; /* Ширина для первой ячейки */
+}
+
+.favicon-container {
+  background-color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.placeholder-text {
+  width: 100px; /* Ширина для остальных ячеек */
 }
 
 .url-input {
@@ -337,7 +362,6 @@ export default {
 }
 
 .clear-button {
-  background-color: purple;
   color: white;
 }
 
