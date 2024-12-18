@@ -1,47 +1,33 @@
 <template>
   <v-container>
     <div style="display: flex; align-items: center;">
-      <!-- Кнопка удаления расположена слева от таблицы -->
       <v-btn @click="clearFields" class="clear-button" style="margin-right: 5px; padding: 5px;" small>
         <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
       </v-btn>
-
-      <!-- Таблица для вывода данных -->
-      <v-table theme="dark" density="compact" fixed-header :style="{ height: 'auto', overflow: 'hidden' }">
-        <thead>
-        <tr v-if="linkInfoParsed">
-          <th class="table-header">Fav</th>
-          <th class="table-header">Date</th>
-          <th class="table-header">Url</th>
-          <th class="table-header">Title</th>
-          <th class="table-header">Descr</th>
-          <th class="table-header">Tag</th>
-          <th class="table-header">Хэш</th>
-        </tr>
-        </thead>
+      <v-table style="width: 1200px; table-layout: fixed;" theme="dark" density="compact" fixed-header>
         <tbody>
         <tr v-if="linkInfoParsed">
-          <td class="fav-cell">
+          <td class="fav-cell" style="width: 50px;">
             <div class="favicon-container">
               <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
             </div>
           </td>
-          <td class="divider" v-tooltip="linkInfoParsed.date" data-tooltip-top :style="{ width: columnWidth20 + 'px' }">{{ new Date().toLocaleDateString() }}</td>
-          <td class="divider">
+          <td class="divider" v-tooltip="linkInfoParsed.date" data-tooltip-top style="width: 50px;">{{ new Date().toLocaleDateString() }}</td>
+          <td class="divider" style="width: 600px;">
             <a :href="linkInfoParsed.url" target="_blank" rel="noopener noreferrer">
-              {{ linkInfoParsed.url.length > 50 ? linkInfoParsed.url.substring(0, 50) + '...' : linkInfoParsed.url }}
+              {{ linkInfoParsed.url.length > 30 ? linkInfoParsed.url.substring(0, 30) + '...' : linkInfoParsed.url }}
             </a>
           </td>
-          <td class="divider" v-tooltip="linkInfoParsed.title" data-tooltip-top :style="{ width: columnWidth + 'px' }">
-            <span style="white-space: nowrap;">{{ linkInfoParsed.title.length > 100 ? linkInfoParsed.title.substring(0, 100) + '...' : linkInfoParsed.title }}</span>
+          <td class="divider" v-tooltip="linkInfoParsed.title" data-tooltip-top style="width: 100px;">
+            <span style="white-space: nowrap;">{{ linkInfoParsed.title.length > 30 ? linkInfoParsed.title.substring(0, 30) + '...' : linkInfoParsed.title }}</span>
           </td>
-          <td class="divider" v-tooltip="linkInfoParsed.description" data-tooltip-top :style="{ width: columnWidth + 'px' }">
-            <span style="white-space: nowrap;">{{ linkInfoParsed.description.length > 50 ? linkInfoParsed.description.substring(0, 50) + '...' : linkInfoParsed.description }}</span>
+          <td class="divider" v-tooltip="linkInfoParsed.description" data-tooltip-top style="width: 100px;">
+            <span style="white-space: nowrap;">{{ linkInfoParsed.description.length > 30 ? linkInfoParsed.description.substring(0, 30) + '...' : linkInfoParsed.description }}</span>
           </td>
-          <td class="divider" v-tooltip="linkInfoParsed.keywords" data-tooltip-top :style="{ width: columnWidth + 'px' }">
-            <span style="white-space: nowrap;">{{ linkInfoParsed.keywords.length > 50 ? linkInfoParsed.keywords.substring(0, 50) + '...' : linkInfoParsed.keywords }}</span>
+          <td class="divider" v-tooltip="linkInfoParsed.keywords" data-tooltip-top style="width: 100px;">
+            <span style="white-space: nowrap;">{{ linkInfoParsed.keywords.length > 30 ? linkInfoParsed.keywords.substring(0, 30) + '...' : linkInfoParsed.keywords }}</span>
           </td>
-          <td class="divider" :style="{ width: columnWidth50 + 'px' }">
+          <td class="divider" style="width: 30px;">
             <v-btn
                 @click="handleButtonClick"
                 class="red-button"
@@ -60,13 +46,13 @@
           </td>
         </tr>
         <tr v-else>
-          <td style="display: flex; align-items: center;" :style="{ width: columnWidth20 + 'px' }">
-            <div style="background-color: white; justify-content: left; align-items: flex-start">
+          <td style="display: flex; justify-content: center; align-items: center; width: 30px;">
+            <div style="background-color: white; display: flex; justify-content: center; align-items: center; height: 100%;">
               <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
             </div>
           </td>
-          <td class="divider placeholder-text" :style="{ width: columnWidth20 + 'px' }">Date</td>
-          <td class="divider" :style="{ width: columnWidth + 'px', height: '10px' }">
+          <td class="divider placeholder-text" style="width: 50px;">Date</td>
+          <td class="divider" style="width: 600px;">
             <v-text-field
                 ref="urlInput"
                 v-model="url"
@@ -74,13 +60,12 @@
                 placeholder="Введите URL"
                 @keydown.enter="handleEnter"
                 solo
-
             ></v-text-field>
           </td>
-          <td class="divider placeholder-text" :style="{ width: columnWidth + 'px' }">Title</td>
-          <td class="divider placeholder-text" :style="{ width: columnWidth + 'px' }">Descr</td>
-          <td class="divider placeholder-text" :style="{ width: columnWidth + 'px' }">Tag</td>
-          <td class="divider" :style="{ width: columnWidth50 + 'px' }">
+          <td class="divider placeholder-text" style="width: 100px;">Title</td>
+          <td class="divider placeholder-text" style="width: 100px;">Descr</td>
+          <td class="divider placeholder-text" style="width: 100px;">Tag</td>
+          <td class="divider" style="width: 30px;">
             <v-btn
                 @click="handleButtonClick"
                 class="red-button"
@@ -94,10 +79,9 @@
               />
               <span v-if="isProcessing">{{ buttonLabel }}</span>
               <span v-else-if="statusMessage">{{ statusMessage }} {{ buttonLabelOk }}</span>
-              <span v-else>{{ buttonLabelOk }}</span>
+              <span v-else>{{ buttonLabel }}</span>
             </v-btn>
           </td>
-
         </tr>
         </tbody>
       </v-table>
@@ -119,8 +103,8 @@ export default {
     const linkInfo = ref('');
     const statusMessage = ref('');
     const urlInput = ref(null);
-    const buttonLabel = ref('Проверить URL');
-    const buttonLabelOk = ref('LinkParser')
+    const buttonLabel = ref('URL');
+    const buttonLabelOk = ref('LinZer')
 
     // Переменная для ширины столбцов
     const columnWidth = ref(200);
@@ -331,6 +315,7 @@ export default {
 };
 </script>
 
+
 <style scoped>
 .input-module {
   width: 100%;
@@ -341,41 +326,30 @@ export default {
   justify-content: center;
   margin-bottom: 20px;
 }
-
-.table-header {
-  display: none; /* Скрыть заголовки */
-}
-
 .fav-cell {
   display: flex;
   align-items: center;
-  width: 50px; /* Ширина для первой ячейки */
+  width: 50px;
 }
-
 .favicon-container {
   background-color: white;
   display: flex;
   justify-content: center;
   align-items: center;
 }
-
 .placeholder-text {
-  width: 100px; /* Ширина для остальных ячеек */
+  width: 150px;
 }
-
 .url-input {
   margin-right: 20px;
 }
-
 .red-button {
   background-color: red;
   color: white;
 }
-
 .clear-button {
   color: white;
 }
-
 .link-info {
   background-color: pink;
   border: 1px solid blue;
