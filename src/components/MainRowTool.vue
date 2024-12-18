@@ -102,37 +102,6 @@
         </tbody>
       </v-table>
     </div>
-
-    <!-- Полоса отделяющая таблицу от модуля -->
-<!--    <div class="divider"></div>-->
-<!--    <v-row justify="center">-->
-<!--      <v-btn-->
-<!--          @click="handleButtonClick"-->
-<!--          class="red-button"-->
-<!--          :class="{ 'active': isFetching }">-->
-<!--        <v-img-->
-<!--            :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"-->
-<!--            alt="URL Icon"-->
-<!--            width="20"-->
-<!--            height="20"-->
-<!--            class="mr-2 ml-2"-->
-<!--        />-->
-<!--        <span v-if="isProcessing">{{ buttonLabel }}</span>-->
-<!--        <span v-else-if="statusMessage">{{ statusMessage }} {{  buttonLabelOk }}</span>-->
-<!--        <span v-else>{{ buttonLabelOk }}</span>-->
-<!--      </v-btn>-->
-
-<!--      <v-btn-->
-<!--          @click="handleButtonClick"-->
-<!--          class="red-button"-->
-<!--          :class="{ 'active': isFetching }"-->
-<!--      >-->
-<!--        <v-img src="/lpicon.png" alt="URL Icon" width="20" height="20" class="mr-2 ml-2" />-->
-<!--        {{ buttonLabel }}-->
-<!--      </v-btn>-->
-<!--      <v-btn class="red-button status-box" @click="handleClearStatus">{{ statusMessage || ' ' }}</v-btn>-->
-<!--      <v-textarea v-model="linkInfo" class="link-info" readonly></v-textarea>-->
-<!--    </v-row>-->
   </v-container>
 </template>
 
