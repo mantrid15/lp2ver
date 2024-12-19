@@ -1,9 +1,7 @@
 <template>
   <v-container>
     <div style="display: flex; align-items: center;">
-      <v-btn @click="clearFields" class="clear-button" style="margin-right: 5px; padding: 5px;" small>
-        <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
-      </v-btn>
+
       <v-table style="width: 1200px; table-layout: fixed;" theme="dark" density="compact" fixed-header>
         <tbody>
         <tr v-if="linkInfoParsed">
@@ -30,8 +28,10 @@
           <td class="divider" style="width: 30px;">
             <v-btn
                 @click="handleButtonClick"
-                class="red-button"
+                class="red-button fixed-size-button"
                 :class="{ 'active': isFetching }">
+              <span v-if="isProcessing">{{ buttonLabel }}</span>
+              <span v-else="statusMessage">{{ buttonLabelOk }} {{ statusMessage }}</span>
               <v-img
                   :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
                   alt="URL Icon"
@@ -39,9 +39,7 @@
                   height="20"
                   class="mr-2 ml-2"
               />
-              <span v-if="isProcessing">{{ buttonLabel }}</span>
-              <span v-else-if="statusMessage">{{ statusMessage }} {{ buttonLabelOk }}</span>
-              <span v-else>{{ buttonLabelOk }}</span>
+
             </v-btn>
           </td>
         </tr>
@@ -53,48 +51,62 @@
           </td>
           <td class="divider placeholder-text" style="width: 50px;">Date</td>
           <td class="divider" style="width: 600px;">
-            <v-text-field
+            <input
                 ref="urlInput"
                 v-model="url"
                 class="url-input"
+                type="text"
                 placeholder="Введите URL"
                 @keydown.enter="handleEnter"
-                solo
-            ></v-text-field>
+            />
           </td>
           <td class="divider placeholder-text" style="width: 100px;">Title</td>
           <td class="divider placeholder-text" style="width: 100px;">Descr</td>
           <td class="divider placeholder-text" style="width: 100px;">Tag</td>
-          <td class="divider" style="width: 30px;">
+          <td class="divider" style="width: 50px;">
             <v-btn
                 @click="handleButtonClick"
-                class="red-button"
+                class="red-button fixed-size-button"
                 :class="{ 'active': isFetching }">
-              <v-img
-                  :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
-                  alt="URL Icon"
-                  width="20"
-                  height="20"
-                  class="mr-2 ml-2"
-              />
               <span v-if="isProcessing">{{ buttonLabel }}</span>
-              <span v-else-if="statusMessage">{{ statusMessage }} {{ buttonLabelOk }}</span>
-              <span v-else>{{ buttonLabel }}</span>
+<!--              <span v-else="statusMessage">{{ statusMessage }} {{ buttonLabel }}</span>-->
+
+<!--              <span v-else-if="statusMessage">{{ statusMessage }} {{ buttonLabelOk }}</span>-->
+<!--              <span v-else>{{ buttonLabel }}</span>-->
+<!--              <v-img-->
+<!--                  :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"-->
+<!--                  alt="URL Icon"-->
+<!--                  width="20"-->
+<!--                  height="20"-->
+<!--                  class="mr-2 ml-2"-->
+<!--              />-->
+              <span v-else="statusMessage" style="display: flex; justify-content: center; align-items: center;">
+                <v-img
+                    :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
+                    alt="URL Icon"
+                    width="20"
+                    height="20"
+                    style="margin: 0; padding: 0;"
+                />
+                {{ buttonLabel }}
+              </span>
+
             </v-btn>
           </td>
         </tr>
         </tbody>
       </v-table>
+      <v-btn @click="clearFields" class="clear-button" style="margin-right: 5px; padding: 5px;" small>
+        <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
+      </v-btn>
     </div>
   </v-container>
 </template>
 
-
-
 <script>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
-import * as cheerio from 'cheerio';
+import * as cheerio from 'cheerio';9
 
 export default {
   name: 'LinkUrl',
@@ -257,12 +269,12 @@ export default {
           buttonLabel.value = buttonLabelOk.value; // Изменение текста кнопки
           linkInfo.value = ''; // Очищаем предыдущую информацию
         } else {
-          buttonLabel.value = 'Проверить URL'; // Возврат текста кнопки
+          buttonLabel.value = 'URL'; // Возврат текста кнопки
           linkInfo.value = 'Это не URL';
         }
       } else {
-        buttonLabel.value = 'Проверить URL'; // Возврат текста кнопки
-        linkInfo.value = 'Пожалуйста, введите корректный URL.';
+        buttonLabel.value = 'URL'; // Возврат текста кнопки
+        linkInfo.value = 'Это не URL';
       }
     };
 
@@ -270,7 +282,7 @@ export default {
       url.value = '';
       linkInfo.value = '';
       statusMessage.value = '';
-      buttonLabel.value = 'Проверить URL'; // Сброс текста кнопки
+      buttonLabel.value = 'URL'; // Сброс текста кнопки
       linkInfoParsed.value = null; // Очистка таблицы
     };
 
@@ -315,17 +327,8 @@ export default {
 };
 </script>
 
-
 <style scoped>
-.input-module {
-  width: 100%;
-  background-color: green;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 20px;
-}
+
 .fav-cell {
   display: flex;
   align-items: center;
@@ -342,11 +345,35 @@ export default {
 }
 .url-input {
   margin-right: 20px;
+  color: black; /* Цвет текста черный */
+  background: white;
+  border: 2px solid red; /* Красные границы по умолчанию */
+  transition: border-color 0.3s; /* Плавный переход цвета границы */
+  width: 300px; /* Установка ширины поля ввода на 100 пикселей */
+}
+
+.url-input:hover {
+  border-color: green; /* Зеленые границы при наведении */
+}
+
+.url-input:focus {
+  border-color: green; /* Зеленые границы при фокусе (например, при клике) */
 }
 .red-button {
   background-color: red;
   color: white;
 }
+
+.fixed-size-button {
+  width: 120px; /* Установите желаемую ширину */
+  height: 20px; /* Установите желаемую высоту */
+  min-width: 120px; /* Убедитесь, что ширина не меняется */
+  min-height: 20px; /* Убедитесь, что высота не меняется */
+  overflow: hidden; /* Скрыть переполнение */
+  text-overflow: ellipsis; /* Добавить многоточие, если текст длинный */
+  white-space: nowrap; /* Запретить перенос строк */
+}
+
 .clear-button {
   color: white;
 }
