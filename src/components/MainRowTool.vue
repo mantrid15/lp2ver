@@ -9,17 +9,18 @@
               <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
             </div>
           </td>
-          <td class="divider " v-tooltip="linkInfoParsed.date" style="width: 100px; padding: 0;">
-            {{ new Date().toLocaleDateString() }}
-          </td>
-          <td class="divider" style="width: 300px; padding: 0; ">
-            <a :href="linkInfoParsed.url" target="_blank" rel="noopener noreferrer" v-tooltip="linkInfoParsed.url" style="display: block; width: 100%; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
-              <span class="text-ellipsis" style="display: inline-block; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin-left: 5px">
-                {{ truncateText(linkInfoParsed.url, 30).truncated }}
+
+          <td class="divider" style="width: 300px; ">
+            <a :href="linkInfoParsed.url" target="_blank" rel="noopener noreferrer"
+               style="display: flex; justify-content: left; align-items: center; padding: 0;"
+               >
+              <span class="text-ellipsis"
+                    style="display: block; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                {{ linkInfoParsed.url }}
               </span>
             </a>
           </td>
-          <td class="divider" style="width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
+          <td class="divider" style="width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 <!--            <span class="scrolling-text" v-tooltip="linkInfoParsed.title">-->
 <!--            </span>-->
           <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.title, 30).truncated }}</span>
@@ -34,12 +35,8 @@
               <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.keywords, 20).truncated }}</span>
             </span>
           </td>
-          <td class="divider" style="width: 100px; padding: 0;">
-            <v-btn @click="handleButtonClick" class="red-button fixed-size-button" :class="{ 'active': isFetching }">
-              <span v-if="isProcessing">{{ buttonLabel }}</span>
-              <span v-else="statusMessage">{{ buttonLabelOk }} {{ statusMessage }}</span>
-              <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'" alt="URL Icon" width="20" height="20" class="mr-2 ml-2" />
-            </v-btn>
+          <td class="divider " v-tooltip="linkInfoParsed.date" style="width: 100px; padding-left: 10px;">
+            {{ new Date().toLocaleDateString() }}
           </td>
         </tr>
         <tr v-else>
@@ -48,7 +45,7 @@
               <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
             </div>
           </td>
-          <td class="divider placeholder-text" style="width: 100px; padding: 0;">Date</td>
+
           <td class="divider" style="width: 300px; padding: 0;">
             <input
                 ref="urlInput"
@@ -60,23 +57,28 @@
                 style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;"
             />
           </td>
-          <td class="divider placeholder-text" style="width: 400px; padding: 0;">Title</td>
-          <td class="divider placeholder-text" style="width: 200px; padding: 0;">Descr</td>
-          <td class="divider placeholder-text" style="width: 200px; padding: 0;">Tag</td>
-          <td class="divider" style="width: 100px; padding: 0;">
-            <v-btn @click="handleButtonClick" class="red-button fixed-size-button" :class="{ 'active': isFetching }">
-              <span v-if="isProcessing">{{ buttonLabel }}</span>
-              <span v-else="statusMessage" style="display: flex; justify-content: center; align-items: center;">
-                <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'" alt="URL Icon" width="20" height="20" style="margin: 0; padding: 0;" />
-                {{ buttonLabel }}
-              </span>
-            </v-btn>
-          </td>
+          <td style="width: 400px; padding: 0;"></td>
+          <td style="width: 200px; padding: 0;"></td>
+          <td style="width: 200px; padding: 0;"></td>
+          <td class="divider placeholder-text" style="width: 80px; margin-left: 5px;"></td>
         </tr>
         </tbody>
       </v-table>
-      <v-btn @click="clearFields" class="clear-button" style="margin-right: 5px; padding: 5px;" small>
-        <v-icon color="black" class="ma-1" size="large">mdi-delete</v-icon>
+      <v-btn @click="handleButtonClick"
+             class="red-button fixed-size-button"
+             :class="{ 'active': isFetching }"
+             style="margin-left: 5px; padding: 5px;">
+        <span v-if="isProcessing">{{ buttonLabel }}</span>
+        <span v-else="statusMessage" style="display: flex; justify-content: center; align-items: center;">
+                <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
+                       alt="URL Icon"
+                       width="20" height="20"
+                       />
+                {{ statusMessage }}  {{ buttonLabelOk }}
+              </span>
+      </v-btn>
+      <v-btn @click="clearFields" class="clear-button" style="margin-left: 5px; background: green">
+        <v-icon color="black" class="ma-2" size="large">mdi-delete</v-icon>
       </v-btn>
     </div>
   </v-container>
@@ -348,9 +350,9 @@ export default {
   justify-content: center;
   align-items: center;
 }
-.placeholder-text {
+/*.placeholder-text {
   width: 150px;
-}
+}*/
 .url-input {
   margin-right: 20px;
   color: black;
@@ -412,7 +414,9 @@ export default {
 }*/
 .divider {
   border-right: 1px solid white; /* Добавляем белую границу справа для разделителей */
-  text-align: left; /* Выравнивание текста по левому краю */
+  /*
+  text-align: left; !* Выравнивание текста по левому краю *!
+  */
 }
 
 .divider:last-child {
