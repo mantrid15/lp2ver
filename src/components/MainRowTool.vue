@@ -1,7 +1,12 @@
 <template>
   <v-container>
-    <div style="display: flex; align-items: center; overflow: hidden;">
-      <v-table style="width: 1200px; table-layout: fixed; overflow: hidden;" theme="dark" density="compact" fixed-header>
+    <div style="display: flex; align-items: center; overflow: hidden; ">
+      <v-table
+          style="width: 1200px; table-layout: fixed; overflow: hidden;
+          background-color: transparent; border: 1px solid black; border-radius: 2px;"
+          theme="dark"
+          density="compact"
+          fixed-header>
         <tbody>
         <tr v-if="linkInfoParsed">
           <td class="divider" style="width: 30px; display: flex; justify-content: center; align-items: center; padding: 0;">
@@ -12,18 +17,18 @@
 
           <td class="divider" style="width: 300px; ">
             <a :href="linkInfoParsed.url" target="_blank" rel="noopener noreferrer"
-               style="display: flex; justify-content: left; align-items: center; padding: 0;"
+               style="display: flex; justify-content: start; padding-right:  10px;"
                >
               <span class="text-ellipsis"
-                    style="display: block; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
-                {{ linkInfoParsed.url }}
+                    style="display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                {{ truncateText(linkInfoParsed.url, 30).truncated }}
               </span>
             </a>
           </td>
-          <td class="divider" style="width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-<!--            <span class="scrolling-text" v-tooltip="linkInfoParsed.title">-->
-<!--            </span>-->
-          <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.title, 30).truncated }}</span>
+          <td class="divider" style="width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            <span class="scrolling-text" v-tooltip="linkInfoParsed.title">
+              <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.title, 30).truncated }}</span>
+            </span>
           </td>
           <td class="divider" style="width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
             <span class="scrolling-text" v-tooltip="linkInfoParsed.description">
@@ -68,13 +73,22 @@
              class="red-button fixed-size-button"
              :class="{ 'active': isFetching }"
              style="margin-left: 5px; padding: 5px;">
-        <span v-if="isProcessing">{{ buttonLabel }}</span>
-        <span v-else="statusMessage" style="display: flex; justify-content: center; align-items: center;">
+        <span v-if="statusMessage">
+  <span
+      style="background-color: blue;
+      color: white; border-radius: 5px;
+      padding: 5px; margin-right: 5px;
+      border: 1px solid white; font-size: 8px; padding-bottom: 2px">
+    {{ statusMessage }}
+  </span>
+  {{ buttonLabelOk }}
+</span>
+        <span v-else="isProcessing" style="display: flex; justify-content: center; align-items: center; margin-right: 10px">
                 <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
                        alt="URL Icon"
                        width="20" height="20"
                        />
-                {{ statusMessage }}  {{ buttonLabelOk }}
+              {{ buttonLabel }}
               </span>
       </v-btn>
       <v-btn @click="clearFields" class="clear-button" style="margin-left: 5px; background: green">
@@ -83,8 +97,6 @@
     </div>
   </v-container>
 </template>
-
-
 
 
 <script>
@@ -102,10 +114,8 @@ export default {
     const buttonLabel = ref('URL');
     const buttonLabelOk = ref('LinZer');
 
-    // Переменная для ширины столбцов
-    const columnWidth = ref(200);
-    const columnWidth50 = ref(100); // Ширина столбцов в пикселях
-    const columnWidth20 = ref(50); // Ширина столбцов в пикселях
+
+    const isCleared = ref(false); // Флаг для отслеживания состояния очистки
 
     // Переменная для хранения разобранной информации из linkInfo
     const linkInfoParsed = ref(null);
@@ -263,15 +273,19 @@ export default {
       //     которая очищает значения нескольких переменных, связанных с
       // URL и информацией о ссылках. Она сбрасывает текст кнопки и
       // очищает таблицу, а также другие связанные поля.
+      // Удаляем обработчик контекстного меню
+      // urlInput.value.removeEventListener('contextmenu', handleContextMenu);
 
       url.value = '';
       linkInfo.value = '';
       statusMessage.value = '';
       buttonLabel.value = 'URL'; // Сброс текста кнопки
       linkInfoParsed.value = null;
-      // Перезагрузка текущей страницы
-      // location.reload();
-          };
+      // Восстанавливаем обработчик контекстного меню через 100 миллисекунд
+      setTimeout(() => {
+        urlInput.value.addEventListener('contextmenu', handleContextMenu);
+      }, 100);
+    };
 
     const handleContextMenu = (event) => {
       // Данный код обрабатывает событие контекстного меню (обычно
@@ -280,11 +294,12 @@ export default {
       // считывает текст из буфера обмена, после чего устанавливает этот текст в
       // переменную url.value.
       event.preventDefault();
-      clearFields();
+      clearFields(); // очищаем поля перед вставкой
       navigator.clipboard.readText().then((text) => {
-        url.value = text;
+        url.value = text; // вставляем текст из буфера
       });
     };
+
 
     const handleEnter = () => {
       if (url.value) {
@@ -294,7 +309,8 @@ export default {
 
     onMounted(() => {
       urlInput.value.focus();
-      urlInput.value.addEventListener('contextmenu', handleContextMenu);
+      urlInput.value.addEventListener('contextmenu', handleContextMenu );
+
     });
 
     const handleClearStatus = () => {
@@ -338,21 +354,13 @@ export default {
   text-overflow: ellipsis; /* Добавление многоточия в конце переполненного текста */
 }
 
-.fav-cell {
-  display: flex;
-  align-items: center;
-  width: 50px;
-  text-align: left; /* Выравнивание текста по левому краю */
-}
 .favicon-container {
   background-color: white;
   display: flex;
   justify-content: center;
   align-items: center;
 }
-/*.placeholder-text {
-  width: 150px;
-}*/
+
 .url-input {
   margin-right: 20px;
   color: black;
@@ -383,40 +391,11 @@ export default {
 .clear-button {
   color: white;
 }
-.link-info {
-  background-color: pink;
-  border: 1px solid blue;
-  padding: 10px;
-  width: 100%;
-  height: 150px;
-  resize: both;
-  box-sizing: border-box;
-}
-/*.scrolling-text {
-  display: inline-block;
-  white-space: nowrap;
-  overflow: hidden;
 
-  box-sizing: border-box;
-  animation: scroll 10s linear infinite;
-  animation-play-state: paused;
-}
-.divider:hover .scrolling-text {
-  animation-play-state: running;
-}
-@keyframes scroll {
-  0% {
-    transform: translateX(100%);
-  }
-  100% {
-    transform: translateX(-100%);
-  }
-}*/
+
 .divider {
   border-right: 1px solid white; /* Добавляем белую границу справа для разделителей */
-  /*
-  text-align: left; !* Выравнивание текста по левому краю *!
-  */
+
 }
 
 .divider:last-child {
