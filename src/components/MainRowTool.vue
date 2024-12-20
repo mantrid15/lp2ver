@@ -1,56 +1,55 @@
 <template>
   <v-container>
-    <div style="display: flex; align-items: center;">
-
-      <v-table style="width: 1200px; table-layout: fixed;" theme="dark" density="compact" fixed-header>
+    <div style="display: flex; align-items: center; overflow: hidden;">
+      <v-table style="width: 1200px; table-layout: fixed; overflow: hidden;" theme="dark" density="compact" fixed-header>
         <tbody>
         <tr v-if="linkInfoParsed">
-          <td class="fav-cell" style="width: 50px;">
+          <td class="divider" style="width: 30px; display: flex; justify-content: center; align-items: center; padding: 0;">
             <div class="favicon-container">
               <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
             </div>
           </td>
-          <td class="divider" v-tooltip="linkInfoParsed.date" data-tooltip-top style="width: 50px;">{{ new Date().toLocaleDateString() }}</td>
-          <td class="divider" style="width: 600px;">
-            <a :href="linkInfoParsed.url" target="_blank" rel="noopener noreferrer">
-              {{ linkInfoParsed.url.length > 30 ? linkInfoParsed.url.substring(0, 30) + '...' : linkInfoParsed.url }}
+          <td class="divider " v-tooltip="linkInfoParsed.date" style="width: 100px; padding: 0;">
+            {{ new Date().toLocaleDateString() }}
+          </td>
+          <td class="divider" style="width: 300px; padding: 0; ">
+            <a :href="linkInfoParsed.url" target="_blank" rel="noopener noreferrer" v-tooltip="linkInfoParsed.url" style="display: block; width: 100%; text-align: left; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+              <span class="text-ellipsis" style="display: inline-block; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; margin-left: 5px">
+                {{ truncateText(linkInfoParsed.url, 30).truncated }}
+              </span>
             </a>
           </td>
-          <td class="divider" v-tooltip="linkInfoParsed.title" data-tooltip-top style="width: 100px;">
-            <span style="white-space: nowrap;">{{ linkInfoParsed.title.length > 30 ? linkInfoParsed.title.substring(0, 30) + '...' : linkInfoParsed.title }}</span>
+          <td class="divider" style="width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
+<!--            <span class="scrolling-text" v-tooltip="linkInfoParsed.title">-->
+<!--            </span>-->
+          <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.title, 30).truncated }}</span>
           </td>
-          <td class="divider" v-tooltip="linkInfoParsed.description" data-tooltip-top style="width: 100px;">
-            <span style="white-space: nowrap;">{{ linkInfoParsed.description.length > 30 ? linkInfoParsed.description.substring(0, 30) + '...' : linkInfoParsed.description }}</span>
+          <td class="divider" style="width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
+            <span class="scrolling-text" v-tooltip="linkInfoParsed.description">
+              <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.description, 20).truncated }}</span>
+            </span>
           </td>
-          <td class="divider" v-tooltip="linkInfoParsed.keywords" data-tooltip-top style="width: 100px;">
-            <span style="white-space: nowrap;">{{ linkInfoParsed.keywords.length > 30 ? linkInfoParsed.keywords.substring(0, 30) + '...' : linkInfoParsed.keywords }}</span>
+          <td class="divider" style="width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
+            <span class="scrolling-text" v-tooltip="linkInfoParsed.keywords">
+              <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.keywords, 20).truncated }}</span>
+            </span>
           </td>
-          <td class="divider" style="width: 30px;">
-            <v-btn
-                @click="handleButtonClick"
-                class="red-button fixed-size-button"
-                :class="{ 'active': isFetching }">
+          <td class="divider" style="width: 100px; padding: 0;">
+            <v-btn @click="handleButtonClick" class="red-button fixed-size-button" :class="{ 'active': isFetching }">
               <span v-if="isProcessing">{{ buttonLabel }}</span>
               <span v-else="statusMessage">{{ buttonLabelOk }} {{ statusMessage }}</span>
-              <v-img
-                  :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
-                  alt="URL Icon"
-                  width="20"
-                  height="20"
-                  class="mr-2 ml-2"
-              />
-
+              <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'" alt="URL Icon" width="20" height="20" class="mr-2 ml-2" />
             </v-btn>
           </td>
         </tr>
         <tr v-else>
-          <td style="display: flex; justify-content: center; align-items: center; width: 30px;">
-            <div style="background-color: white; display: flex; justify-content: center; align-items: center; height: 100%;">
+          <td class="divider" style="width: 30px; display: flex; justify-content: center; align-items: center; padding: 0;">
+            <div class="favicon-container">
               <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
             </div>
           </td>
-          <td class="divider placeholder-text" style="width: 50px;">Date</td>
-          <td class="divider" style="width: 600px;">
+          <td class="divider placeholder-text" style="width: 100px; padding: 0;">Date</td>
+          <td class="divider" style="width: 300px; padding: 0;">
             <input
                 ref="urlInput"
                 v-model="url"
@@ -58,39 +57,19 @@
                 type="text"
                 placeholder="Введите URL"
                 @keydown.enter="handleEnter"
+                style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;"
             />
           </td>
-          <td class="divider placeholder-text" style="width: 100px;">Title</td>
-          <td class="divider placeholder-text" style="width: 100px;">Descr</td>
-          <td class="divider placeholder-text" style="width: 100px;">Tag</td>
-          <td class="divider" style="width: 50px;">
-            <v-btn
-                @click="handleButtonClick"
-                class="red-button fixed-size-button"
-                :class="{ 'active': isFetching }">
+          <td class="divider placeholder-text" style="width: 400px; padding: 0;">Title</td>
+          <td class="divider placeholder-text" style="width: 200px; padding: 0;">Descr</td>
+          <td class="divider placeholder-text" style="width: 200px; padding: 0;">Tag</td>
+          <td class="divider" style="width: 100px; padding: 0;">
+            <v-btn @click="handleButtonClick" class="red-button fixed-size-button" :class="{ 'active': isFetching }">
               <span v-if="isProcessing">{{ buttonLabel }}</span>
-<!--              <span v-else="statusMessage">{{ statusMessage }} {{ buttonLabel }}</span>-->
-
-<!--              <span v-else-if="statusMessage">{{ statusMessage }} {{ buttonLabelOk }}</span>-->
-<!--              <span v-else>{{ buttonLabel }}</span>-->
-<!--              <v-img-->
-<!--                  :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"-->
-<!--                  alt="URL Icon"-->
-<!--                  width="20"-->
-<!--                  height="20"-->
-<!--                  class="mr-2 ml-2"-->
-<!--              />-->
               <span v-else="statusMessage" style="display: flex; justify-content: center; align-items: center;">
-                <v-img
-                    :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
-                    alt="URL Icon"
-                    width="20"
-                    height="20"
-                    style="margin: 0; padding: 0;"
-                />
+                <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'" alt="URL Icon" width="20" height="20" style="margin: 0; padding: 0;" />
                 {{ buttonLabel }}
               </span>
-
             </v-btn>
           </td>
         </tr>
@@ -103,10 +82,13 @@
   </v-container>
 </template>
 
+
+
+
 <script>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
-import * as cheerio from 'cheerio';9
+import * as cheerio from 'cheerio';
 
 export default {
   name: 'LinkUrl',
@@ -116,13 +98,12 @@ export default {
     const statusMessage = ref('');
     const urlInput = ref(null);
     const buttonLabel = ref('URL');
-    const buttonLabelOk = ref('LinZer')
+    const buttonLabelOk = ref('LinZer');
 
     // Переменная для ширины столбцов
     const columnWidth = ref(200);
-    const columnWidth50 = ref(100);// Ширина столбцов в пикселях
-    const columnWidth20 = ref(50);// Ширина столбцов в пикселях
-
+    const columnWidth50 = ref(100); // Ширина столбцов в пикселях
+    const columnWidth20 = ref(50); // Ширина столбцов в пикселях
 
     // Переменная для хранения разобранной информации из linkInfo
     const linkInfoParsed = ref(null);
@@ -170,8 +151,7 @@ export default {
           description: $('meta[name="description"]').attr('content') || '',
           keywords: $('meta[name="keywords"]').attr('content') || '',
         };
-        return info
-        // return JSON.stringify(info, null, 2); // Возвращаем информацию в виде строки
+        return info;
       } catch (error) {
         console.error('Ошибка при получении информации о странице:', error);
         return 'Ошибка при получении информации'; // Возвращаем сообщение об ошибке
@@ -185,7 +165,7 @@ export default {
         return response.data;
       } catch (error) {
         console.error('Ошибка при получении данных:', error);
-        return {error: 'Ошибка при получении информации'};
+        return { error: 'Ошибка при получении информации' };
       }
     };
 
@@ -198,8 +178,8 @@ export default {
             'content-type': 'application/json;charset=UTF-8',
           },
           body: JSON.stringify({
-            'links': [url]
-          })
+            links: [url],
+          }),
         });
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
@@ -211,12 +191,12 @@ export default {
           url: item.url,
           title: content.title.value,
           description: content.description.value,
-          keywords: ''
+          keywords: '',
         };
         return result;
       } catch (error) {
         console.error('Ошибка при выполнении запроса:', error);
-        return {error: 'Ошибка при получении информации'};
+        return { error: 'Ошибка при получении информации' };
       }
     };
 
@@ -252,8 +232,6 @@ export default {
       }
     };
 
-
-
     const handleButtonClick = async () => {
       if (buttonLabel.value === buttonLabelOk.value) {
         await getInfo(); // Выполняем функцию получения информации
@@ -279,15 +257,28 @@ export default {
     };
 
     const clearFields = () => {
+      // Данный код представляет собой функцию clearFields,
+      //     которая очищает значения нескольких переменных, связанных с
+      // URL и информацией о ссылках. Она сбрасывает текст кнопки и
+      // очищает таблицу, а также другие связанные поля.
+
       url.value = '';
       linkInfo.value = '';
       statusMessage.value = '';
       buttonLabel.value = 'URL'; // Сброс текста кнопки
-      linkInfoParsed.value = null; // Очистка таблицы
-    };
+      linkInfoParsed.value = null;
+      // Перезагрузка текущей страницы
+      // location.reload();
+          };
 
     const handleContextMenu = (event) => {
+      // Данный код обрабатывает событие контекстного меню (обычно
+      // вызываемое правым кликом мыши). При вызове этого события он
+      // предотвращает стандартное поведение (появление контекстного меню) и
+      // считывает текст из буфера обмена, после чего устанавливает этот текст в
+      // переменную url.value.
       event.preventDefault();
+      clearFields();
       navigator.clipboard.readText().then((text) => {
         url.value = text;
       });
@@ -308,6 +299,16 @@ export default {
       statusMessage.value = '';
     };
 
+    // Метод для обрезки текста
+    const truncateText = (text, length = 30) => {
+      if (text.length <= length) {
+        return { truncated: text, remainder: '' };
+      }
+      const truncated = text.slice(0, length) + '...';
+      const remainder = text.slice(length);
+      return { truncated, remainder };
+    };
+
     return {
       url,
       linkInfo,
@@ -321,18 +322,25 @@ export default {
       parseLinkInfo,
       buttonLabel,
       buttonLabelOk,
-      // mdiDelete, // Экспортируем иконку
+      truncateText, // Экспортируем метод
     };
   },
 };
 </script>
 
+
 <style scoped>
+.text-ellipsis {
+  white-space: nowrap; /* Запрет на перенос строк */
+  overflow: hidden; /* Скрытие переполненного текста */
+  text-overflow: ellipsis; /* Добавление многоточия в конце переполненного текста */
+}
 
 .fav-cell {
   display: flex;
   align-items: center;
   width: 50px;
+  text-align: left; /* Выравнивание текста по левому краю */
 }
 .favicon-container {
   background-color: white;
@@ -345,35 +353,31 @@ export default {
 }
 .url-input {
   margin-right: 20px;
-  color: black; /* Цвет текста черный */
+  color: black;
   background: white;
-  border: 2px solid red; /* Красные границы по умолчанию */
-  transition: border-color 0.3s; /* Плавный переход цвета границы */
-  width: 300px; /* Установка ширины поля ввода на 100 пикселей */
+  border: 2px solid red;
+  transition: border-color 0.3s;
+  width: 300px;
 }
-
 .url-input:hover {
-  border-color: green; /* Зеленые границы при наведении */
+  border-color: green;
 }
-
 .url-input:focus {
-  border-color: green; /* Зеленые границы при фокусе (например, при клике) */
+  border-color: green;
 }
 .red-button {
   background-color: red;
   color: white;
 }
-
 .fixed-size-button {
-  width: 120px; /* Установите желаемую ширину */
-  height: 20px; /* Установите желаемую высоту */
-  min-width: 120px; /* Убедитесь, что ширина не меняется */
-  min-height: 20px; /* Убедитесь, что высота не меняется */
-  overflow: hidden; /* Скрыть переполнение */
-  text-overflow: ellipsis; /* Добавить многоточие, если текст длинный */
-  white-space: nowrap; /* Запретить перенос строк */
+  width: 120px;
+  height: 20px;
+  min-width: 120px;
+  min-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
 .clear-button {
   color: white;
 }
@@ -386,4 +390,33 @@ export default {
   resize: both;
   box-sizing: border-box;
 }
+/*.scrolling-text {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+
+  box-sizing: border-box;
+  animation: scroll 10s linear infinite;
+  animation-play-state: paused;
+}
+.divider:hover .scrolling-text {
+  animation-play-state: running;
+}
+@keyframes scroll {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}*/
+.divider {
+  border-right: 1px solid white; /* Добавляем белую границу справа для разделителей */
+  text-align: left; /* Выравнивание текста по левому краю */
+}
+
+.divider:last-child {
+  border-right: none; /* Убираем границу у последнего столбца */
+}
+
 </style>
