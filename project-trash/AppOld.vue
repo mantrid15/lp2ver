@@ -1,7 +1,7 @@
 <script setup>
 import HelloWorld from './HelloWorld.vue'
-import LinkInput from "@/components/LinkInputRow.vue";
-import Auth from '@/components/Auth.vue'
+import LinkInput from "./LinkInputRow.vue";
+import Auth from '@/components/Auth/Auth.vue'
 </script>
 
 <template>

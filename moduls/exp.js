@@ -27,7 +27,7 @@ async function getPageDescription(url) {
     }
 }
 
-const mainUrl= 'https://dzen.ru/a/ZnmCaiCDLT5M-3BQ'
+const mainUrl= 'https://www.discogs.com/release/2069490-Manit%C3%BA-Hirilorn-Letanias'
 // const mainUrl= 'https://soft-file.ru/perestal-rabotat-goodbye-dpi-chto-delat/'
 // const mainUrl= 'https://1.downfiles.ru/999414-artem-shumeyko-kurs-po-backend-razrabotke-na-fastapi-2023-pcrec.html'
 // getPageDescription('https://www.youtube.com/watch?v=L36FgWGwlxU&ab_channel=NunyaKlah')

@@ -1,8 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '@/views/HomeView.vue';
+import { supabase } from '@/clients/supabase'
+import LoginVue from '../views/LoginView.vue'
+import UnauthorizedView from '../views/UnauthorizedView.vue'
+import LoginView from "@/views/LoginView.vue";
+// import MainTool from '@/views/LinzerView.vue';
 // import MainTool from '@/views/MainTool.vue';
-// import { supabase } from '@/clients/supabase';
-// import LoginView from "@/views_old/LoginView.vue";
 
 // let localUser;
 
@@ -49,38 +52,42 @@ const router = createRouter({
 			component: HomeView,
 		},
 		{
-			path: "/login",
-			name: "login",
-			component: () => import("../views/LoginView.vue"),
+			path: "/linzer",
+			name: "linzer",
+			component: () => import("../views/LinzerView.vue"),
+			meta: { requiresAuth: true }
 		},
 		{
-			path: "/about",
-			name: "about",
-			// route level code-splitting
-			// this generates a separate chunk (About.[hash].js) for this route
-			// which is lazy-loaded when the route is visited.
-			component: () => import("../views/MainTool.vue"),
+			path: "/login",
+			name: "login",
+			component: LoginView,
 		},
+		{
+			path: '/unauthorized',
+			name: 'unauthorized',
+			component: UnauthorizedView
+		}
 	],
 });
 
+
+//
+async function getUser(next) {
+	const localUser = await supabase.auth.getSession();
+	if (localUser.data.session == null) {
+		next('/unauthorized');
+	} else {
+		next();
+	}
+}
+
+router.beforeEach((to, from, next) => {
+	if (to.meta.requiresAuth) {
+		// console.log('requires Auth')
+		getUser(next);
+	} else {
+		next();
+	}
+});
+
 export default router;
-//
-// async function getUser(next) {
-// 	localUser = await supabase.auth.getSession();
-// 	if (localUser.data.session == null) {
-// 		next('/unauthorized');
-// 	} else {
-// 		next();
-// 	}
-// }
-//
-// router.beforeEach((to, from, next) => {
-// 	if (to.meta.requiresAuth) {
-// 		getUser(next);
-// 	} else {
-// 		next();
-// 	}
-// });
-
-

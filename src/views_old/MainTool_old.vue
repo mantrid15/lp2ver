@@ -1,7 +1,8 @@
 <template>
+<!--  пробная страница для использования основного инструмента-->
+<!--  <RowTool></RowTool>-->
   <div>MainTools
   </div>
-<!--  <RowTool></RowTool>-->
 </template>
 
 <script setup>

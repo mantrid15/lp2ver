@@ -4,8 +4,8 @@ vue
     <v-toolbar density="compact" dark color="primary">
       <v-app-bar-nav-icon></v-app-bar-nav-icon>
       <v-toolbar-title>
-        <RouterLink to="/about">About</RouterLink>
-        <RouterLink to="/">UshaMihaBot</RouterLink>
+        <RouterLink to="/">Home</RouterLink>
+        <RouterLink to="/linzer">About</RouterLink>
       </v-toolbar-title>
       <v-spacer></v-spacer>
       <div class="row-tool-container">
@@ -24,9 +24,6 @@ vue
         gin
       </v-btn>
     </v-toolbar>
-
-
-
     <v-main>
       <v-fade-transition>
         <RouterView />

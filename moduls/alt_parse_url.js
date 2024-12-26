@@ -35,5 +35,5 @@ const fetchMetaData = async (url) => {
 
 // Пример использования функции
 // fetchMetaDataOne('https://habr.com/ru/articles/575050/');
-fetchMetaDataOne('https://youtu.be/JTWqezuxFyU');
+fetchMetaDataOne('https://www.discogs.com/release/2069490-Manit%C3%BA-Hirilorn-Letanias');
 // fetchMetaData('https://habr.com/ru/articles/575050/');

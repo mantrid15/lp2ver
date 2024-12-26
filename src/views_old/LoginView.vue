@@ -25,7 +25,7 @@
 
 <script setup>
 import { ref } from "vue";
-import { supabase } from "@/clients/supabase"
+import { supabase } from "@/clients/supabase.js"
 
 let email = ref("");
 let password = ref("");
@@ -41,6 +41,7 @@ async function createAccount() {
 			}
 		}
 	})
+  console.log(user)
 	if (error)
 	{
 		console.log(error);

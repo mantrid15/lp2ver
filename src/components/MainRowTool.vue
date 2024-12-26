@@ -1,29 +1,54 @@
 <template>
   <v-container>
     <div style="display: flex; align-items: center; overflow: hidden; ">
+      <v-btn @click="clearFields" class="clear-button" style="margin-right: 5px; background: green">
+        <v-icon color="black" class="ma-2" size="large">mdi-delete</v-icon>
+      </v-btn>
+
+      <v-btn @click="handleButtonClick"
+             class="red-button fixed-size-button"
+             :class="{ 'active': isFetching }"
+             style="margin-right: 5px; padding: 5px;">
+        <span v-if="statusMessage">
+        <span
+            style="background-color: blue;
+            color: white; border-radius: 5px;
+            padding: 5px; margin-left: 5px;
+            border: 1px solid white; font-size: 8px; padding-bottom: 2px">
+          {{ statusMessage }}
+        </span>
+        {{ buttonLabelOk }}
+        </span>
+        <span v-else="isProcessing" style="display: flex; justify-content: center; align-items: center; margin-right: 10px">
+                <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
+                       alt="URL Icon"
+                       width="20" height="20"
+                />
+              {{ buttonLabel }}
+              </span>
+      </v-btn>
+
       <v-table
           style="width: 1200px; table-layout: fixed; overflow: hidden;
-          background-color: transparent; border: 1px solid black; border-radius: 2px;"
+          background-color: transparent; border: 1px solid white; border-radius: 2px;"
           theme="dark"
           density="compact"
           fixed-header>
         <tbody>
         <tr v-if="linkInfoParsed">
-          <td class="divider" style="width: 30px; display: flex; justify-content: center; align-items: center; padding: 0;">
-            <div class="favicon-container">
-              <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
-            </div>
-          </td>
-
-          <td class="divider" style="width: 300px; ">
+          <td  style="width: 300px;" class="divider">
             <a :href="linkInfoParsed.url" target="_blank" rel="noopener noreferrer"
-               style="display: flex; justify-content: start; padding-right:  10px;"
-               >
+               style="display: flex; justify-content: start; padding-right:  10px;">
               <span class="text-ellipsis"
                     style="display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
                 {{ truncateText(linkInfoParsed.url, 30).truncated }}
               </span>
             </a>
+          </td>
+          <td class="divider" style="width: 30px; display: flex; justify-content: center; align-items: center; padding: 0;">
+            <div class="favicon-container">
+              <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
+            </div>
           </td>
           <td class="divider" style="width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             <span class="scrolling-text" v-tooltip="linkInfoParsed.title">
@@ -45,12 +70,6 @@
           </td>
         </tr>
         <tr v-else>
-          <td class="divider" style="width: 30px; display: flex; justify-content: center; align-items: center; padding: 0;">
-            <div class="favicon-container">
-              <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
-            </div>
-          </td>
-
           <td class="divider" style="width: 300px; padding: 0;">
             <input
                 ref="urlInput"
@@ -62,6 +81,11 @@
                 style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;"
             />
           </td>
+          <td style="width: 30px; display: flex; justify-content: center; align-items: center; padding: 0;">
+            <div class="favicon-container">
+              <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
+            </div>
+          </td>
           <td style="width: 400px; padding: 0;"></td>
           <td style="width: 200px; padding: 0;"></td>
           <td style="width: 200px; padding: 0;"></td>
@@ -69,31 +93,7 @@
         </tr>
         </tbody>
       </v-table>
-      <v-btn @click="handleButtonClick"
-             class="red-button fixed-size-button"
-             :class="{ 'active': isFetching }"
-             style="margin-left: 5px; padding: 5px;">
-        <span v-if="statusMessage">
-  <span
-      style="background-color: blue;
-      color: white; border-radius: 5px;
-      padding: 5px; margin-right: 5px;
-      border: 1px solid white; font-size: 8px; padding-bottom: 2px">
-    {{ statusMessage }}
-  </span>
-  {{ buttonLabelOk }}
-</span>
-        <span v-else="isProcessing" style="display: flex; justify-content: center; align-items: center; margin-right: 10px">
-                <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
-                       alt="URL Icon"
-                       width="20" height="20"
-                       />
-              {{ buttonLabel }}
-              </span>
-      </v-btn>
-      <v-btn @click="clearFields" class="clear-button" style="margin-left: 5px; background: green">
-        <v-icon color="black" class="ma-2" size="large">mdi-delete</v-icon>
-      </v-btn>
+
     </div>
   </v-container>
 </template>
