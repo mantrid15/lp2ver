@@ -5,6 +5,8 @@
       Здесь будет либо основаная база linZer либо маршрутизартор в прочие сервисы.</div>
 	<p id="account"> Account: {{  account.data.session.user.email  }}</p>
 	<p> Protect the secret password: **TMX$$ </p>
+
+    <iframe width="1125" height="703" src="https://www.youtube.com/embed/S8v8q8IKvMc?list=PL5aATh0iaBQaTEowQR_HCwGJZuoR0Z_y4" title="myLinkParser" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
     <div class="row-tool-container">
       <RowTool></RowTool>
     </div>

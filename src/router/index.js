@@ -72,6 +72,8 @@ const router = createRouter({
 
 
 //
+
+
 async function getUser(next) {
 	const localUser = await supabase.auth.getSession();
 	if (localUser.data.session == null) {
