@@ -1,4 +1,5 @@
 import fs from 'fs';
+// import { promises as fs } from 'fs';
 import path from 'path';
 import fetch from 'node-fetch';
 import sharp from 'sharp';
@@ -115,12 +116,12 @@ async function saveFavicon(url) {
     }
 }
 
-
+export default saveFavicon
 // const link = 'https://vitametmortem.bandcamp.com/'
 // const link = 'https://vitametmortem.bandcamp.com/album/death-metal-666-reedition-2018'
-const link = 'https://bolt.new/'
+// const link = 'https://bolt.new/'
 //
 // Пример использования
-saveFavicon(link).then((result) => {
-    console.log(`Ссылка на фавикон: ${result}`);
-});
+// saveFavicon(link).then((result) => {
+//     console.log(`Ссылка на фавикон: ${result}`);
+// });

@@ -48,6 +48,7 @@
           <td class="divider" style="width: 30px; display: flex; justify-content: center; align-items: center; padding: 0;">
             <div class="favicon-container">
               <img src="/lpicon.png" alt="Favicon" width="20" height="20" />
+<!--              <img :src="linkInfoParsed.favicon" v-tooltip="linkInfoParsed.favicon" alt="Favicon" width="20" height="20" />-->
             </div>
           </td>
           <td class="divider" style="width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -103,6 +104,7 @@
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+// import saveFavicon from '../../moduls/saveFavicon.js'
 
 export default {
   name: 'LinkUrl',
@@ -143,7 +145,8 @@ export default {
           title: info.title || '',
           description: info.description || '',
           keywords: info.keywords || '',
-          favicon: info.favicon || null,
+          favicon: '/lpicon.png' || null,
+          // favicon: saveFavicon(info.url) | '/lpicon.png',
           hash: 'hash', // Здесь можно добавить логику для генерации хэша, если это необходимо
         };
         console.log(linkInfoParsed.value);
