@@ -26,7 +26,11 @@ vue
     </v-toolbar>
     <v-main>
       <v-fade-transition>
-        <RouterView />
+        <router-view v-slot="{ Component }">
+          <transition>
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </v-fade-transition>
     </v-main>
 
