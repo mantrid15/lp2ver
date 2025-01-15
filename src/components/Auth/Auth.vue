@@ -20,7 +20,7 @@ vue
       <div class="buttonContainer">
         <button @click="createAccount"> Create </button>
         <button @click="login"> Login </button>
-        <button @click="seeUser"> See user </button>
+<!--        <button @click="seeUser"> See user </button>-->
         <button @click="logout"> Logout </button>
       </div>
     </div>
@@ -29,14 +29,18 @@ vue
 
 <script>
 import { ref } from "vue";
+import { useRouter } from "vue-router"; // Импортируем useRouter
 import { supabase } from "@/clients/supabase";
+// import { defineEmits } from 'vue'; // Импортируем defineEmits для событий
 
 export default {
   name: "Auth",
-  setup() {
+  setup(_, { emit }) {
     const email = ref("");
     const password = ref("");
     const firstName = ref("");
+    const router = useRouter(); // Инициализируем router
+    // const emit = defineEmits(); // Определяем emit
 
     async function createAccount() {
       const { data, error } = await supabase.auth.signUp({
@@ -52,6 +56,7 @@ export default {
         console.log(error);
       } else {
         console.log(data);
+        router.push('/inforeg'); // Переход на страницу /inforeg
       }
     }
 
@@ -61,9 +66,16 @@ export default {
         password: password.value,
       });
       if (error) {
-        console.log(error);
+        console.log('Login error:',error);
+        // return;// Возврат, если произошла ошибка
       } else {
         console.log(data);
+        router.push('/linzer');
+        // await router.push('/linzer');
+        emit('changeButtonColor', 'purple'); // Отправляем событие с новым цветом
+        console.log('purple')
+        emit('toggleLoginLogout', 'Logout'); // Отправляем событие для изменения текста кнопки
+        console.log('logout')
       }
     }
 
@@ -78,6 +90,7 @@ export default {
         console.log(error);
       } else {
         console.log("Sign out success");
+        await router.push('/');
       }
     }
 

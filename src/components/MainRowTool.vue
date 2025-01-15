@@ -6,8 +6,7 @@
       </v-btn>
 
       <v-btn @click="handleButtonClick"
-             class="red-button fixed-size-button"
-             :class="{ 'active': isFetching }"
+             :class="['fixed-size-button', buttonColorClass]"
              style="margin-right: 5px; padding: 5px;">
         <span v-if="statusMessage">
         <span
@@ -29,7 +28,7 @@
       </v-btn>
 
       <v-table
-          style="width: 1200px; table-layout: fixed; overflow: hidden;
+          style="width: 1000px; table-layout: fixed; overflow: hidden;
           background-color: transparent; border: 1px solid white; border-radius: 2px;"
           theme="dark"
           density="compact"
@@ -101,7 +100,7 @@
 
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 // import saveFavicon from '../../moduls/saveFavicon.js'
@@ -109,24 +108,27 @@ import * as cheerio from 'cheerio';
 export default {
   name: 'LinkUrl',
   setup() {
+    const isFetching = ref(false);
+    const buttonColor = ref('red'); // Начальный цвет кнопки
+// Метод для изменения цвета кнопки
+
+    const changeButtonColor = (newColor) => {
+      buttonColor.value = newColor;
+    };
+
     const url = ref('');
     const linkInfo = ref('');
     const statusMessage = ref('');
     const urlInput = ref(null);
     const buttonLabel = ref('URL');
     const buttonLabelOk = ref('LinZer');
-
-
     const isCleared = ref(false); // Флаг для отслеживания состояния очистки
-
     // Переменная для хранения разобранной информации из linkInfo
     const linkInfoParsed = ref(null);
-
     const isValidURL = (string) => {
       const regex = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
       return regex.test(string);
     };
-
     // Функция для парсинга linkInfo
     const parseLinkInfo = () => {
       try {
@@ -303,22 +305,30 @@ export default {
       });
     };
 
-
     const handleEnter = () => {
       if (url.value) {
         handleButtonClick();
       }
     };
 
+    const buttonColorClass = computed(() => {
+      return buttonColor.value === 'purple' ? 'purple-button' : 'red-button';
+    });
+
     onMounted(() => {
+      // Здесь можно добавить слушатель событий смена цвета основной кнопки
+      window.addEventListener('changeButtonColor', (event) => changeButtonColor(event.detail));
+
       urlInput.value.focus();
       urlInput.value.addEventListener('contextmenu', handleContextMenu );
+
 
     });
 
     const handleClearStatus = () => {
       statusMessage.value = '';
     };
+
 
     // Метод для обрезки текста
     const truncateText = (text, length = 30) => {
@@ -331,6 +341,9 @@ export default {
     };
 
     return {
+      buttonColorClass,
+      isFetching,
+      buttonColor,
       url,
       linkInfo,
       statusMessage,
@@ -356,14 +369,12 @@ export default {
   overflow: hidden; /* Скрытие переполненного текста */
   text-overflow: ellipsis; /* Добавление многоточия в конце переполненного текста */
 }
-
 .favicon-container {
   background-color: white;
   display: flex;
   justify-content: center;
   align-items: center;
 }
-
 .url-input {
   margin-right: 20px;
   color: black;
@@ -381,6 +392,9 @@ export default {
 .red-button {
   background-color: red;
   color: white;
+}
+.purple-button {
+  background-color: purple; /* Цвет для фиолетовой кнопки */
 }
 .fixed-size-button {
   width: 120px;

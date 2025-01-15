@@ -4,7 +4,8 @@ import { supabase } from '@/clients/supabase'
 import LoginVue from '../views/LoginView.vue'
 import UnauthorizedView from '../views/UnauthorizedView.vue'
 import LoginView from "@/views/LoginView.vue";
-// import MainTool from '@/views/LinzerView.vue';
+import Info from '@/views/InfoView.vue';
+import LinzerView from '@/views/LinzerView.vue';
 // import MainTool from '@/views/MainTool.vue';
 
 // let localUser;
@@ -54,13 +55,18 @@ const router = createRouter({
 		{
 			path: "/linzer",
 			name: "linzer",
-			component: () => import("../views/LinzerView.vue"),
+			component: LinzerView,
 			meta: { requiresAuth: true }
 		},
 		{
 			path: "/login",
 			name: "login",
 			component: LoginView,
+		},
+		{
+			path: "/inforeg",
+			name: "inforeg",
+			component: Info,
 		},
 		{
 			path: '/unauthorized',

@@ -12,7 +12,7 @@ vue
         <RowTool></RowTool>
       </div>
       <v-btn to="/login" variant="outlined" dark color="pink-darken-4" size="large">
-        Lo
+        Login
         <v-img
             src="/lpicon.png"
             alt="Login Icon"
@@ -21,7 +21,7 @@ vue
             class="mr-2 ml-2"
             color="white"
         />
-        gin
+
       </v-btn>
     </v-toolbar>
     <v-main>
