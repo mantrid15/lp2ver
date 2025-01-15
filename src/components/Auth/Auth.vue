@@ -1,135 +1,134 @@
-vue
 <template>
-  <v-container>
-    <div class="content">
-      <h1> Test Form </h1>
-      <div class="inputContainer">
-        <label for="email"> Email: </label>
-        <input type="email" id="email" v-model="email">
-      </div>
-      <div class="inputContainer">
-        <label for="password"> Password: </label>
-        <input type="password" id="password" v-model="password">
-      </div>
+  <v-sheet class="bg-deep-purple pa-12" rounded>
+    <v-card class="mx-auto px-6 py-8" max-width="344">
+      <h1 class="text-center">Test Form</h1>
+      <v-form v-model="form" @submit.prevent="onSubmit">
+        <v-text-field
+            v-model="email"
+            :rules="[required]"
+            class="mb-2"
+            label="Email"
+            clearable
+        ></v-text-field>
 
-<!--      <div class="inputContainer">-->
-<!--        <label for="firstName"> First Name </label>-->
-<!--        <input type="text" id="firstName" v-model="firstName">-->
-<!--      </div>-->
+        <v-text-field
+            v-model="password"
+            :rules="[required]"
+            label="Password"
+            placeholder="Enter your password"
+            clearable
+        ></v-text-field>
 
-      <div class="buttonContainer">
-        <button @click="createAccount"> Create </button>
-        <button @click="login"> Login </button>
-<!--        <button @click="seeUser"> See user </button>-->
-        <button @click="logout"> Logout </button>
-      </div>
-    </div>
-  </v-container>
+        <div class="buttonContainer">
+          <v-btn @click="isLogin ? login() : createAccount()" color="blue" block>
+            {{ isLogin ? 'Войти' : 'Создать' }}
+          </v-btn>
+          <v-btn @click="toggleForm" color="green" block>
+            {{ isLogin ? 'Создать аккаунт' : 'Уже есть аккаунт?' }}
+          </v-btn>
+          <v-btn @click="logout" color="red" block>Выйти</v-btn>
+        </div>
+      </v-form>
+    </v-card>
+  </v-sheet>
 </template>
 
 <script>
 import { ref } from "vue";
-import { useRouter } from "vue-router"; // Импортируем useRouter
+import { useRouter } from "vue-router";
 import { supabase } from "@/clients/supabase";
-// import { defineEmits } from 'vue'; // Импортируем defineEmits для событий
 
 export default {
   name: "Auth",
   setup(_, { emit }) {
     const email = ref("");
     const password = ref("");
-    const firstName = ref("");
-    const router = useRouter(); // Инициализируем router
-    // const emit = defineEmits(); // Определяем emit
+    const form = ref(false);
+    const loading = ref(false);
+    const router = useRouter();
+    const isLogin = ref(true); // Переменная для отслеживания состояния формы
+
+    const required = (value) => !!value || 'Обязательное поле';
 
     async function createAccount() {
+      console.log("Создание аккаунта начато...");
       const { data, error } = await supabase.auth.signUp({
         email: email.value,
         password: password.value,
-        // options: {
-        //   data: {
-        //     first_name: firstName.value,
-        //   },
-        // },
       });
       if (error) {
-        console.log(error);
+        console.error("Ошибка создания аккаунта:", error);
       } else {
-        console.log(data);
-        router.push('/inforeg'); // Переход на страницу /inforeg
+        console.log("Аккаунт создан:", data);
+        router.push('/inforeg');
       }
     }
 
     async function login() {
+      console.log("Вход в систему начат...");
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.value,
         password: password.value,
       });
       if (error) {
-        console.log('Login error:',error);
-        // return;// Возврат, если произошла ошибка
+        console.error('Ошибка входа:', error);
+        return;
       } else {
-        console.log(data);
+        console.log("Вход выполнен:", data);
         router.push('/linzer');
-        // await router.push('/linzer');
-        emit('changeButtonColor', 'purple'); // Отправляем событие с новым цветом
-        console.log('purple')
-        emit('toggleLoginLogout', 'Logout'); // Отправляем событие для изменения текста кнопки
-        console.log('logout')
+        emit('changeButtonColor', 'purple');
+        console.log('Сигнал отправлен: changeButtonColor с цветом purple');
+        emit('toggleLoginLogout', 'Logout');
+        console.log('Сигнал отправлен: toggleLoginLogout с текстом Logout');
       }
     }
 
-    async function seeUser() {
-      const localUser = await supabase.auth.getSession();
-      console.log(localUser.data.session);
+    async function logout() {
+      console.log("Выход из системы начат...");
+      const {error} = await supabase.auth.signOut();
+      if (error) {
+        console.error("Ошибка выхода:", error);
+      } else {
+        console.log("Выход выполнен успешно");
+        await router.push('/');
+      }
     }
 
-    async function logout() {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.log(error);
+    function toggleForm() {
+      isLogin.value = !isLogin.value; // Переключение состояния формы
+    }
+
+    function onSubmit() {
+      loading.value = true; // Установка состояния загрузки
+      console.log(isLogin.value ? "Обработка входа..." : "Обработка создания аккаунта...");
+      if (isLogin.value) {
+        login().finally(() => (loading.value = false)); // Вход в систему
       } else {
-        console.log("Sign out success");
-        await router.push('/');
+        createAccount().finally(() => (loading.value = false)); // Создание аккаунта
       }
     }
 
     return {
       email,
       password,
-      firstName,
+      form,
+      loading,
       createAccount,
       login,
-      seeUser,
       logout,
+      required,
+      toggleForm,
+      onSubmit,
+      isLogin,
     };
   },
 };
 </script>
 
 <style scoped>
-.inputContainer {
-  display: flex;
-
-  flex-direction: column;
-}
-.content {
-  height: 300px;
-  width: 500px;
-  background: aqua;
-}
-input {
-  font-size: 1.5em;
-}
 .buttonContainer {
   display: flex;
   flex-direction: column;
   margin-top: 1em;
-  background: greenyellow;
-}
-button {
-  margin-bottom: 1em;
-  padding: 1em 2em;
-  background: blueviolet;
 }
 </style>
