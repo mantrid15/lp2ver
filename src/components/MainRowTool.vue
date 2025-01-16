@@ -4,26 +4,28 @@
       <v-btn @click="clearFields" class="clear-button" style="margin-right: 5px; background: green">
         <v-icon color="black" class="ma-2" size="large">mdi-delete</v-icon>
       </v-btn>
-
       <v-btn @click="handleButtonClick"
              :class="['fixed-size-button', buttonColorClass]"
              style="margin-right: 5px; padding: 5px;">
         <span v-if="statusMessage">
+                  {{ buttonLabelOk }}
         <span
             style="background-color: blue;
-            color: white; border-radius: 5px;
+            color: white; border-radius: 9px;
             padding: 5px; margin-left: 5px;
-            border: 1px solid white; font-size: 8px; padding-bottom: 2px">
+            border: 1px solid white; font-size: 9px; padding-bottom: 3px">
           {{ statusMessage }}
         </span>
-        {{ buttonLabelOk }}
+
         </span>
         <span v-else="isProcessing" style="display: flex; justify-content: center; align-items: center; margin-right: 10px">
-                <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
-                       alt="URL Icon"
-                       width="20" height="20"
-                />
+
               {{ buttonLabel }}
+          <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
+                 alt="URL Icon"
+                 width="20" height="20"
+                 style="margin-left: 10px"
+          />
               </span>
       </v-btn>
 
@@ -98,7 +100,6 @@
   </v-container>
 </template>
 
-
 <script>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
@@ -113,7 +114,7 @@ export default {
       default: 'red',
     },
   },
-  setup() {
+  setup(props, { emit }) {
     const isFetching = ref(false);
     const buttonColor = ref('red'); // Начальный цвет кнопки
 // Метод для изменения цвета кнопки
@@ -318,7 +319,7 @@ export default {
     };
 
     const buttonColorClass = computed(() => {
-      return buttonColor.value === 'purple' ? 'purple-button' : 'red-button';
+      return props.buttonColor === 'purple' ? 'purple-button' : 'red-button';
     });
 
     onMounted(() => {

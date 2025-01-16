@@ -11,7 +11,8 @@
               label="Email"
               clearable
               autocomplete="username"
-          @keyup.enter="focusPassword"
+              @keyup.enter="focusPassword"
+              :placeholder="'Enter your email'"
           ></v-text-field>
 
           <v-text-field
@@ -53,7 +54,7 @@
 </template>
 
 <script>
-import { ref } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "@/clients/supabase";
 
@@ -62,6 +63,7 @@ export default {
   setup(_, { emit }) {
     const email = ref("");
     const password = ref("");
+    // const lastSuccessfulEmail = ref("");
     const form = ref(false);
     const loading = ref(false);
     const router = useRouter();
@@ -70,6 +72,16 @@ export default {
     const errorMessage = ref("");
     const visible = ref(false); // Добавлено для управления видимостью пароля
     const required = (value) => !!value || 'Обязательное поле';
+
+    // Загрузка последнего успешного email при инициализации
+    onMounted(() => {
+      const storedEmail = localStorage.getItem('lastSuccessfulEmail');
+      if (storedEmail) {
+        // Автоматически подставляем последний email при загрузке
+        email.value = storedEmail;
+      }
+    });
+
 
     // Функция для перехода к полю пароля
     function focusPassword() {
@@ -85,6 +97,9 @@ export default {
       if (error) {
         showError(`Ошибка создания аккаунта: ${error.message} (Код: ${error.code})`);
       } else {
+        // Сохраняем email при успешной регистрации
+        // Сохраняем email при успешной регистрации
+        localStorage.setItem('lastSuccessfulEmail', email.value);
         console.log("Аккаунт создан:", data);
         router.push('/inforeg');
       }
@@ -100,9 +115,13 @@ export default {
         showError(`Ошибка входа: ${error.message} (Код: ${error.code})`);
       } else {
         console.log("Вход выполнен:", data);
+        // Сохраняем email при успешном входе
+        localStorage.setItem('lastSuccessfulEmail', email.value);
+        emit('login-state-change', true); // Emit login state change
+        console.log('login-state-change')
         router.push('/linzer');
-        emit('changeButtonColor', 'purple');
-        emit('toggleLoginLogout', 'Logout');
+        // emit('changeButtonColor', 'purple');
+        // emit('toggleLoginLogout', 'Logout');
       }
     }
 
@@ -113,8 +132,16 @@ export default {
         showError(`Ошибка выхода: ${error.message} (Код: ${error.code})`);
       } else {
         console.log("Выход выполнен успешно");
-        emit('changeButtonColor', 'red');
+        emit('login-state-change', false); // Emit logout state change
+        // emit('changeButtonColor', 'red');
+        console.log('login-state-change')
         await router.push('/');
+        // Получаем последний успешный email
+        const lastEmail = localStorage.getItem('lastSuccessfulEmail') || '';
+
+        // Очищаем пароль и подставляем последний email
+        password.value = '';
+        email.value = lastEmail;
       }
     }
 
@@ -162,5 +189,12 @@ export default {
 .buttonContainer {
   display: flex;
   flex-direction: column;
+}
+.red-button {
+  background-color: red;
+  color: white;
+}
+.purple-button {
+  background-color: purple;
 }
 </style>
