@@ -2,7 +2,7 @@
   <v-sheet class="bg-deep-purple pa-12" rounded>
 
       <v-card class="mx-auto px-6 py-8" max-width="344">
-        <h1 class="text-center">Test Form</h1>
+        <h1 class="text-center">Auth&Login</h1>
         <v-form v-model="form" @submit.prevent="onSubmit">
           <v-text-field
               v-model="email"
@@ -10,7 +10,8 @@
               class="mb-2"
               label="Email"
               clearable
-              @keyup.enter="focusPassword"
+              autocomplete="username"
+          @keyup.enter="focusPassword"
           ></v-text-field>
 
           <v-text-field
@@ -24,8 +25,8 @@
               ref="passwordField"
               @keyup.enter="onSubmit"
               @click:append-inner="visible = !visible"
+              autocomplete="current-password"
           ></v-text-field>
-
           <div class="buttonContainer">
             <v-btn :loading="loading" @click="isLogin ? login() : createAccount()" color="blue" block>
               {{ isLogin ? 'Войти' : 'Создать' }}
@@ -68,7 +69,6 @@ export default {
     const dialog = ref(false);
     const errorMessage = ref("");
     const visible = ref(false); // Добавлено для управления видимостью пароля
-
     const required = (value) => !!value || 'Обязательное поле';
 
     // Функция для перехода к полю пароля
@@ -113,6 +113,7 @@ export default {
         showError(`Ошибка выхода: ${error.message} (Код: ${error.code})`);
       } else {
         console.log("Выход выполнен успешно");
+        emit('changeButtonColor', 'red');
         await router.push('/');
       }
     }

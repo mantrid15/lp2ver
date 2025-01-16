@@ -106,7 +106,13 @@ import * as cheerio from 'cheerio';
 // import saveFavicon from '../../moduls/saveFavicon.js'
 
 export default {
-  name: 'LinkUrl',
+  name: 'MainRowTool',
+  props: {
+    buttonColor: {
+      type: String,
+      default: 'red',
+    },
+  },
   setup() {
     const isFetching = ref(false);
     const buttonColor = ref('red'); // Начальный цвет кнопки

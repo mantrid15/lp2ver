@@ -1,4 +1,3 @@
-vue
 <template>
   <v-app>
     <v-toolbar density="compact" dark color="primary">
@@ -21,23 +20,21 @@ vue
             class="mr-2 ml-2"
             color="white"
         />
-
       </v-btn>
     </v-toolbar>
+
     <v-main>
-      <v-fade-transition>
-        <router-view v-slot="{ Component }">
-          <transition>
-            <component :is="Component" />
-          </transition>
-        </router-view>
-      </v-fade-transition>
+      <router-view v-slot="{ Component }">
+        <v-fade-transition>
+          <component :is="Component" @changeButtonColor="changeButtonColorHandler" :buttonColor="buttonColor"/>
+        </v-fade-transition>
+      </router-view>
     </v-main>
 
     <v-footer class="custom-footer" dark color="primary" app>
       <v-row justify="center" no-gutters>
         <v-col class="text-center" cols="12">
-          2024 — <strong>LinkParserVerTwo</strong>
+          2024 — <strong>LinkParserVerTwo / LinZerVerFirst</strong> - 2025
         </v-col>
       </v-row>
     </v-footer>
@@ -46,16 +43,18 @@ vue
 
 <script setup>
 import { ref } from 'vue';
-import { RouterView } from 'vue-router';
 import RowTool from "@/components/MainRowTool.vue";
-// import { useRouter } from 'vue-router';
+const buttonColor = ref('red'); // Начальный цвет кнопки
+
+const changeButtonColorHandler = (color) => {
+  buttonColor.value = color; // Изменяем цвет кнопки
+};
 </script>
 
 <style scoped>
 .row-tool-container {
   display: flex;
   align-items: center;
-
-  margin-right: 50px; /* Отступ в 50 пикселей от кнопки */
+  margin-right: 10px; /* Отступ в 50 пикселей от кнопки */
 }
 </style>
