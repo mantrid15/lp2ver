@@ -9,7 +9,8 @@
       <v-spacer></v-spacer>
       <div class="row-tool-container">
         <RowTool :buttonColor="buttonColor"
-                 @change-button-color="changeButtonColorHandler"></RowTool>
+                 @change-button-color="changeButtonColorHandler"
+                 :userId="userId"></RowTool>
       </div>
       <v-btn to="/login"
              variant="flat"
@@ -40,6 +41,7 @@
               :is="Component"
               @changeButtonColor="changeButtonColorHandler"
               :buttonColor="buttonColor"
+
           />
         </v-fade-transition>
       </router-view>
@@ -55,10 +57,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import RowTool from "@/components/MainRowTool.vue";
 import { supabase } from "@/clients/supabase";
+import { useStore } from 'vuex';
 
+
+const store = useStore();
+const userId = computed(() => store.state.userId); // Получите userId из Vuex
 const buttonColor = ref('red'); // Начальный цвет кнопки
 const loginButtonText = ref('Login'); // Текст кнопки логина
 // const loginButtonColor = ref('green'); // Цвет кнопки логина

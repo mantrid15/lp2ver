@@ -57,10 +57,13 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { supabase } from "@/clients/supabase";
+import {useStore} from "vuex";
 
 export default {
   name: "Auth",
   setup(_, { emit }) {
+    const userId = ref('');
+    const store = useStore();
     const email = ref("");
     const password = ref("");
     // const lastSuccessfulEmail = ref("");
@@ -115,13 +118,28 @@ export default {
         showError(`Ошибка входа: ${error.message} (Код: ${error.code})`);
       } else {
         console.log("Вход выполнен:", data);
+        // Получаем текущего аутентифицированного пользователя
+        userId.value = data.user.id;
+        store.commit('setUserId', userId); // Сохраните userId в Vuex
+        console.log(userId)
+        //  Добавляем небольшую задержку
+        // await new Promise(resolve => setTimeout(resolve, 1000));
+        //
+        // // Получаем текущего аутентифицированного пользователя
+        // const { data: { user } } = await supabase.auth.getUser();
+        //
+        // if (user) {
+        //   const userId = user.id;
+        //   console.log('ID пользователя:', userId);
+        // } else {
+        //   console.log('Пользователь не аутентифицирован');
+        // }
         // Сохраняем email при успешном входе
         localStorage.setItem('lastSuccessfulEmail', email.value);
         emit('login-state-change', true); // Emit login state change
         console.log('login-state-change')
         router.push('/linzer');
-        // emit('changeButtonColor', 'purple');
-        // emit('toggleLoginLogout', 'Logout');
+
       }
     }
 
@@ -165,6 +183,7 @@ export default {
     }
 
     return {
+      userId,
       email,
       password,
       form,

@@ -3,6 +3,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import 'vuetify/styles'
+import store from './store'; // Импортируйте ваш store
 
 const app = createApp(App)
 
@@ -17,6 +18,7 @@ const vuetify = createVuetify({
     directives,
 })
 app.use(router)
+app.use(store);
 app.use(vuetify)
 app.mount('#app')
 
