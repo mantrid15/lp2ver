@@ -9,6 +9,7 @@
 	<p> Protect the secret password: **TMX$$ </p>
 
     <div class="row-tool-container">
+      <Gate></Gate>
 <!--      <RowTool></RowTool>-->
     </div>
 <!--    <iframe width="1125" height="703" src="https://www.youtube.com/embed/S8v8q8IKvMc?list=PL5aATh0iaBQaTEowQR_HCwGJZuoR0Z_y4" title="myLinkParser" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>-->
@@ -19,6 +20,7 @@
 import { ref, onMounted  } from "vue";
 import { supabase } from '@/clients/supabase.js';
 import RowTool from "@/components/MainRowTool.vue";
+import Gate from  "@/components/Gate.vue";
 
 const account = ref();
 onMounted(async () => {

@@ -103,13 +103,15 @@
         </tbody>
       </v-table>
     </div>
-    <v-snackbar v-model="snackbar" timeout="3000">
+    <v-snackbar v-model="snackbar"
+                :timeout="3000" class="custom-snackbar"
+    >
       {{ snackbarMessage }}
-      <template v-slot:action="{ attrs }">
-        <v-btn color="pink" text v-bind="attrs" @click="snackbar = false">
-          Закрыть
-        </v-btn>
-      </template>
+      <v-btn color="pink"
+             text
+             @click="snackbar = false"
+             style="top: 20px; right: 20px; width: 100px; height: 200px;"
+      >Закрыть</v-btn>
     </v-snackbar>
   </v-container>
 </template>
@@ -143,6 +145,11 @@ export default {
     const buttonLabel = ref('URL');
     const buttonLabelOk = ref('LinZer');
     const linkInfoParsed = ref(null);
+
+    const showSnackbar = (message) => {
+      snackbarMessage.value = message;
+      snackbar.value = true;
+    };
 
     const isValidURL = (string) => {
       const regex = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
@@ -250,51 +257,105 @@ export default {
         await getInfo();
         parseLinkInfo();
 
-        const userIdValue = userId.value; // Извлекаем значение из ref
-        console.log(userIdValue); // Логируем значение userId
-
+        const userIdValue = userId.value;
+        console.log('User ID:', userIdValue);
+        if (!userIdValue) {
+          showSnackbar('Незарегистрированный пользователь. Демо-режим.');
+          return; // Завершаем выполнение, если пользователь не зарегистрирован
+        }
         try {
-          if (userIdValue) { // Проверяем значение userIdValue
-            snackbarMessage.value = 'Url is sending to Supabase!!!';
+          if (userIdValue) {
+            showSnackbar('Url is sending to Supabase!!!');
             snackbar.value = true;
 
+            const urlHash = await hashString(linkInfoParsed.value.url); // Рассчитываем url_hash
+            console.log('Calculated url_hash:', urlHash);
+
+            // Проверка существования url_hash в таблице links
+            const { data: existingLinks, error: checkError } = await supabase
+                .from('links')
+                .select('url_hash')
+                .eq('url_hash', urlHash);
+
+            if (checkError) {
+              console.error('Ошибка при проверке url_hash:', checkError);
+              snackbarMessage.value = 'Не удалось проверить существование ссылки. Попробуйте снова.';
+              snackbar.value = true;
+              return; // Завершаем выполнение, если произошла ошибка
+            }
+
+            if (existingLinks.length > 0) {
+              console.log('Такая ссылка в базе уже есть!!!');
+              snackbarMessage.value = 'Такая ссылка в базе уже есть!!!';
+              snackbar.value = true;
+              clearFields();
+              return; // Завершаем выполнение, если ссылка уже существует
+            }
+
+            const randomId = generateUid();
+            const faviconHash = await hashString(randomId); // Хеш для favicon_hash
+
+            // Данные для таблицы favicons
+            const faviconData = {
+              favicon_hash: faviconHash,
+              favicon_name: randomId,
+              storage_path: '', // Укажите путь, если необходимо
+              user_id: userIdValue,
+            };
+            console.log('Favicon Data:', faviconData);
+
+            // Отправляем данные в таблицу favicons
+            const { data: faviconDataResponse, error: faviconError } = await supabase.from('favicons').insert([faviconData]);
+
+            if (faviconError) {
+              console.error('Ошибка при отправке данных в таблицу favicons:', faviconError);
+              snackbarMessage.value = 'Не удалось отправить данные favicon. Попробуйте снова.';
+              snackbar.value = true;
+              return; // Завершаем выполнение, если произошла ошибка
+            }
+
+            // Данные для таблицы links
             const linkData = {
               date: new Date().toISOString(), // Используем ISO формат
-              data_hash: '',
-              // data_hash: linkInfoParsed.value.urlHash,
-              favicon_name: linkInfoParsed.value.favicon || '',
+              url_hash: urlHash, // Используем рассчитанный url_hash
+              favicon_name: randomId,
               url: linkInfoParsed.value.url,
               title: linkInfoParsed.value.title,
               title_translation: '',
               keywords: linkInfoParsed.value.keywords.split(',') || [],
-              dir_name: '',
-              subdir_name: '',
               ai_tag: '',
-              favicon_hash: '',
-              // favicon_hash: linkInfoParsed.value.urlHash,
+              favicon_hash: faviconHash, // Используем хеш для favicon_hash
               user_id: userIdValue, // Используем извлеченное значение
+              dir_hash: '', // Укажите dir_hash, если необходимо
+              subdir_hash: '', // Укажите subdir_hash, если необходимо
             };
+            console.log('Link Data:', linkData);
 
-            // Отправляем данные в Supabase
-            const { data, error } = await supabase.from('links').insert([linkData]);
+            // Отправляем данные в таблицу links
+            const { data: linkDataResponse, error: linkError } = await supabase
+                .from('links')
+                .insert([linkData])
+                .select(); // Запрос на возврат вставленных данных
 
-            if (error) {
-              console.error('Ошибка при отправке данных в Supabase:', error);
-              alert('Не удалось отправить данные. Попробуйте снова.');
+            if (linkError) {
+              console.error('Ошибка при отправке данных в Supabase:', linkError);
+              showSnackbar('Не удалось отправить данные. Попробуйте снова.');
             } else {
-              console.log('Данные успешно отправлены:', data);
+              console.log('Данные успешно отправлены:', linkDataResponse);
+              showSnackbar('Данные успешно отправлены!');
+              clearFields();
             }
-          } else {
-            alert('Только для зарегистрированных пользователей!');
           }
-        } catch (err) {
-          console.error('Произошла ошибка в обработчике кнопки:', err);
-          alert('Произошла ошибка. Попробуйте снова.');
+        } catch (error) {
+          console.error('Произошла ошибка:', error);
+          showSnackbar('Произошла ошибка. Попробуйте снова.');
         }
       } else {
         await fetchPageInfo();
       }
     };
+
+
     const fetchPageInfo = async () => {
       if (url.value) {
         if (isValidURL(url.value)) {
@@ -350,6 +411,31 @@ export default {
       return { truncated, remainder };
     };
 
+    function generateUid() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+
+    async function hashString(inputString) {
+      // Преобразуем строку в массив байтов
+      const encoder = new TextEncoder();
+      const data = encoder.encode(inputString);
+
+      // Вычисляем хэш
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+
+      // Преобразуем хэш в массив байтов
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+
+      // Преобразуем массив байтов в шестнадцатеричную строку
+      // const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
     return {
       snackbar,
       snackbarMessage,
@@ -368,12 +454,23 @@ export default {
       buttonLabel,
       buttonLabelOk,
       truncateText,
+      showSnackbar
     };
   },
 };
 </script>
 
 <style scoped>
+.custom-snackbar {
+  /*
+  background-color: red !important; !* Красный фон *!
+  */
+  color: black !important; /* Черный текст */
+  position: relative; /* Фиксированное позиционирование */
+ /* top: 20px; !* Отступ сверху *!
+  right: 20px; !* Отступ справа *!
+  z-index: 200; !* Убедитесь, что snackbar выше других элементов *!*/
+}
 .text-ellipsis {
   white-space: nowrap; /* Запрет на перенос строк */
   overflow: hidden; /* Скрытие переполненного текста */
