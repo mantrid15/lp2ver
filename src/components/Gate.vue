@@ -59,38 +59,49 @@ export default {
     let realtimeChannel;
 
     const fetchLinks = async () => {
-      const {data, error} = await supabase
-          .from('links')
-          .select('id, date, url, title');
-
-      if (error) {
-        console.error(error);
-      } else {
-        links.value = data;
-        console.log('Fetched links:', links.value);
+      try {
+        const { data, error } = await supabase
+            .from("links")
+            .select("id, date, url, title");
+        if (error) {
+          console.error("Error fetching links:", error);
+        } else {
+          links.value = data;
+          console.log("Fetched links:", links.value);
+        }
+      } catch (err) {
+        console.error("Unexpected error in fetchLinks:", err);
       }
     };
 
+
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
-          .channel('realtime-links')
+          .channel("realtime-links")
           .on(
-              'postgres_changes',
-              {event: '*', schema: 'public', table: 'links'},
+              "postgres_changes",
+              { event: "*", schema: "public", table: "links" },
               (payload) => {
-                console.log('Realtime change received:', payload);
-                fetchLinks(); // Обновляем данные при изменении
+                console.log("Realtime payload received:", payload);
+                if (payload.eventType === "INSERT") {
+                  console.log("New row inserted:", payload.new);
+                } else if (payload.eventType === "UPDATE") {
+                  console.log("Row updated:", payload.new);
+                } else if (payload.eventType === "DELETE") {
+                  console.log("Row deleted:", payload.old);
+                }
+                fetchLinks(); // Обновляем таблицу
               }
           )
           .subscribe((status) => {
-            console.log('Subscription status:', status);
+            console.log("Subscription status:", status);
           });
     };
 
     const unsubscribeFromRealtimeChanges = () => {
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
-        console.log('Unsubscribed from realtime changes.');
+        console.log("Unsubscribed from realtime changes.");
       }
     };
 
@@ -134,44 +145,37 @@ export default {
       const deltaPercent = (delta / containerWidth) * 100;
 
       if (currentColumn === 1) {
-        // Изменение границы между первым и вторым столбцом
         let newLeftWidth = parseFloat(leftColumnWidth.value) + deltaPercent;
         let newMiddleWidth = parseFloat(middleColumnWidth.value);
-
-        // Проверяем ограничения
-        if (newLeftWidth >= MIN_SIDE_COLUMN_WIDTH && newLeftWidth <= MAX_SIDE_COLUMN_WIDTH &&
-            newMiddleWidth >= MIN_MIDDLE_COLUMN_WIDTH && newMiddleWidth <= MAX_MIDDLE_COLUMN_WIDTH &&
-            newLeftWidth + newMiddleWidth <= 100) {
-
+        if (
+            newLeftWidth >= MIN_SIDE_COLUMN_WIDTH &&
+            newLeftWidth <= MAX_SIDE_COLUMN_WIDTH &&
+            newMiddleWidth >= MIN_MIDDLE_COLUMN_WIDTH &&
+            newMiddleWidth <= MAX_MIDDLE_COLUMN_WIDTH &&
+            newLeftWidth + newMiddleWidth <= 100
+        ) {
           leftColumnWidth.value = `${newLeftWidth}%`;
           middleColumnWidth.value = `${100 - newLeftWidth - parseFloat(rightColumnWidth.value)}%`;
-
-          // Сохраняем в localStorage
-          localStorage.setItem('leftColumnWidth', leftColumnWidth.value);
-          localStorage.setItem('middleColumnWidth', middleColumnWidth.value);
-          localStorage.setItem('rightColumnWidth', rightColumnWidth.value);
+          localStorage.setItem("leftColumnWidth", leftColumnWidth.value);
+          localStorage.setItem("middleColumnWidth", middleColumnWidth.value);
         }
       } else if (currentColumn === 2) {
-        // Изменение границы между вторым и третьим столбцом
         let newMiddleWidth = parseFloat(middleColumnWidth.value) + deltaPercent;
         let newRightWidth = parseFloat(rightColumnWidth.value);
-
-        // Проверяем ограничения
-        if (newMiddleWidth >= MIN_MIDDLE_COLUMN_WIDTH && newMiddleWidth <= MAX_MIDDLE_COLUMN_WIDTH &&
-            newRightWidth >= MIN_SIDE_COLUMN_WIDTH && newRightWidth <= MAX_SIDE_COLUMN_WIDTH &&
-            newMiddleWidth + newRightWidth <= 100) {
-
+        if (
+            newMiddleWidth >= MIN_MIDDLE_COLUMN_WIDTH &&
+            newMiddleWidth <= MAX_MIDDLE_COLUMN_WIDTH &&
+            newRightWidth >= MIN_SIDE_COLUMN_WIDTH &&
+            newRightWidth <= MAX_SIDE_COLUMN_WIDTH &&
+            newMiddleWidth + newRightWidth <= 100
+        ) {
           middleColumnWidth.value = `${newMiddleWidth}%`;
           rightColumnWidth.value = `${100 - parseFloat(leftColumnWidth.value) - newMiddleWidth}%`;
-
-          // Сохраняем в localStorage
-          localStorage.setItem('leftColumnWidth', leftColumnWidth.value);
-          localStorage.setItem('middleColumnWidth', middleColumnWidth.value);
-          localStorage.setItem('rightColumnWidth', rightColumnWidth.value);
+          localStorage.setItem("middleColumnWidth", middleColumnWidth.value);
+          localStorage.setItem("rightColumnWidth", rightColumnWidth.value);
         }
       }
 
-      // Обновляем начальную позицию мыши для следующего вызова
       initialMouseX = e.clientX;
     };
 
@@ -182,17 +186,30 @@ export default {
       console.log('Stopped resizing.');
     };
 
+
+    const logout = () => {
+      localStorage.removeItem('leftColumnWidth');
+      localStorage.removeItem('middleColumnWidth');
+      localStorage.removeItem('rightColumnWidth');
+
+      leftColumnWidth.value = '30%';
+      middleColumnWidth.value = '40%';
+      rightColumnWidth.value = '30%';
+
+      console.log('Профиль по умолчанию');
+    };
+
     onMounted(() => {
       fetchLinks();
       subscribeToRealtimeChanges();
-      document.addEventListener('keydown', handleKeyDown);
-      document.addEventListener('keyup', handleKeyUp);
+      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener("keyup", handleKeyUp);
     });
 
     onUnmounted(() => {
       unsubscribeFromRealtimeChanges();
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
+      // document.removeEventListener("keydown", handleKeyDown);
+      // document.removeEventListener("keyup", handleKeyUp);
     });
 
     // Обработчики событий для клавиши Ctrl
@@ -219,6 +236,7 @@ export default {
       formatDate,
       getDomain,
       startResize,
+      logout,
     };
   },
 };

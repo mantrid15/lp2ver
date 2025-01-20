@@ -196,6 +196,13 @@ export default {
         return response.data;
       } catch (error) {
         console.error('Ошибка при получении данных:', error);
+        if (error.response) {
+          console.error('Ответ сервера:', error.response.data);
+        } else if (error.request) {
+          console.error('Запрос был отправлен, но ответа не получено:', error.request);
+        } else {
+          console.error('Ошибка настройки запроса:', error.message);
+        }
         return { error: 'Ошибка при получении информации' };
       }
     };
@@ -462,14 +469,12 @@ export default {
 
 <style scoped>
 .custom-snackbar {
-  /*
-  background-color: red !important; !* Красный фон *!
-  */
+  background-color: red !important; /* Красный фон */
   color: black !important; /* Черный текст */
   position: relative; /* Фиксированное позиционирование */
- /* top: 20px; !* Отступ сверху *!
-  right: 20px; !* Отступ справа *!
-  z-index: 200; !* Убедитесь, что snackbar выше других элементов *!*/
+  top: 20px; /* Отступ сверху */
+  right: 20px; /* Отступ справа */
+  z-index: 200; /* Убедитесь, что snackbar выше других элементов */
 }
 .text-ellipsis {
   white-space: nowrap; /* Запрет на перенос строк */
