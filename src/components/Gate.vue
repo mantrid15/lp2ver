@@ -9,14 +9,16 @@
       <table>
         <thead>
         <tr>
-          <th>Date</th>
+
           <th @click="logout" style="cursor: pointer;">URL</th>
           <th>Title</th>
+          <th>KeyWords</th>
+          <th>Date</th>
         </tr>
         </thead>
         <tbody>
         <tr v-for="link in sortedLinks" :key="link.id">
-          <td>{{ formatDate(link.date) }}</td>
+
           <td class="truncate">
             <a :href="link.url" target="_blank" rel="noopener noreferrer">
               {{ getDomain(link.url) }}
@@ -24,6 +26,7 @@
           </td>
           <td class="truncate">{{ link.title }}</td>
           <td class="truncate">{{ link && link.keywords && link.keywords.length > 0 ? link.keywords.join(', ') : ''  }}</td>
+          <td>{{ formatDate(link.date) }}</td>
         </tr>
         </tbody>
       </table>
@@ -75,28 +78,6 @@ export default {
       }
     };
 
-    // const subscribeToRealtimeChanges = () => {
-    //   realtimeChannel = supabase
-    //       .channel("realtime-links")
-    //       .on(
-    //           "postgres_changes",
-    //           { event: "*", schema: "public", table: "links" },
-    //           (payload) => {
-    //             console.log("Realtime payload received:", payload);
-    //             if (payload.eventType === "INSERT") {
-    //               console.log("New row inserted:", payload.new);
-    //             } else if (payload.eventType === "UPDATE") {
-    //               console.log("Row updated:", payload.new);
-    //             } else if (payload.eventType === "DELETE") {
-    //               console.log("Row deleted:", payload.old);
-    //             }
-    //             fetchLinks(); // Обновляем таблицу
-    //           }
-    //       )
-    //       .subscribe((status) => {
-    //         console.log("Subscription status:", status);
-    //       });
-    // };
 
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
@@ -172,38 +153,44 @@ export default {
 
       if (currentColumn === 1) {
         let newLeftWidth = parseFloat(leftColumnWidth.value) + deltaPercent;
-        let newMiddleWidth = parseFloat(middleColumnWidth.value);
+        let newMiddleWidth = parseFloat(middleColumnWidth.value) - deltaPercent;
+
+        // Убедимся, что значения ширины остаются в допустимых пределах
+        newLeftWidth = Math.min(Math.max(newLeftWidth, MIN_SIDE_COLUMN_WIDTH), MAX_SIDE_COLUMN_WIDTH);
+        newMiddleWidth = 100 - newLeftWidth - parseFloat(rightColumnWidth.value);
+
         if (
-            newLeftWidth >= MIN_SIDE_COLUMN_WIDTH &&
-            newLeftWidth <= MAX_SIDE_COLUMN_WIDTH &&
             newMiddleWidth >= MIN_MIDDLE_COLUMN_WIDTH &&
-            newMiddleWidth <= MAX_MIDDLE_COLUMN_WIDTH &&
-            newLeftWidth + newMiddleWidth <= 100
+            newMiddleWidth <= MAX_MIDDLE_COLUMN_WIDTH
         ) {
           leftColumnWidth.value = `${newLeftWidth}%`;
-          middleColumnWidth.value = `${100 - newLeftWidth - parseFloat(rightColumnWidth.value)}%`;
+          middleColumnWidth.value = `${newMiddleWidth}%`;
           localStorage.setItem("leftColumnWidth", leftColumnWidth.value);
           localStorage.setItem("middleColumnWidth", middleColumnWidth.value);
         }
       } else if (currentColumn === 2) {
         let newMiddleWidth = parseFloat(middleColumnWidth.value) + deltaPercent;
-        let newRightWidth = parseFloat(rightColumnWidth.value);
+        let newRightWidth = parseFloat(rightColumnWidth.value) - deltaPercent;
+
+        // Убедимся, что значения ширины остаются в допустимых пределах
+        newMiddleWidth = Math.min(Math.max(newMiddleWidth, MIN_MIDDLE_COLUMN_WIDTH), MAX_MIDDLE_COLUMN_WIDTH);
+        newRightWidth = 100 - parseFloat(leftColumnWidth.value) - newMiddleWidth;
+
         if (
-            newMiddleWidth >= MIN_MIDDLE_COLUMN_WIDTH &&
-            newMiddleWidth <= MAX_MIDDLE_COLUMN_WIDTH &&
             newRightWidth >= MIN_SIDE_COLUMN_WIDTH &&
-            newRightWidth <= MAX_SIDE_COLUMN_WIDTH &&
-            newMiddleWidth + newRightWidth <= 100
+            newRightWidth <= MAX_SIDE_COLUMN_WIDTH
         ) {
           middleColumnWidth.value = `${newMiddleWidth}%`;
-          rightColumnWidth.value = `${100 - parseFloat(leftColumnWidth.value) - newMiddleWidth}%`;
+          rightColumnWidth.value = `${newRightWidth}%`;
           localStorage.setItem("middleColumnWidth", middleColumnWidth.value);
           localStorage.setItem("rightColumnWidth", rightColumnWidth.value);
         }
       }
 
+      // Обновляем начальную позицию мыши
       initialMouseX = e.clientX;
     };
+
 
     const stopResize = () => {
       isResizing.value = false;
