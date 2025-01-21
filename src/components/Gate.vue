@@ -75,6 +75,29 @@ export default {
       }
     };
 
+    // const subscribeToRealtimeChanges = () => {
+    //   realtimeChannel = supabase
+    //       .channel("realtime-links")
+    //       .on(
+    //           "postgres_changes",
+    //           { event: "*", schema: "public", table: "links" },
+    //           (payload) => {
+    //             console.log("Realtime payload received:", payload);
+    //             if (payload.eventType === "INSERT") {
+    //               console.log("New row inserted:", payload.new);
+    //             } else if (payload.eventType === "UPDATE") {
+    //               console.log("Row updated:", payload.new);
+    //             } else if (payload.eventType === "DELETE") {
+    //               console.log("Row deleted:", payload.old);
+    //             }
+    //             fetchLinks(); // Обновляем таблицу
+    //           }
+    //       )
+    //       .subscribe((status) => {
+    //         console.log("Subscription status:", status);
+    //       });
+    // };
+
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
           .channel("realtime-links")
@@ -84,19 +107,22 @@ export default {
               (payload) => {
                 console.log("Realtime payload received:", payload);
                 if (payload.eventType === "INSERT") {
-                  console.log("New row inserted:", payload.new);
+                  links.value.push(payload.new);
                 } else if (payload.eventType === "UPDATE") {
-                  console.log("Row updated:", payload.new);
+                  const index = links.value.findIndex(link => link.id === payload.new.id);
+                  if (index !== -1) {
+                    links.value[index] = payload.new;
+                  }
                 } else if (payload.eventType === "DELETE") {
-                  console.log("Row deleted:", payload.old);
+                  links.value = links.value.filter(link => link.id !== payload.old.id);
                 }
-                fetchLinks(); // Обновляем таблицу
               }
           )
           .subscribe((status) => {
             console.log("Subscription status:", status);
           });
     };
+
 
     const unsubscribeFromRealtimeChanges = () => {
       if (realtimeChannel) {
