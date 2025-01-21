@@ -42,10 +42,14 @@
 <script>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { supabase } from "@/clients/supabase";
+import {useStore} from "vuex";
 
 export default {
   setup() {
     const links = ref([]);
+    const store = useStore();
+    const userId = computed(() => store.state.userId);
+
     const leftColumnWidth = ref(localStorage.getItem('leftColumnWidth') || '30%');
     const middleColumnWidth = ref(localStorage.getItem('middleColumnWidth') || '40%');
     const rightColumnWidth = ref(localStorage.getItem('rightColumnWidth') || '30%');
@@ -101,6 +105,8 @@ export default {
           )
           .subscribe((status) => {
             console.log("Subscription status:", status);
+            console.log("User",userId);
+
           });
     };
 

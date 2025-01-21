@@ -6,6 +6,8 @@ import UnauthorizedView from '../views/UnauthorizedView.vue'
 import LoginView from "@/views/LoginView.vue";
 import Info from '@/views/InfoView.vue';
 import LinzerView from '@/views/LinzerView.vue';
+import { useStore } from 'vuex';
+
 
 const router = createRouter({
 	history: createWebHistory(import.meta.env.BASE_URL),

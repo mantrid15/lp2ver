@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-toolbar density="compact" dark color="primary">
+    <v-toolbar density="compact" dark color="primary" app class="fixed-toolbar">
       <v-app-bar-nav-icon></v-app-bar-nav-icon>
       <v-toolbar-title>
         <RouterLink to="/">Home</RouterLink>
@@ -96,6 +96,14 @@ const handleLoginStateChange = (isLoggedIn) => {
 </script>
 
 <style scoped>
+
+.fixed-toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000; /* Убедитесь, что toolbar выше других элементов */
+}
 .fixed-size-button {
   width: 120px;
   height: 20px;

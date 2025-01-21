@@ -1,6 +1,5 @@
 <template>
   <v-sheet class="bg-deep-purple pa-12" rounded>
-
       <v-card class="mx-auto px-6 py-8" max-width="344">
         <h1 class="text-center">Auth&Login</h1>
         <v-form v-model="form" @submit.prevent="onSubmit">
@@ -14,7 +13,6 @@
               @keyup.enter="focusPassword"
               :placeholder="'Enter your email'"
           ></v-text-field>
-
           <v-text-field
               :append-inner-icon="visible ? 'mdi-eye-off' : 'mdi-eye'"
               :type="visible ? 'text' : 'password'"
@@ -85,7 +83,6 @@ export default {
       }
     });
 
-
     // Функция для перехода к полю пароля
     function focusPassword() {
       passwordField.value.focus(); // Установка фокуса на поле пароля
@@ -100,7 +97,6 @@ export default {
       if (error) {
         showError(`Ошибка создания аккаунта: ${error.message} (Код: ${error.code})`);
       } else {
-        // Сохраняем email при успешной регистрации
         // Сохраняем email при успешной регистрации
         localStorage.setItem('lastSuccessfulEmail', email.value);
         console.log("Аккаунт создан:", data);
@@ -118,28 +114,18 @@ export default {
         showError(`Ошибка входа: ${error.message} (Код: ${error.code})`);
       } else {
         console.log("Вход выполнен:", data);
-        // Получаем текущего аутентифицированного пользователя
-        userId.value = data.user.id;
-        store.commit('setUserId', userId); // Сохраните userId в Vuex
-        console.log(userId)
-        //  Добавляем небольшую задержку
-        // await new Promise(resolve => setTimeout(resolve, 1000));
-        //
-        // // Получаем текущего аутентифицированного пользователя
-        // const { data: { user } } = await supabase.auth.getUser();
-        //
-        // if (user) {
-        //   const userId = user.id;
-        //   console.log('ID пользователя:', userId);
-        // } else {
-        //   console.log('Пользователь не аутентифицирован');
-        // }
-        // Сохраняем email при успешном входе
-        localStorage.setItem('lastSuccessfulEmail', email.value);
-        emit('login-state-change', true); // Emit login state change
-        console.log('login-state-change')
-        router.push('/linzer');
+        const session = data.session;
+        if (session) {
+          // Сохраняем сессию в localStorage
+          localStorage.setItem('supabaseSession', JSON.stringify(session));
 
+          // Сохраняем сессию в Vuex
+          store.commit('setSession', session);
+          store.commit('setUserId', session.user.id);
+        }
+
+        emit('login-state-change', true);
+        router.push('/linzer');
       }
     }
 
@@ -153,6 +139,11 @@ export default {
         emit('login-state-change', false); // Emit logout state change
         // emit('changeButtonColor', 'red');
         console.log('login-state-change')
+
+        // Очищаем Vuex и localStorage
+        await store.dispatch('clearSession');
+        emit('login-state-change', false);
+        // router.push('/');
         await router.push('/');
         // Получаем последний успешный email
         const lastEmail = localStorage.getItem('lastSuccessfulEmail') || '';

@@ -2,8 +2,8 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import 'vuetify/styles'
 import store from './store'; // Импортируйте ваш store
+import 'vuetify/styles'
 
 const app = createApp(App)
 
