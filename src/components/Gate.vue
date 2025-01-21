@@ -23,6 +23,7 @@
             </a>
           </td>
           <td class="truncate">{{ link.title }}</td>
+          <td class="truncate">{{ link && link.keywords && link.keywords.length > 0 ? link.keywords.join(', ') : ''  }}</td>
         </tr>
         </tbody>
       </table>
@@ -62,7 +63,7 @@ export default {
       try {
         const { data, error } = await supabase
             .from("links")
-            .select("id, date, url, title");
+            .select("id, date, url, title, keywords");
         if (error) {
           console.error("Error fetching links:", error);
         } else {
@@ -73,7 +74,6 @@ export default {
         console.error("Unexpected error in fetchLinks:", err);
       }
     };
-
 
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
@@ -259,7 +259,7 @@ export default {
 }
 
 .truncate {
-  max-width: 150px;
+  max-width: 350px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

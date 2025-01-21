@@ -182,7 +182,8 @@ export default {
           url,
           title: $('title').text(),
           description: $('meta[name="description"]').attr('content') || '',
-          keywords: $('meta[name="keywords"]').attr('content') || '',
+          // keywords: $('meta[name="keywords"]').attr('content') || '',
+          keywords: keywords.length > 0 ? keywords.split(',') : null, // Возвращаем null, если список пустой
         };
       } catch (error) {
         console.error('Ошибка при получении информации о странице:', error);
@@ -329,7 +330,8 @@ export default {
               url: linkInfoParsed.value.url,
               title: linkInfoParsed.value.title,
               title_translation: '',
-              keywords: linkInfoParsed.value.keywords.split(',') || [],
+              // keywords: linkInfoParsed.value.keywords.split(',') || [],
+              keywords: linkInfoParsed.value.keywords.length > 0 ? linkInfoParsed.value.keywords.split(',') : null, // Возвращаем null, если список пустой
               ai_tag: '',
               favicon_hash: faviconHash, // Используем хеш для favicon_hash
               user_id: userIdValue, // Используем извлеченное значение
