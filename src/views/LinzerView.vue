@@ -1,13 +1,13 @@
 <template>
   <div class="about" v-bind="$attrs">
-    <div class="inforow">
+<!--    <div class="inforow">
       <p id="account" v-if="account && account.data && account.data.session">
         Account: {{ account.data.session.user.email }}
       </p>
       <p> Protect the secret password: **TMX$$ </p>
-    </div>
+    </div>-->
     <div class="row-container">
-      <Gate></Gate>
+      <Gate style="margin-top: 50px"></Gate>
     </div>
   </div>
 </template>
@@ -34,6 +34,8 @@ async function getSession() {
 }
 
 .inforow {
+  height: 60px; /* Фиксированная высота элемента */
+  z-index: 10;
   display: flex; /* Используем Flexbox для выравнивания элементов в строку */
   align-items: center; /* Выравнивание по центру по вертикали */
   position: fixed; /* Закрепляем элемент */
@@ -56,9 +58,11 @@ async function getSession() {
   /*
   top: 55px;
   */
-  margin-top: 30px; /* Установите отступ сверху, чтобы они примыкали */
+  margin-top: 50px; /* Установите отступ сверху, чтобы они примыкали */
   padding: 20px; /* Добавьте отступы по желанию */
   background-color: #f9f9f9; /* Фон для контейнера */
+  min-height: calc(100vh - 60px); /* Гарантирует, что контейнер занимает оставшееся пространство */
+
 }
 
 #account {

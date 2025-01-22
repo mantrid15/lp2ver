@@ -9,23 +9,21 @@
       <table>
         <thead>
         <tr>
-
-          <th @click="logout" style="cursor: pointer;">URL</th>
-          <th>Title</th>
-          <th>KeyWords</th>
-          <th>Date</th>
+          <th @click="logout" style="cursor: pointer; position: sticky; top: 0; background-color: white; z-index: 2;">URL</th>
+          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">Title</th>
+          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">KeyWords</th>
+          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">Date</th>
         </tr>
         </thead>
         <tbody>
         <tr v-for="link in sortedLinks" :key="link.id">
-
           <td class="truncate">
             <a :href="link.url" target="_blank" rel="noopener noreferrer">
               {{ getDomain(link.url) }}
             </a>
           </td>
           <td class="truncate">{{ link.title }}</td>
-          <td class="truncate">{{ link && link.keywords && link.keywords.length > 0 ? link.keywords.join(', ') : ''  }}</td>
+          <td class="truncate">{{ link && link.keywords && link.keywords.length > 0 ? link.keywords.join(', ') : '' }}</td>
           <td>{{ formatDate(link.date) }}</td>
         </tr>
         </tbody>
@@ -82,7 +80,6 @@ export default {
       }
     };
 
-
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
           .channel("realtime-links")
@@ -109,7 +106,6 @@ export default {
 
           });
     };
-
 
     const unsubscribeFromRealtimeChanges = () => {
       if (realtimeChannel) {
@@ -146,7 +142,6 @@ export default {
       containerWidth = document.querySelector('.container').offsetWidth;
 
       console.log(`Start resizing column ${column}. Initial mouse X: ${initialMouseX}, Container width: ${containerWidth}`);
-
       document.addEventListener('mousemove', handleResize);
       document.addEventListener('mouseup', stopResize);
     };
@@ -192,11 +187,9 @@ export default {
           localStorage.setItem("rightColumnWidth", rightColumnWidth.value);
         }
       }
-
       // Обновляем начальную позицию мыши
       initialMouseX = e.clientX;
     };
-
 
     const stopResize = () => {
       isResizing.value = false;
@@ -262,13 +255,51 @@ export default {
 </script>
 
 <style>
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: auto;
+}
+
+thead {
+  display: table; /* Обеспечивает корректное поведение sticky */
+  width: 100%;    /* Расширяет заголовок на всю ширину */
+}
+
+tbody {
+  display: block; /* Позволяет прокручивать только тело таблицы */
+  height: calc(100vh - 50px); /* Настройте высоту в зависимости от макета */
+  overflow-y: auto;
+  width: 100%;
+}
+
+th {
+  background-color: white;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  text-align: left;
+  padding: 10px;
+}
+
+td {
+  text-align: left;
+  padding: 10px;
+}
 .container {
   display: flex;
   height: 100vh;
+  overflow: hidden;
 }
 
 .column {
-  overflow: auto;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100%;
 }
 
 .resizer {
