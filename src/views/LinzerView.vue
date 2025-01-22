@@ -1,25 +1,20 @@
 <template>
-  <div class="about">
-    <h1>This is protected content</h1>
-    <div>сюда попадает пользователь который зарегистрировался и аутентифицировался.
-      Здесь будет либо основаная база linZer либо маршрутизартор в прочие сервисы.</div>
-    <p id="account" v-if="account && account.data && account.data.session">
-      Account: {{ account.data.session.user.email }}
-    </p>
-	<p> Protect the secret password: **TMX$$ </p>
-
-    <div class="row-tool-container">
-      <Gate></Gate>
-<!--      <RowTool></RowTool>-->
+  <div class="about" v-bind="$attrs">
+    <div class="inforow">
+      <p id="account" v-if="account && account.data && account.data.session">
+        Account: {{ account.data.session.user.email }}
+      </p>
+      <p> Protect the secret password: **TMX$$ </p>
     </div>
-<!--    <iframe width="1125" height="703" src="https://www.youtube.com/embed/S8v8q8IKvMc?list=PL5aATh0iaBQaTEowQR_HCwGJZuoR0Z_y4" title="myLinkParser" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>-->
+    <div class="row-container">
+      <Gate></Gate>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted  } from "vue";
 import { supabase } from '@/clients/supabase.js';
-import RowTool from "@/components/MainRowTool.vue";
 import Gate from  "@/components/Gate.vue";
 
 const account = ref();
@@ -34,6 +29,38 @@ async function getSession() {
 </script>
 
 <style>
+.about {
+  margin-top: 60px; /* Отступ сверху на 50 пикселей */
+}
+
+.inforow {
+  display: flex; /* Используем Flexbox для выравнивания элементов в строку */
+  align-items: center; /* Выравнивание по центру по вертикали */
+  position: fixed; /* Закрепляем элемент */
+  /*
+  z-index: 10; !* Убедитесь, что элемент ниже других с более высоким z-index *!
+  */
+  padding: 10px; /* Отступы внутри элемента (опционально) */
+  background-color: yellow; /* Жёлтая заливка */
+  box-sizing: border-box; /* Учитываем отступы в ширине */
+  width: 100%; /* Занимаем всю ширину экрана */
+}
+.inforow p {
+  margin-right: 50px; /* Отступ между элементами в 50 пикселей */
+}
+/* Убираем отступ для последнего элемента, чтобы избежать лишнего пространства */
+.inforow p:last-child {
+  margin-right: 0;
+}
+.row-container {
+  /*
+  top: 55px;
+  */
+  margin-top: 30px; /* Установите отступ сверху, чтобы они примыкали */
+  padding: 20px; /* Добавьте отступы по желанию */
+  background-color: #f9f9f9; /* Фон для контейнера */
+}
+
 #account {
 	color: green;
 }

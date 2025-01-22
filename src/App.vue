@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-toolbar density="compact" dark color="primary" app class="fixed-toolbar">
+    <v-toolbar density="default" dark color="primary" app class="fixed-toolbar">
       <v-app-bar-nav-icon></v-app-bar-nav-icon>
       <v-toolbar-title>
         <RouterLink to="/">Home</RouterLink>
@@ -20,7 +20,7 @@
              style="padding: 5px;"
              @click="isLoggedIn ? handleLoginStateChange(false) : null"
 
-      ><span style="margin-left: 10px">
+      ><span style="margin-right: 10px">
         {{ loginButtonText }}
                       </span>
 
@@ -34,7 +34,7 @@
       </v-btn>
     </v-toolbar>
 
-    <v-main>
+    <v-main class="main-with-margin">
       <router-view v-slot="{ Component }">
         <v-fade-transition>
           <component
@@ -96,13 +96,18 @@ const handleLoginStateChange = (isLoggedIn) => {
 </script>
 
 <style scoped>
+.main-with-margin {
+  margin-top: 10px; /* Отступ сверху для v-main */
+}
+
 
 .fixed-toolbar {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000; /* Убедитесь, что toolbar выше других элементов */
+  margin-bottom: 10px;
+  z-index: 1000;/* !* Убедитесь, что toolbar выше других элементов *!*/
 }
 .fixed-size-button {
   width: 120px;
@@ -112,8 +117,8 @@ const handleLoginStateChange = (isLoggedIn) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-/*  margin-bottom: 5px;
-  margin-top: 5px;*/
+  /*  margin-bottom: 5px;
+    margin-top: 5px;*/
 }
 .row-tool-container {
   display: flex;
