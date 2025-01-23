@@ -49,7 +49,7 @@
     <v-footer class="custom-footer" dark color="primary" app>
       <v-row justify="center" no-gutters>
         <v-col class="text-center" cols="12">
-          2024 — <strong>LinkParserVerTwo / LinZerVerFirst</strong> - 2025
+          2024 - <strong>LinkParserVerTwo / LinZerVerOne</strong> - 2025
         </v-col>
       </v-row>
     </v-footer>

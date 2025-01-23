@@ -1,30 +1,37 @@
 <template>
   <div class="container">
-    <div class="column column-1" :style="{ backgroundColor: 'green', width: leftColumnWidth }"></div>
+    <div class="column column-1" :style="{ backgroundColor: 'green', width: `calc(${leftColumnWidth} - 5px)`  }"></div>
     <div
         class="resizer"
         @mousedown="(e) => startResize(e, 1)"
     ></div>
-    <div class="column column-2" :style="{ width: middleColumnWidth }">
+
+    <div class="column column-2" :style="{ width: middleColumnWidth }" >
       <table>
         <thead>
         <tr>
-          <th @click="logout" style="cursor: pointer; position: sticky; top: 0; background-color: white; z-index: 2;">URL</th>
-          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">Title</th>
-          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">KeyWords</th>
-          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">Date</th>
+          <th @click="logout" style="cursor: pointer; ">URL</th>
+          <th>Title</th>
+          <th>KeyWords</th>
+          <th>Date</th>
+<!--          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">Title</th>-->
+<!--          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">KeyWords</th>-->
+<!--          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">Date</th>-->
         </tr>
         </thead>
         <tbody>
         <tr v-for="link in sortedLinks" :key="link.id">
-          <td class="truncate">
+          <td class="truncate content-padding">
             <a :href="link.url" target="_blank" rel="noopener noreferrer">
               {{ getDomain(link.url) }}
             </a>
           </td>
-          <td class="truncate">{{ link.title }}</td>
-          <td class="truncate">{{ link && link.keywords && link.keywords.length > 0 ? link.keywords.join(', ') : '' }}</td>
-          <td>{{ formatDate(link.date) }}</td>
+          <td class="truncate content-padding">{{ link.title }}</td>
+          <td class="truncate content-padding">
+            <span class="invisible-placeholder">KeyWords</span>
+            {{ link.keywords?.length ? link.keywords.join(', ') : '' }}
+          </td>
+          <td class="content-padding">{{ formatDate(link.date) }}</td>
         </tr>
         </tbody>
       </table>
@@ -32,6 +39,7 @@
     <div
         class="resizer"
         @mousedown="(e) => startResize(e, 2)"
+        :style="{ width: '10px', cursor: 'ew-resize' }"
     ></div>
     <div class="column column-3" :style="{ backgroundColor: 'blue', width: rightColumnWidth }"></div>
   </div>
@@ -254,41 +262,58 @@ export default {
 };
 </script>
 
-<style>
-
-table {
-  border-collapse: collapse;
-  width: 100%;
-  height: 100%;
-  display: block;
-  overflow: auto;
+<style scoped>
+td {
+  border: 1px solid gray; /*!* Горизонтальная и вертикальная разметка *!*/
+  /*
+  padding: 5px;
+  */
+  text-align: left; /*!* По умолчанию текст выравнивается влево *!*/
+  text-overflow: ellipsis; /*!* Обрезает текст, если он не помещается *!*/
+  overflow: hidden;
+  white-space: nowrap; /*!* Запрещает перенос текста *!*/
+}
+th {
+  background-color: darkgrey;
 }
 
 thead {
-  display: table; /* Обеспечивает корректное поведение sticky */
-  width: 100%;    /* Расширяет заголовок на всю ширину */
+  background: white;
 }
 
-tbody {
-  display: block; /* Позволяет прокручивать только тело таблицы */
-  height: calc(100vh - 50px); /* Настройте высоту в зависимости от макета */
-  overflow-y: auto;
-  width: 100%;
-}
-
-th {
-  background-color: white;
+thead th {
   position: sticky;
   top: 0;
   z-index: 2;
-  text-align: left;
-  padding: 10px;
+  text-align: center;
 }
 
-td {
-  text-align: left;
-  padding: 10px;
+/* Тело таблицы с прокруткой */
+tbody {
+  display: block;
+  max-height: calc(100vh - 50px); /* Настройка высоты для прокрутки */
+  overflow-y: auto;
 }
+
+thead, tbody tr {
+  display: table;
+  width: 100%; /* Обеспечивает корректное выравнивание строк */
+  table-layout: fixed;
+}
+
+/* Установка ширины для столбцов */
+th:nth-child(1), td:nth-child(1) {
+  width: 15ch; /* Фиксированная ширина для URL */
+}
+th:nth-child(4), td:nth-child(4) {
+  width: 10ch; /* Фиксированная ширина для Date */
+}
+th:nth-child(2), td:nth-child(2),
+th:nth-child(3), td:nth-child(3) {
+  min-width: 20ch; /* Минимальная ширина для Title и Keywords */
+}
+
+/* Контейнеры колонок */
 .container {
   display: flex;
   height: 100vh;
@@ -297,15 +322,132 @@ td {
 
 .column {
   flex-shrink: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Ресайзер между колонками */
+.resizer {
+  cursor: ew-resize;
+  width: 10px; /* Ширина для удобства взаимодействия */
+  background: red; /* Цвет для видимости */
+  z-index: 3; /* Поверх других элементов */
+}
+
+/* Скрытый текст для учета минимальной ширины */
+.invisible-placeholder {
+  visibility: hidden;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* Ограничение ширины текста */
+.truncate {
+  max-width: 350px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+table {
+  border-collapse: collapse; /* Убирает двойные границы */
+  width: 100%;
+  table-layout: fixed; /* Автоматическая ширина столбцов */
+}
+
+.content-padding {
+  padding-left: 5px;
+}
+/* Скрытый текст для учета минимальной ширины */
+/*.invisible-placeholder {
+  visibility: hidden;
+  white-space: nowrap;
+  display: inline-block;
+}*/
+
+/*table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed; !* Автоматическая ширина столбцов *!
+}
+
+!*thead {
+  display: table-header-group; !* Делает заголовки фиксированной частью таблицы *!
+}*!
+
+tbody {
+  display: block;
+  max-height: calc(100vh - 50px);  !*Настройте высоту в зависимости от макета*!
+  overflow-y: auto;!**!
+}
+
+th,
+td {
+  border: 1px solid gray; !* Горизонтальная и вертикальная разметка *!
+  padding: 10px;
+  text-align: left; !* По умолчанию текст выравнивается влево *!
+  text-overflow: ellipsis; !* Обрезает текст, если он не помещается *!
+  overflow: hidden;
+  white-space: nowrap; !* Запрещает перенос текста *!
+}
+
+td {
+  text-align: left;
+}
+
+!* Установка ширины для столбцов *!
+th:nth-child(1), td:nth-child(1) {
+  width: 20ch; !* Фиксированная ширина для URL *!
+}
+
+th:nth-child(4), td:nth-child(4) {
+  width: 10ch; !* Фиксированная ширина для Date *!
+}
+
+th:nth-child(2), td:nth-child(2),
+th:nth-child(3), td:nth-child(3) {
+  min-width: 20ch; !* Минимальная ширина для Title и Keywords *!
+}
+
+!* Динамическое распределение оставшейся ширины *!
+.column-2 {
+  display: flex;
+  width: calc(100% - 40px); !* 40px для двух ресайзеров *!
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 2;
+  text-align: center; !* Центрирование текста в заголовках *!
+}
+
+th:nth-child(2), td:nth-child(2) {
+  width: calc((100% - 30ch) / 2); !* Динамическая ширина для Title *!
+}
+
+th:nth-child(3), td:nth-child(3) {
+  width: calc((100% - 30ch) / 2); !* Динамическая ширина для Keywords *!
+}
+
+.container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.column {
+  flex-shrink: 0;
+  overflow: hidden;
   height: 100%;
 }
 
 .resizer {
   cursor: ew-resize;
-  width: 10px;
-  background: gray;
+  width: 10px; !* Ширина для удобства взаимодействия *!
+  background: red; !* Цвет для видимости *!
+  z-index: 3; !* Убедитесь, что ресайзеры находятся над другими элементами *!
 }
 
 .truncate {
@@ -314,4 +456,12 @@ td {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 2;
+  text-align: center; !* Центрирование текста в заголовках *!
+}*/
 </style>
