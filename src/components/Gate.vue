@@ -10,13 +10,33 @@
       <table>
         <thead>
         <tr>
-          <th @click="logout" style="cursor: pointer; ">URL</th>
+          <th @click="handleUrlClick" style="cursor: pointer;">
+            <span class="header-label">URL
+              <span v-if="sortKey === 'url' && sortOrder === 'asc'">↑</span>
+              <span v-if="sortKey === 'url' && sortOrder === 'desc'">↓</span>
+  </span>
+          </th>
+          <th @click="sort('title')" style="cursor: pointer;">
+            Title
+            <span v-if="sortKey === 'title' && sortOrder === 'asc'">↑</span>
+            <span v-if="sortKey === 'title' && sortOrder === 'desc'">↓</span>
+          </th>
+          <th @click="sort('description')" style="cursor: pointer;">
+            Description
+            <span v-if="sortKey === 'description' && sortOrder === 'asc'">↑</span>
+            <span v-if="sortKey === 'description' && sortOrder === 'desc'">↓</span>
+          </th>
+          <th @click="sort('date')" style="cursor: pointer;">
+            <span class="header-label">Date
+              <span v-if="sortKey === 'date' && sortOrder === 'asc'">↑</span>
+              <span v-if="sortKey === 'date' && sortOrder === 'desc'">↓</span>
+  </span>
+          </th>
+<!--          <th @click="logout" style="cursor: pointer; ">URL</th>
           <th>Title</th>
           <th>Description</th>
           <th>Date</th>
-<!--          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">Title</th>-->
-<!--          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">KeyWords</th>-->
-<!--          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">Date</th>-->
+          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">Date</th>&ndash;&gt;-->
         </tr>
         </thead>
         <tbody>
@@ -28,9 +48,7 @@
           </td>
           <td class="truncate content-padding">{{ link.title }}</td>
           <td class="truncate content-padding">
-<!--
-            <span class="invisible-placeholder">Description</span>
--->
+<!--            <span class="invisible-placeholder">Description</span>-->
             {{ link.description}}
 <!--            {{ link.description?.length ? link.description.join(', ') : '' }}-->
           </td>
@@ -74,6 +92,33 @@ export default {
     const MAX_MIDDLE_COLUMN_WIDTH = 80; // 80%
 
     let realtimeChannel;
+
+    const sortKey = ref('date');
+    const sortOrder = ref('asc');
+
+    // Вычисляемое свойство для сортировки ссылок
+    const sortedLinks = computed(() => {
+      return [...links.value].sort((a, b) => {
+        const modifier = sortOrder.value === 'asc' ? 1 : -1;
+
+        // Сравнение по ключу сортировки
+        if (sortKey.value === 'date') {
+          return (new Date(a.date) - new Date(b.date)) * modifier;
+        } else {
+          return (a[sortKey.value] > b[sortKey.value] ? 1 : -1) * modifier;
+        }
+      });
+    });
+
+    const sort = (key) => {
+      if (sortKey.value === key) {
+        sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'; // Переключить порядок
+      } else {
+        sortKey.value = key; // Установить новый ключ сортировки
+        sortOrder.value = 'asc'; // Сбросить порядок на asc
+      }
+    };
+
 
     const fetchLinks = async () => {
       try {
@@ -135,11 +180,6 @@ export default {
       const parts = domain.split('.');
       return parts.length > 2 ? `${parts[parts.length - 2]}.${parts[parts.length - 1]}` : domain;
     };
-
-    // Вычисляемое свойство для сортировки ссылок по дате
-    const sortedLinks = computed(() => {
-      return [...links.value].sort((a, b) => new Date(b.date) - new Date(a.date));
-    });
 
     const startResize = (e, column) => {
       if (!ctrlPressed) {
@@ -210,6 +250,14 @@ export default {
     };
 
 
+    const handleUrlClick = (event) => {
+      if (event.ctrlKey) {
+        logout(); // Выполнение logout при удерживании Ctrl
+      } else {
+        sort('url'); // Выполнение сортировки
+      }
+    };
+
     const logout = () => {
       localStorage.removeItem('leftColumnWidth');
       localStorage.removeItem('middleColumnWidth');
@@ -260,12 +308,23 @@ export default {
       getDomain,
       startResize,
       logout,
+      sort, // Добавляем функцию сортировки
+      sortKey, // Добавляем ключ сортировки
+      sortOrder, // Добавляем порядок сортировки
+      handleUrlClick,
     };
   },
 };
-</script>
+</script>1
 
 <style scoped>
+.header-label {
+  background-color: red; /* Красная заливка */
+  border-radius: 5px; /* Скругление углов */
+  padding: 5px 10px; /* Отступы для создания овальной формы */
+  color: white; /* Цвет текста */
+  display: inline-block; /* Для правильного отображения */
+}
 td {
   border: 1px solid gray; /*!* Горизонтальная и вертикальная разметка *!*/
   /*
