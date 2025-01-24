@@ -329,6 +329,7 @@ export default {
               favicon_name: randomId,
               url: linkInfoParsed.value.url,
               title: linkInfoParsed.value.title,
+              description: linkInfoParsed.value.description.trim(),
               title_translation: '',
               // keywords: linkInfoParsed.value.keywords.split(',') || [],
               keywords: linkInfoParsed.value.keywords.length > 0 ? linkInfoParsed.value.keywords.split(',') : null, // Возвращаем null, если список пустой

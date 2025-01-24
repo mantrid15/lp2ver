@@ -12,7 +12,7 @@
         <tr>
           <th @click="logout" style="cursor: pointer; ">URL</th>
           <th>Title</th>
-          <th>KeyWords</th>
+          <th>Description</th>
           <th>Date</th>
 <!--          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">Title</th>-->
 <!--          <th style="position: sticky; top: 0; background-color: white; z-index: 2;">KeyWords</th>-->
@@ -28,8 +28,11 @@
           </td>
           <td class="truncate content-padding">{{ link.title }}</td>
           <td class="truncate content-padding">
-            <span class="invisible-placeholder">KeyWords</span>
-            {{ link.keywords?.length ? link.keywords.join(', ') : '' }}
+<!--
+            <span class="invisible-placeholder">Description</span>
+-->
+            {{ link.description}}
+<!--            {{ link.description?.length ? link.description.join(', ') : '' }}-->
           </td>
           <td class="content-padding">{{ formatDate(link.date) }}</td>
         </tr>
@@ -76,7 +79,7 @@ export default {
       try {
         const { data, error } = await supabase
             .from("links")
-            .select("id, date, url, title, keywords");
+            .select("id, date, url, title, description");
         if (error) {
           console.error("Error fetching links:", error);
         } else {
