@@ -163,10 +163,7 @@ thead th {
 }
 
 tbody {
-  /*
-  display: block;
-  */
-  max-height: calc(100vh - 50px);
+    max-height: calc(100vh - 50px);
   overflow-y: auto;
 }
 

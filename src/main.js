@@ -19,6 +19,14 @@ const vuetify = createVuetify({
 })
 app.use(router)
 app.use(store);
+// Восстановление сессии с обработкой Promise
+(async () => {
+    try {
+        await store.dispatch('restoreSession'); // Используем await
+    } catch (error) {
+        console.error('Ошибка при восстановлении сессии:', error);
+    }
+})();
 app.use(vuetify)
 app.mount('#app')
 

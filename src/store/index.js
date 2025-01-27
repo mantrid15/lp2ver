@@ -1,4 +1,7 @@
+// components/store/index.js
 import { createStore } from 'vuex';
+import { supabase } from '@/clients/supabase'
+
 
 const store = createStore({
     state: {
@@ -21,6 +24,28 @@ const store = createStore({
         },
     },
     actions: {
+        async login({ commit }, credentials) {
+            const { data, error } = await supabase.auth.signInWithPassword(credentials);
+            if (error) throw error; // Пробрасываем ошибку
+            const session = data.session;
+            if (session) {
+                localStorage.setItem('supabaseSession', JSON.stringify(session));
+                commit('setUserId', session.user.id);
+                commit('setSession', session);
+            }
+            return { data, error };
+        },
+        async createAccount({ commit }, credentials) {
+            const { data, error } = await supabase.auth.signUp(credentials);
+            if (error) throw error; // Пробрасываем ошибку
+            return { data, error };
+        },
+        async logout({ commit }) {
+            const { error } = await supabase.auth.signOut();
+            if (error) throw error; // Пробрасываем ошибку
+            commit('clearSession');
+            localStorage.removeItem('supabaseSession');
+        },
         // Восстанавливает сессию из localStorage
         restoreSession({ commit }) {
             const storedSession = localStorage.getItem('supabaseSession');
