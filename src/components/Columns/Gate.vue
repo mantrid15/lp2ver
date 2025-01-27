@@ -139,12 +139,6 @@ export default {
   display: inline-block;
 }
 
-/*.column {
-  flex-shrink: 0;
-  overflow: hidden;
-  height: 100%;
-}*/
-
 td {
   border: 1px solid gray;
   text-align: left;
@@ -159,17 +153,19 @@ th {
 
 thead {
   background: white;
+  position: sticky; /* Закрепляем заголовок */
+  top: 0; /* Положение заголовка */
+  z-index: 2; /* Убедитесь, что заголовок выше содержимого */
 }
 
 thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
   text-align: center;
 }
 
 tbody {
+  /*
   display: block;
+  */
   max-height: calc(100vh - 50px);
   overflow-y: auto;
 }
