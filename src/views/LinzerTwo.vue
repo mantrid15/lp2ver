@@ -1,8 +1,7 @@
 <template>
   <div v-if="account?.data?.session" class="container">
     <Left :width="leftColumnWidth" />
-    <div
-        class="resizer"
+    <div class="resizer"
         @mousedown="(e) => startResize(e, 1)"
     ></div>
     <Gate
@@ -10,8 +9,8 @@
         :links="links"
         :sort-key="sortKey"
         :sort-order="sortOrder"
-        @sort="sort"
         @handle-url-click="handleUrlClick"
+        @sort="sort"
     />
     <div
         class="resizer"
@@ -42,7 +41,7 @@ export default {
 
   setup() {
     // Управление сессией
-    const account = ref();
+    const account = ref(null);
 
     async function getSession() {
       account.value = await supabase.auth.getSession();
@@ -156,11 +155,11 @@ export default {
       document.removeEventListener('mouseup', stopResize);
     };
 
-    const handleUrlClick = (event) => {
-      if (event.ctrlKey) {
+    const handleUrlClick = (event, key) => {
+      if (key === 'url') {
         logout();
       } else {
-        sort('url');
+        sort(key);
       }
     };
 

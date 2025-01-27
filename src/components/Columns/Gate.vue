@@ -4,31 +4,27 @@
     <table>
       <thead>
       <tr>
-<!--        <th @click="emit('sort', 'url')" style="cursor: pointer;">URL</th>-->
-<!--        <th @click="emit('sort', 'title')" style="cursor: pointer;">Title</th>-->
-<!--        <th @click="emit('sort', 'description')" style="cursor: pointer;">Description</th>-->
-<!--        <th @click="emit('sort', 'date')" style="cursor: pointer;">Date</th>-->
-        <th @click="emit('handleUrlClick')" style="cursor: pointer;">
-            <span class="header-label">URL
-              <span v-if="sortKey === 'url' && sortOrder === 'asc'">↑</span>
-              <span v-if="sortKey === 'url' && sortOrder === 'desc'">↓</span>
-            </span>
+        <th @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
+              <span class="header-label">URL
+                <span v-if="sortKey === 'url' && sortOrder === 'asc'">↑</span>
+                <span v-if="sortKey === 'url' && sortOrder === 'desc'">↓</span>
+              </span>
         </th>
-        <th @click="emit('sort', 'title')" style="cursor: pointer;">
+        <th @click="(e) => handleClick(e, 'title')" style="cursor: pointer;">
           Title
           <span v-if="sortKey === 'title' && sortOrder === 'asc'">↑</span>
           <span v-if="sortKey === 'title' && sortOrder === 'desc'">↓</span>
         </th>
-        <th @click="emit('sort', 'description')" style="cursor: pointer;">
+        <th @click="(e) => handleClick(e, 'description')" style="cursor: pointer;">
           Description
           <span v-if="sortKey === 'description' && sortOrder === 'asc'">↑</span>
           <span v-if="sortKey === 'description' && sortOrder === 'desc'">↓</span>
         </th>
-        <th @click="emit('sort', 'date')" style="cursor: pointer;">
-            <span class="header-label">Date
-              <span v-if="sortKey === 'date' && sortOrder === 'asc'">↑</span>
-              <span v-if="sortKey === 'date' && sortOrder === 'desc'">↓</span>
-            </span>
+        <th @click="(e) => handleClick(e, 'date')" style="cursor: pointer;">
+              <span class="header-label">Date
+                <span v-if="sortKey === 'date' && sortOrder === 'asc'">↑</span>
+                <span v-if="sortKey === 'date' && sortOrder === 'desc'">↓</span>
+              </span>
         </th>
       </tr>
       </thead>
@@ -76,19 +72,32 @@ export default {
     }
   },
 
-  emits: ['sort', 'handle-url-click'],
+  emits: [ 'handle-url-click', 'sort'],
 
   setup(props, { emit }) {
     const store = useStore();
     const userId = computed(() => store.state.userId);
 
+    const handleClick = (event, key) => {
+      if (key === 'url' && event.ctrlKey) {
+        emit('handle-url-click', event, key); // Обработка события для URL
+      } else {
+        emit('sort', key); // Сортировка по другим столбцам
+      }
+    };
+
     const sortedLinks = computed(() => {
       return [...props.links].sort((a, b) => {
         const modifier = props.sortOrder === 'asc' ? 1 : -1;
+
+        // Проверка на null и использование пустой строки для безопасного сравнения
+        const aValue = a[props.sortKey] !== null ? a[props.sortKey].toString() : '';
+        const bValue = b[props.sortKey] !== null ? b[props.sortKey].toString() : '';
+
         if (props.sortKey === 'date') {
           return (new Date(a.date) - new Date(b.date)) * modifier;
         } else {
-          return (a[props.sortKey] > b[props.sortKey] ? 1 : -1) * modifier;
+          return (aValue > bValue ? 1 : -1) * modifier;
         }
       });
     });
@@ -105,13 +114,15 @@ export default {
     };
 
     return {
-      emit,
+      // emit,
       userId,
       sortedLinks,
+      handleClick,
       formatDate,
       getDomain
     };
   }
+
 };
 </script>
 
