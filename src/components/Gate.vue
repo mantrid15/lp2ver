@@ -119,7 +119,6 @@ export default {
       }
     };
 
-
     const fetchLinks = async () => {
       try {
         const { data, error } = await supabase
@@ -315,7 +314,7 @@ export default {
     };
   },
 };
-</script>1
+</script>
 
 <style scoped>
 .header-label {

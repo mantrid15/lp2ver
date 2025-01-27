@@ -5,7 +5,8 @@ import LoginVue from '../views/LoginView.vue'
 import UnauthorizedView from '../views/UnauthorizedView.vue'
 import LoginView from "@/views/LoginView.vue";
 import Info from '@/views/InfoView.vue';
-import LinzerView from '@/views/LinzerView.vue';
+import LinzerView from '@/views/LinzerTwo.vue';
+// import LinzerView from '@/views/LinzerView.vue';
 import { useStore } from 'vuex';
 
 
