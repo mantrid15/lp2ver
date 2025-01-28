@@ -68,7 +68,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { supabase } from "@/clients/supabase";
+import { supabase } from "@/clients/supabase.js";
 import {useStore} from "vuex";
 
 export default {

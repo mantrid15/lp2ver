@@ -11,7 +11,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { supabase } from '@/clients/supabase.js';
-import Gate from "@/components/Gate.vue";
+import Gate from "../../project-trash/Gate.vue";
 
 const account = ref();
 onMounted(async () => {

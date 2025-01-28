@@ -4,9 +4,13 @@
       <table>
         <thead>
         <tr>
+          <th>
+            <span class="header-label">FAV</span>
+          </th>
           <th @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
             <span class="header-label">URL</span>
             <span class="sort-icon">{{ getSortIcon('url') }}</span>
+            <button class="row-count-button" @click.stop="toggleRowCount">{{ rowCount.toString().padStart(4, '0') }}</button>
           </th>
           <th @click="(e) => handleClick(e, 'title')" style="cursor: pointer;">
             <span class="header-label">Title</span>
@@ -24,6 +28,15 @@
         </thead>
         <tbody>
         <tr v-for="link in sortedLinks" :key="link.id">
+          <td class="content-padding fav-column" @click="handleFavClick(link)">
+            <img
+                v-if="link.favicon_name"
+                :src="getFaviconUrl(link.favicon_name)"
+                alt="Favicon"
+                class="favicon"
+            />
+            <span v-if="link.showDeleteIcon" class="delete-icon" @click.stop="deleteLink(link)">🗑️</span>
+          </td>
           <td class="truncate content-padding">
             <a :href="link.url" target="_blank" rel="noopener noreferrer">
               {{ getDomain(link.url) }}
@@ -42,6 +55,7 @@
 <script>
 import { computed, ref, watchEffect } from 'vue';
 import { useStore } from 'vuex';
+import { supabase } from '@/clients/supabase.js';
 
 export default {
   name: 'Gate',
@@ -58,12 +72,12 @@ export default {
     sortKey: {
       type: String,
       required: true,
-      default: 'date', // Сортировка по умолчанию по столбцу 'date'
+      default: 'date',
     },
     sortOrder: {
       type: String,
       required: true,
-      default: 'desc', // Порядок сортировки по умолчанию 'desc'
+      default: 'desc',
     },
   },
 
@@ -74,7 +88,8 @@ export default {
     const userId = computed(() => store.state.userId);
     const sortedLinks = ref([]);
 
-    // Логика сортировки
+    const rowCount = computed(() => props.links.length);
+
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
       const aValue = a[key] !== null ? a[key].toString() : '';
@@ -86,43 +101,38 @@ export default {
       return (aValue > bValue ? 1 : -1) * modifier;
     };
 
-    // Обновление sortedLinks при изменении props.links, sortKey или sortOrder
     watchEffect(() => {
       if (!props.links || !props.links.length) {
         sortedLinks.value = [];
         return;
       }
       sortedLinks.value = [...props.links].sort((a, b) =>
-        sortByKey(a, b, props.sortKey, props.sortOrder)
+          sortByKey(a, b, props.sortKey, props.sortOrder)
       );
     });
 
-    // Обработка клика по заголовку
     const handleClick = (event, key) => {
       if (key === 'url' && event.ctrlKey) {
-        emit('handle-url-click', event, key); // Обработка события для URL
+        emit('handle-url-click', event, key);
       } else {
-        emit('sort', key); // Сортировка по другим столбцам
+        emit('sort', key);
       }
     };
 
-    // Форматирование даты
     const formatDate = (dateString) => {
       const date = new Date(dateString);
-      return new Intl.DateTimeFormat('ru-RU').format(date); // Формат для русской локали
+      return new Intl.DateTimeFormat('ru-RU').format(date);
     };
 
-    // Извлечение домена из URL
     const getDomain = (url) => {
       try {
         const { hostname } = new URL(url);
         return hostname;
       } catch (e) {
-        return url; // Возвращаем исходный URL в случае ошибки
+        return url;
       }
     };
 
-    // Получение иконки сортировки
     const getSortIcon = (key) => {
       if (props.sortKey === key) {
         return props.sortOrder === 'asc' ? '↑' : '↓';
@@ -130,22 +140,85 @@ export default {
       return '';
     };
 
+    const getFaviconUrl = (faviconName) => {
+      return '';
+      // return `https://your-supabase-url.com/storage/v1/object/public/favicons/${faviconName}`;
+    };
+
+    const handleFavClick = (link) => {
+      sortedLinks.value = sortedLinks.value.map((l) => ({
+        ...l,
+        showDeleteIcon: l.id === link.id ? !l.showDeleteIcon : false,
+      }));
+    };
+
+    const deleteLink = async (link) => {
+      try {
+        if (!link.url_hash) {
+          console.error('URL hash ссылки отсутствует');
+          alert('Ошибка: URL hash ссылки отсутствует.');
+          return;
+        }
+
+        const urlHash = link.url_hash.toString();
+        console.log(urlHash);
+
+        const {error} = await supabase.rpc('del_link', {link_hash: urlHash});
+        // const {error} = await supabase.rpc('move_to_del_links', {url_hash: urlHash});
+
+        if (error) {
+          throw new Error(`Ошибка при удалении: ${error.message}`);
+        }
+
+        sortedLinks.value = sortedLinks.value.filter((l) => l.url_hash !== link.url_hash);
+      } catch (error) {
+        console.error('Ошибка:', error);
+        alert(error.message);
+      }
+    };
+
     return {
       userId,
       sortedLinks,
+      rowCount,
       handleClick,
       formatDate,
       getDomain,
       getSortIcon,
+      getFaviconUrl,
+      handleFavClick,
+      deleteLink,
     };
   },
 };
 </script>
 
 <style scoped>
+
+th:nth-child(2) .header-label {
+  font-size: 0.75em; /* Уменьшите размер шрифта заголовка */
+}
+
+th:nth-child(2) {
+  text-align: left; /* Выравнивание заголовка по правому краю */
+  padding-left: 5px; /* Отступ слева на 5 пикселей */
+  background-color: green;
+
+}
+
+.row-count-button {
+  background-color: green;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  height: 50%; /* Половина высоты заголовка */
+  float: right; /* Выравнивание кнопки счетчика по левому краю */
+  margin-right: 5px; /* Убедитесь, что у кнопки нет отступов слева */  cursor: pointer;
+  font-size: 0.75em;
+}
 .table-container {
-  max-height: calc(100vh - 100px); /* Установите максимальную высоту для контейнера */
-  overflow-y: auto; /* Включите вертикальную прокрутку */
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
 }
 
 .header-label {
@@ -157,7 +230,7 @@ export default {
 }
 
 .sort-icon {
-  margin-left: 5px; /* Отступ для стрелки */
+  margin-left: 5px;
 }
 
 td {
@@ -170,14 +243,14 @@ td {
 
 th {
   background-color: darkgrey;
-  position: relative; /* Для позиционирования стрелок */
+  position: relative;
 }
 
 thead {
   background: white;
-  position: sticky; /* Закрепляем заголовок */
-  top: 0; /* Положение заголовка */
-  z-index: 2; /* Убедитесь, что заголовок выше содержимого */
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 thead th {
@@ -198,12 +271,24 @@ tbody tr {
 
 th:nth-child(1),
 td:nth-child(1) {
+  width: 24px;
+}
+
+th:nth-child(2),
+td:nth-child(2) {
   width: 15%;
 }
 
+th:nth-child(5),
+td:nth-child(5) {
+  width: 10ch;
+}
+
+th:nth-child(3),
+td:nth-child(3),
 th:nth-child(4),
 td:nth-child(4) {
-  width: 10ch; /* Ширина столбца Date в 10 символов */
+  width: 10ch;
 }
 
 th:nth-child(2),
@@ -211,6 +296,36 @@ td:nth-child(2),
 th:nth-child(3),
 td:nth-child(3) {
   min-width: 20%;
+}
+
+th:nth-child(5),
+td:nth-child(5) {
+  width: 50px;
+}
+
+.fav-column {
+  position: relative;
+  cursor: pointer;
+  text-align: center;
+}
+
+.favicon {
+  width: 18px;
+  height: 18px;
+}
+
+.delete-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  cursor: pointer;
+  display: none;
+}
+
+.fav-column:hover .delete-icon {
+  display: block;
 }
 
 .truncate {
@@ -237,6 +352,8 @@ table {
   td:nth-child(4),
   th:nth-child(2),
   td:nth-child(2),
+  th:nth-child(5),
+  td:nth-child(5),
   th:nth-child(3),
   td:nth-child(3) {
     width: auto;
@@ -244,7 +361,7 @@ table {
   }
 
   .sort-icon {
-    display: none; /* Скрываем стрелки на маленьких экранах */
+    display: none;
   }
 }
 </style>

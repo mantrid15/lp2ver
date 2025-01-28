@@ -78,8 +78,8 @@
               </span>
           </td>
           <td class="divider" style="width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-              <span class="scrolling-text" v-tooltip="linkInfoParsed.keywords">
-                <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.keywords, 20).truncated }}</span>
+              <span class="scrolling-text" v-tooltip="linkInfoParsed.keywords.join(', ')">
+                <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.keywords.join(', '), 20).truncated }}</span>
               </span>
           </td>
           <td class="divider" v-tooltip="linkInfoParsed.date" style="width: 100px; padding-left: 10px;">
@@ -178,11 +178,11 @@ export default {
       try {
         const response = await axios.get(`http://localhost:3000/proxy?url=${encodeURIComponent(url)}`);
         const $ = cheerio.load(response.data);
+        const keywords = $('meta[name="keywords"]').attr('content') || ''; // Получаем ключевые слова
         return {
           url,
           title: $('title').text(),
           description: $('meta[name="description"]').attr('content') || '',
-          // keywords: $('meta[name="keywords"]').attr('content') || '',
           keywords: keywords.length > 0 ? keywords.split(',') : null, // Возвращаем null, если список пустой
         };
       } catch (error) {
@@ -332,7 +332,9 @@ export default {
               description: linkInfoParsed.value.description.trim(),
               title_translation: '',
               // keywords: linkInfoParsed.value.keywords.split(',') || [],
-              keywords: linkInfoParsed.value.keywords.length > 0 ? linkInfoParsed.value.keywords.split(',') : null, // Возвращаем null, если список пустой
+              keywords: Array.isArray(linkInfoParsed.value.keywords) && linkInfoParsed.value.keywords.length > 0
+                  ? linkInfoParsed.value.keywords
+                  : null, // Возвращаем null, если список пустой
               ai_tag: '',
               favicon_hash: faviconHash, // Используем хеш для favicon_hash
               user_id: userIdValue, // Используем извлеченное значение
