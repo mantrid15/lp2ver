@@ -45,9 +45,8 @@
   </div>
 </template>
 
-
 <script>
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useStore } from 'vuex';
 
 export default {
@@ -64,19 +63,28 @@ export default {
     },
     sortKey: {
       type: String,
-      required: true
+      required: true,
+      default: 'date' // Устанавливаем сортировку по умолчанию по столбцу 'date'
     },
     sortOrder: {
       type: String,
-      required: true
+      required: true,
+      default: 'desc' // Устанавливаем порядок сортировки по умолчанию 'desc'
     }
   },
 
-  emits: [ 'handle-url-click', 'sort'],
+  emits: ['handle-url-click', 'sort'],
 
   setup(props, { emit }) {
     const store = useStore();
     const userId = computed(() => store.state.userId);
+
+    // Инициализация сортировки по умолчанию
+    onMounted(() => {
+      if (!props.sortKey || !props.sortOrder) {
+        emit('sort', 'date', 'desc'); // Устанавливаем сортировку по 'date' и 'desc'
+      }
+    });
 
     const handleClick = (event, key) => {
       if (key === 'url' && event.ctrlKey) {
@@ -95,7 +103,7 @@ export default {
         const bValue = b[props.sortKey] !== null ? b[props.sortKey].toString() : '';
 
         if (props.sortKey === 'date') {
-          return (new Date(a.date) - new Date(b.date)) * modifier;
+          return (new Date(b.date) - new Date(a.date)) * modifier; // Обратный порядок для 'date'
         } else {
           return (aValue > bValue ? 1 : -1) * modifier;
         }
@@ -122,7 +130,6 @@ export default {
       getDomain
     };
   }
-
 };
 </script>
 
