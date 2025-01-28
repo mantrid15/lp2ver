@@ -80,11 +80,20 @@ export default {
     const userId = computed(() => store.state.userId);
 
     // Инициализация сортировки по умолчанию
-    onMounted(() => {
-      if (!props.sortKey || !props.sortOrder) {
-        emit('sort', 'date', 'desc'); // Устанавливаем сортировку по 'date' и 'desc'
-      }
-    });
+    /*1.1. Избыточная логика в onMounted
+В onMounted вы проверяете, переданы ли sortKey и sortOrder, и если нет, то вызываете emit('sort', 'date', 'desc').
+
+Однако, вы уже установили значения по умолчанию для этих пропсов (sortKey: 'date', sortOrder: 'desc'). Это делает проверку в onMounted избыточной.
+
+Если родительский компонент не передает sortKey и sortOrder, то значения по умолчанию уже будут использованы.
+
+Рекомендация:
+Удалите onMounted, так как он не нужен. Значения по умолчанию уже решают эту задачу.*/
+    // onMounted(() => {
+    //   if (!props.sortKey || !props.sortOrder) {
+    //     emit('sort', 'date', 'desc'); // Устанавливаем сортировку по 'date' и 'desc'
+    //   }
+    // });
 
     const handleClick = (event, key) => {
       if (key === 'url' && event.ctrlKey) {
@@ -110,16 +119,43 @@ export default {
       });
     });
 
+/*
     const formatDate = (dateString) => {
       const date = new Date(dateString);
       return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
     };
+*/
 
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      return new Intl.DateTimeFormat('ru-RU').format(date); // Формат для русской локали
+    };
+
+    const getDomain = (url) => {
+      try {
+        const { hostname } = new URL(url);
+        return hostname;
+      } catch (e) {
+        return url; // Возвращаем исходный URL в случае ошибки
+      }
+    };
+
+    /*1.4. Логика getDomain
+В getDomain вы используете регулярное выражение и разбиение строки для извлечения домена. Это может быть неэффективно для большого количества URL.
+
+Также, если URL содержит нестандартные символы или порт, логика может сломаться.
+
+Рекомендация:
+
+Используйте встроенный объект URL для извлечения домена. Это более надежно и читаемо:*/
+
+/*
     const getDomain = (url) => {
       const domain = url.replace(/^https?:\/\//, '').split('/')[0];
       const parts = domain.split('.');
       return parts.length > 2 ? `${parts[parts.length - 2]}.${parts[parts.length - 1]}` : domain;
     };
+*/
 
     return {
       // emit,
