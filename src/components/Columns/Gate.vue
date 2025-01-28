@@ -20,6 +20,10 @@
             <span class="header-label">Description</span>
             <span class="sort-icon">{{ getSortIcon('description') }}</span>
           </th>
+          <th @click="(e) => handleClick(e, 'keywords')" style="cursor: pointer;">
+            <span class="header-label">Keywords</span>
+            <span class="sort-icon">{{ getSortIcon('keywords') }}</span>
+          </th>
           <th @click="(e) => handleClick(e, 'date')" style="cursor: pointer;">
             <span class="header-label">Date</span>
             <span class="sort-icon">{{ getSortIcon('date') }}</span>
@@ -44,6 +48,7 @@
           </td>
           <td class="truncate content-padding">{{ link.title }}</td>
           <td class="truncate content-padding">{{ link.description }}</td>
+          <td class="truncate content-padding">{{ link.keywords }}</td>
           <td class="content-padding">{{ formatDate(link.date) }}</td>
         </tr>
         </tbody>
@@ -194,6 +199,35 @@ export default {
 </script>
 
 <style scoped>
+th:nth-child(1),
+td:nth-child(1) {
+  width: 24px; /* FAV column */
+}
+
+th:nth-child(2),
+td:nth-child(2) {
+  width: 15%; /* URL column */
+}
+
+th:nth-child(3),
+td:nth-child(3) {
+  width: 50%; /* Title column */
+}
+
+th:nth-child(4),
+td:nth-child(4) {
+  width: 30%; /* Description column */
+}
+
+th:nth-child(5),
+td:nth-child(5) {
+  width: 20%; /* Keywords column */
+}
+
+th:nth-child(6),
+td:nth-child(6) {
+  width: 10ch; /* Date column */
+}
 
 th:nth-child(2) .header-label {
   font-size: 0.75em; /* Уменьшите размер шрифта заголовка */
@@ -203,7 +237,6 @@ th:nth-child(2) {
   text-align: left; /* Выравнивание заголовка по правому краю */
   padding-left: 5px; /* Отступ слева на 5 пикселей */
   background-color: green;
-
 }
 
 .row-count-button {
@@ -213,9 +246,11 @@ th:nth-child(2) {
   border-radius: 5px;
   height: 50%; /* Половина высоты заголовка */
   float: right; /* Выравнивание кнопки счетчика по левому краю */
-  margin-right: 5px; /* Убедитесь, что у кнопки нет отступов слева */  cursor: pointer;
+  margin-right: 5px; /* Убедитесь, что у кнопки нет отступов слева */
+  cursor: pointer;
   font-size: 0.75em;
 }
+
 .table-container {
   max-height: calc(100vh - 100px);
   overflow-y: auto;
@@ -267,40 +302,6 @@ tbody tr {
   display: table;
   width: 100%;
   table-layout: fixed;
-}
-
-th:nth-child(1),
-td:nth-child(1) {
-  width: 24px;
-}
-
-th:nth-child(2),
-td:nth-child(2) {
-  width: 15%;
-}
-
-th:nth-child(5),
-td:nth-child(5) {
-  width: 10ch;
-}
-
-th:nth-child(3),
-td:nth-child(3),
-th:nth-child(4),
-td:nth-child(4) {
-  width: 10ch;
-}
-
-th:nth-child(2),
-td:nth-child(2),
-th:nth-child(3),
-td:nth-child(3) {
-  min-width: 20%;
-}
-
-th:nth-child(5),
-td:nth-child(5) {
-  width: 50px;
 }
 
 .fav-column {
