@@ -1,41 +1,41 @@
-в этом коде <template>
+<template>
   <div class="column column-2" :style="{ width }">
     <div class="table-container">
       <table>
         <thead>
         <tr>
           <th>
-            <span class="header-label">F</span>
+            <span class="header-label">{{ FAVORITE_ICON }}</span>
           </th>
           <th @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
             <span class="header-label-container">
-              <span class="header-label" data-original-text="URL">URL</span>
-              <span class="sort-icon">{{ getSortIcon('url') || '♄' }}</span>
+              <span class="header-label">{{ URL_LABEL }}</span>
+              <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
             </span>
             <button class="row-count-button" @click.stop="toggleRowCount">{{ rowCount.toString().padStart(4, '0') }}</button>
           </th>
           <th @click="(e) => handleClick(e, 'title')" style="cursor: pointer;" data-sort-key="title">
             <span class="header-label-container">
-              <span class="header-label" data-original-text="Title">Title</span>
-              <span class="sort-icon">{{ getSortIcon('title') || '♄' }}</span>
+              <span class="header-label">{{ TITLE_LABEL }}</span>
+              <span class="sort-icon">{{ getSortIcon('title') || SORT_DEFAULT_ICON }}</span>
             </span>
           </th>
           <th @click="(e) => handleClick(e, 'description')" style="cursor: pointer;" data-sort-key="description">
             <span class="header-label-container">
-              <span class="header-label" data-original-text="Description">Description</span>
-              <span class="sort-icon">{{ getSortIcon('description') || '♄' }}</span>
+              <span class="header-label">{{ DESCRIPTION_LABEL }}</span>
+              <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
             </span>
           </th>
           <th @click="(e) => handleClick(e, 'keywords')" style="cursor: pointer;" data-sort-key="keywords">
             <span class="header-label-container">
-              <span class="header-label" data-original-text="Keywords">Keywords</span>
-              <span class="sort-icon">{{ getSortIcon('keywords') || '♄' }}</span>
+              <span class="header-label">{{ KEYWORDS_LABEL }}</span>
+              <span class="sort-icon">{{ getSortIcon('keywords') || SORT_DEFAULT_ICON }}</span>
             </span>
           </th>
           <th @click="(e) => handleClick(e, 'date')" style="cursor: pointer;" data-sort-key="date">
             <span class="header-label-container">
-              <span class="header-label" data-original-text="Date">Date</span>
-              <span class="sort-icon">{{ getSortIcon('date') || '♄' }}</span>
+              <span class="header-label">{{ DATE_LABEL }}</span>
+              <span class="sort-icon">{{ getSortIcon('date') || SORT_DEFAULT_ICON }}</span>
             </span>
           </th>
         </tr>
@@ -49,7 +49,7 @@
                 alt="Favicon"
                 class="favicon"
             />
-            <span v-if="link.showDeleteIcon" class="delete-icon" @click.stop="deleteLink(link)">🗑️</span>
+            <span v-if="link.showDeleteIcon" class="delete-icon" @click.stop="deleteLink(link)">{{ DELETE_ICON }}</span>
           </td>
           <td class="truncate content-padding">
             <a :href="link.url" target="_blank" rel="noopener noreferrer">
@@ -71,6 +71,18 @@
 import { computed, ref, watchEffect } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
+
+const FAVORITE_ICON = 'F';
+const URL_LABEL = 'URL';
+const TITLE_LABEL = 'Title';
+const DESCRIPTION_LABEL = 'Description';
+const KEYWORDS_LABEL = 'Keywords';
+const DATE_LABEL = 'Date';
+const SORT_ASC_ICON = '↑';
+const SORT_DESC_ICON = '↓';
+// const SORT_DEFAULT_ICON = '☯';
+const SORT_DEFAULT_ICON =  '⇅';
+const DELETE_ICON = '🗑️';
 
 export default {
   name: 'Gate',
@@ -153,7 +165,7 @@ export default {
 
     const getSortIcon = (key) => {
       if (props.sortKey === key) {
-        return props.sortOrder === 'asc' ? '↑' : '↓';
+        return props.sortOrder === 'asc' ? SORT_ASC_ICON : SORT_DESC_ICON;
       }
       return '';
     };
@@ -197,25 +209,6 @@ export default {
       return ''; // Возвращаем пустую строку, если keywords не массив
     };
 
-    const truncateHeaderLabel = () => {
-      const headers = document.querySelectorAll('.header-label-container');
-      headers.forEach(header => {
-        const label = header.querySelector('.header-label');
-        const sortIcon = header.querySelector('.sort-icon');
-        const maxWidth = header.offsetWidth - sortIcon.offsetWidth - 3;
-
-        if (label.scrollWidth > maxWidth) {
-          label.textContent = label.getAttribute('data-original-text').slice(0, 3) + '...';
-        } else {
-          label.textContent = label.getAttribute('data-original-text');
-        }
-      });
-    };
-
-    // Run truncate function on initial render and window resize
-    truncateHeaderLabel();
-    window.addEventListener('resize', truncateHeaderLabel);
-
     return {
       userId,
       sortedLinks,
@@ -230,6 +223,16 @@ export default {
       formatKeywords,
       currentSortKey,
       currentSortOrder,
+      FAVORITE_ICON,
+      URL_LABEL,
+      TITLE_LABEL,
+      DESCRIPTION_LABEL,
+      KEYWORDS_LABEL,
+      DATE_LABEL,
+      SORT_ASC_ICON,
+      SORT_DESC_ICON,
+      SORT_DEFAULT_ICON,
+      DELETE_ICON,
     };
   },
 };
@@ -286,15 +289,17 @@ th:nth-child(2) {
 .header-label-container {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   background-color: red;
   border-radius: 5px;
-  /*
   padding: 5px 10px;
-  */
   color: white;
+  /*
+  display: inline-block;
+  */
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
   min-width: fit-content;
   max-width: 100%;
 }
@@ -303,12 +308,9 @@ th:nth-child(2) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: calc(100% - 26px); /* Adjust to accommodate the sort icon and padding */
 }
 .sort-icon {
-  /*
-  margin-left: 3px;
-  */
+  margin-left: 5px;
   flex-shrink: 0;
 }
 td {
@@ -381,5 +383,4 @@ table {
   text-align: left;
   padding-left: 5px;
 }
-
 </style>
