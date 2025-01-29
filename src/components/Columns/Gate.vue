@@ -41,7 +41,7 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="link in sortedLinks" :key="link.id">
+        <tr v-for="link in sortedLinks" :key="link.id" :class="{ 'strike-through': link.id === activeLinkId }">
           <td class="content-padding fav-column" @click="handleFavClick(link)">
             <img
                 v-if="link.favicon_name"
@@ -49,7 +49,7 @@
                 alt="Favicon"
                 class="favicon"
             />
-            <span v-if="link.showDeleteIcon" class="delete-icon" @click.stop="deleteLink(link)">{{ DELETE_ICON }}</span>
+            <span v-if="link.id === activeLinkId" class="delete-icon" @click.stop="deleteLink(link)">{{ DELETE_ICON }}</span>
           </td>
           <td class="truncate content-padding">
             <a :href="link.url" target="_blank" rel="noopener noreferrer">
@@ -82,7 +82,8 @@ const SORT_ASC_ICON = '↑';
 const SORT_DESC_ICON = '↓';
 // const SORT_DEFAULT_ICON = '☯';
 const SORT_DEFAULT_ICON =  '⇅';
-const DELETE_ICON = '🗑️';
+const DELETE_ICON = '❌';
+const DELETE_ICON_TIMEOUT = 3000; // 3 секунды
 
 export default {
   name: 'Gate',
@@ -114,6 +115,8 @@ export default {
     const rowCount = computed(() => props.links.length);
     const currentSortKey = ref(props.sortKey);
     const currentSortOrder = ref(props.sortOrder);
+    const deleteIconTimer = ref(null);
+    const activeLinkId = ref(null);
 
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
@@ -176,10 +179,29 @@ export default {
     };
 
     const handleFavClick = (link) => {
-      sortedLinks.value = sortedLinks.value.map((l) => ({
-        ...l,
-        showDeleteIcon: l.id === link.id ? !l.showDeleteIcon : false,
-      }));
+      // Сбрасываем предыдущую активную ссылку
+      if (activeLinkId.value === link.id) {
+        activeLinkId.value = null;
+        if (deleteIconTimer.value) {
+          clearTimeout(deleteIconTimer.value);
+          deleteIconTimer.value = null;
+        }
+        return;
+      }
+
+      // Устанавливаем новую активную ссылку
+      activeLinkId.value = link.id;
+
+      // Очистка предыдущего таймера, если он существует
+      if (deleteIconTimer.value) {
+        clearTimeout(deleteIconTimer.value);
+      }
+
+      // Установка нового таймера для скрытия иконки удаления через 3 секунды
+      deleteIconTimer.value = setTimeout(() => {
+        activeLinkId.value = null;
+        deleteIconTimer.value = null; // Сброс таймера
+      }, DELETE_ICON_TIMEOUT);
     };
 
     const deleteLink = async (link) => {
@@ -196,6 +218,7 @@ export default {
           throw new Error(`Ошибка при удалении: ${error.message}`);
         }
         sortedLinks.value = sortedLinks.value.filter((l) => l.url_hash !== link.url_hash);
+        activeLinkId.value = null; // Скрываем иконку удаления после удаления ссылки
       } catch (error) {
         console.error('Ошибка:', error);
         alert(error.message);
@@ -233,6 +256,7 @@ export default {
       SORT_DESC_ICON,
       SORT_DEFAULT_ICON,
       DELETE_ICON,
+      activeLinkId,
     };
   },
 };
@@ -333,6 +357,7 @@ thead {
 thead th {
   text-align: left;
   padding-left: 5px;
+  border-bottom: 1px solid gray; /* Одиночная граница внизу заголовков */
 }
 tbody {
   max-height: calc(100vh - 50px);
@@ -360,27 +385,20 @@ tbody tr {
   transform: translate(-50%, -50%);
   font-size: 16px;
   cursor: pointer;
-  display: none;
+  display: block; /* Иконка всегда видна, если активна */
 }
-.fav-column:hover .delete-icon {
-  display: block;
+.strike-through {
+  text-decoration: line-through;
+  text-decoration-color: red;
+  text-decoration-thickness: 3px;
 }
-.truncate {
-  max-width: 350px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
+
+/* Удаление сдвоенной границы между ячейками */
 table {
   border-collapse: collapse;
-  width: 100%;
-  table-layout: fixed;
 }
-.content-padding {
-  padding-left: 5px;
-}
-.right-align {
-  text-align: left;
-  padding-left: 5px;
+
+th, td {
+  border: 1px solid gray;
 }
 </style>
