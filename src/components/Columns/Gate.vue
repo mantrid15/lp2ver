@@ -8,33 +8,33 @@
             <span class="header-label">F</span>
           </th>
           <th @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
-            <span class="header-label">
-              URL
+            <span class="header-label-container">
+              <span class="header-label">URL</span>
               <span class="sort-icon">{{ getSortIcon('url') || '♄' }}</span>
             </span>
             <button class="row-count-button" @click.stop="toggleRowCount">{{ rowCount.toString().padStart(4, '0') }}</button>
           </th>
           <th @click="(e) => handleClick(e, 'title')" style="cursor: pointer;" data-sort-key="title">
-            <span class="header-label">
-              Title
+            <span class="header-label-container">
+              <span class="header-label">Title</span>
               <span class="sort-icon">{{ getSortIcon('title') || '♄' }}</span>
             </span>
           </th>
           <th @click="(e) => handleClick(e, 'description')" style="cursor: pointer;" data-sort-key="description">
-            <span class="header-label">
-              Description
+            <span class="header-label-container">
+              <span class="header-label">Description</span>
               <span class="sort-icon">{{ getSortIcon('description') || '♄' }}</span>
             </span>
           </th>
           <th @click="(e) => handleClick(e, 'keywords')" style="cursor: pointer;" data-sort-key="keywords">
-            <span class="header-label">
-              Keywords
+            <span class="header-label-container">
+              <span class="header-label">Keywords</span>
               <span class="sort-icon">{{ getSortIcon('keywords') || '♄' }}</span>
             </span>
           </th>
           <th @click="(e) => handleClick(e, 'date')" style="cursor: pointer;" data-sort-key="date">
-            <span class="header-label">
-              Date
+            <span class="header-label-container">
+              <span class="header-label">Date</span>
               <span class="sort-icon">{{ getSortIcon('date') || '♄' }}</span>
             </span>
           </th>
@@ -227,7 +227,7 @@ th:nth-child(6),
 td:nth-child(6) {
   width: 10ch; /* Date column */
 }
-th:nth-child(2) .header-label {
+th:nth-child(2) .header-label-container {
   font-size: 0.75em; /* Уменьшите размер шрифта заголовка */
 }
 th:nth-child(2) {
@@ -250,15 +250,32 @@ th:nth-child(2) {
   max-height: calc(100vh - 100px);
   overflow-y: auto;
 }
-.header-label {
+.header-label-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
   background-color: red;
   border-radius: 5px;
   padding: 5px 10px;
   color: white;
+  /*
   display: inline-block;
+  */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: fit-content;
+  max-width: 100%;
+}
+.header-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sort-icon {
   margin-left: 5px;
+  flex-shrink: 0;
 }
 td {
   border: 1px solid gray;
@@ -331,4 +348,4 @@ table {
   padding-left: 5px;
 }
 
-</style> измени следующее: стрелки в заголовках перемести в надпись и сделай постоянными с условием если нет сортировки в данном столбце то значок тора, если сортировка происходит то по имеющимся условиям. Если текст со значком становиться шире чем минимальная ширина столбца то значок остается прижатым к правому краю паддинг 3 пикселя а текст заголовка сокращается до 3 символов. прочие стили не меняй и не допускай появления второй строки в заголовке
+</style>
