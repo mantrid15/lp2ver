@@ -1,4 +1,4 @@
-<template>
+в этом коде <template>
   <div class="column column-2" :style="{ width }">
     <div class="table-container">
       <table>
@@ -8,25 +8,35 @@
             <span class="header-label">F</span>
           </th>
           <th @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
-            <span class="header-label">URL</span>
-            <span class="sort-icon">{{ getSortIcon('url') }}</span>
+            <span class="header-label">
+              URL
+              <span class="sort-icon">{{ getSortIcon('url') || '♄' }}</span>
+            </span>
             <button class="row-count-button" @click.stop="toggleRowCount">{{ rowCount.toString().padStart(4, '0') }}</button>
           </th>
           <th @click="(e) => handleClick(e, 'title')" style="cursor: pointer;" data-sort-key="title">
-            <span class="header-label">Title</span>
-            <span class="sort-icon">{{ getSortIcon('title') }}</span>
+            <span class="header-label">
+              Title
+              <span class="sort-icon">{{ getSortIcon('title') || '♄' }}</span>
+            </span>
           </th>
           <th @click="(e) => handleClick(e, 'description')" style="cursor: pointer;" data-sort-key="description">
-            <span class="header-label">Description</span>
-            <span class="sort-icon">{{ getSortIcon('description') }}</span>
+            <span class="header-label">
+              Description
+              <span class="sort-icon">{{ getSortIcon('description') || '♄' }}</span>
+            </span>
           </th>
           <th @click="(e) => handleClick(e, 'keywords')" style="cursor: pointer;" data-sort-key="keywords">
-            <span class="header-label">Keywords</span>
-            <span class="sort-icon">{{ getSortIcon('keywords') }}</span>
+            <span class="header-label">
+              Keywords
+              <span class="sort-icon">{{ getSortIcon('keywords') || '♄' }}</span>
+            </span>
           </th>
           <th @click="(e) => handleClick(e, 'date')" style="cursor: pointer;" data-sort-key="date">
-            <span class="header-label">Date</span>
-            <span class="sort-icon">{{ getSortIcon('date') }}</span>
+            <span class="header-label">
+              Date
+              <span class="sort-icon">{{ getSortIcon('date') || '♄' }}</span>
+            </span>
           </th>
         </tr>
         </thead>
@@ -56,15 +66,12 @@
     </div>
   </div>
 </template>
-
 <script>
 import { computed, ref, watchEffect } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
-
 export default {
   name: 'Gate',
-
   props: {
     width: {
       type: String,
@@ -93,18 +100,15 @@ export default {
     const rowCount = computed(() => props.links.length);
     const currentSortKey = ref(props.sortKey);
     const currentSortOrder = ref(props.sortOrder);
-
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
       const aValue = a[key] !== null ? a[key].toString() : '';
       const bValue = b[key] !== null ? b[key].toString() : '';
-
       if (key === 'date') {
         return (new Date(b.date) - new Date(a.date)) * modifier;
       }
       return (aValue > bValue ? 1 : -1) * modifier;
     };
-
     watchEffect(() => {
       if (!props.links || !props.links.length) {
         sortedLinks.value = [];
@@ -114,7 +118,6 @@ export default {
           sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
     });
-
     const handleClick = (event, key) => {
       if (key === 'url' && event.ctrlKey) {
         emit('handle-url-click', event, key);
@@ -128,12 +131,10 @@ export default {
         emit('sort', key, currentSortOrder.value);
       }
     };
-
     const formatDate = (dateString) => {
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('ru-RU').format(date);
     };
-
     const getDomain = (url) => {
       try {
         const { hostname } = new URL(url);
@@ -142,26 +143,22 @@ export default {
         return url;
       }
     };
-
     const getSortIcon = (key) => {
       if (props.sortKey === key) {
         return props.sortOrder === 'asc' ? '↑' : '↓';
       }
       return '';
     };
-
     const getFaviconUrl = (faviconName) => {
       return '';
       // return `https://your-supabase-url.com/storage/v1/object/public/favicons/${faviconName}`;
     };
-
     const handleFavClick = (link) => {
       sortedLinks.value = sortedLinks.value.map((l) => ({
         ...l,
         showDeleteIcon: l.id === link.id ? !l.showDeleteIcon : false,
       }));
     };
-
     const deleteLink = async (link) => {
       try {
         if (!link.url_hash) {
@@ -181,14 +178,12 @@ export default {
         alert(error.message);
       }
     };
-
     const formatKeywords = (keywords) => {
       if (Array.isArray(keywords)) {
         return keywords.join(', ');
       }
       return ''; // Возвращаем пустую строку, если keywords не массив
     };
-
     return {
       userId,
       sortedLinks,
@@ -207,7 +202,6 @@ export default {
   },
 };
 </script>
-
 <style scoped>
 th:nth-child(1),
 td:nth-child(1) {
@@ -336,25 +330,5 @@ table {
   text-align: left;
   padding-left: 5px;
 }
-th[data-sort-key="title"][data-sort-order="desc"]::after {
-  content: '↓';
-}
-th[data-sort-key="description"][data-sort-order="asc"]::after {
-  content: '↑';
-}
-th[data-sort-key="description"][data-sort-order="desc"]::after {
-  content: '↓';
-}
-th[data-sort-key="keywords"][data-sort-order="asc"]::after {
-  content: '↑';
-}
-th[data-sort-key="keywords"][data-sort-order="desc"]::after {
-  content: '↓';
-}
-th[data-sort-key="date"][data-sort-order="asc"]::after {
-  content: '↑';
-}
-th[data-sort-key="date"][data-sort-order="desc"]::after {
-  content: '↓';
-}
-</style>
+
+</style> измени следующее: стрелки в заголовках перемести в надпись и сделай постоянными с условием если нет сортировки в данном столбце то значок тора, если сортировка происходит то по имеющимся условиям. Если текст со значком становиться шире чем минимальная ширина столбца то значок остается прижатым к правому краю паддинг 3 пикселя а текст заголовка сокращается до 3 символов. прочие стили не меняй и не допускай появления второй строки в заголовке
