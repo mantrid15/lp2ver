@@ -9,32 +9,32 @@
           </th>
           <th @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
             <span class="header-label-container">
-              <span class="header-label">URL</span>
+              <span class="header-label" data-original-text="URL">URL</span>
               <span class="sort-icon">{{ getSortIcon('url') || '♄' }}</span>
             </span>
             <button class="row-count-button" @click.stop="toggleRowCount">{{ rowCount.toString().padStart(4, '0') }}</button>
           </th>
           <th @click="(e) => handleClick(e, 'title')" style="cursor: pointer;" data-sort-key="title">
             <span class="header-label-container">
-              <span class="header-label">Title</span>
+              <span class="header-label" data-original-text="Title">Title</span>
               <span class="sort-icon">{{ getSortIcon('title') || '♄' }}</span>
             </span>
           </th>
           <th @click="(e) => handleClick(e, 'description')" style="cursor: pointer;" data-sort-key="description">
             <span class="header-label-container">
-              <span class="header-label">Description</span>
+              <span class="header-label" data-original-text="Description">Description</span>
               <span class="sort-icon">{{ getSortIcon('description') || '♄' }}</span>
             </span>
           </th>
           <th @click="(e) => handleClick(e, 'keywords')" style="cursor: pointer;" data-sort-key="keywords">
             <span class="header-label-container">
-              <span class="header-label">Keywords</span>
+              <span class="header-label" data-original-text="Keywords">Keywords</span>
               <span class="sort-icon">{{ getSortIcon('keywords') || '♄' }}</span>
             </span>
           </th>
           <th @click="(e) => handleClick(e, 'date')" style="cursor: pointer;" data-sort-key="date">
             <span class="header-label-container">
-              <span class="header-label">Date</span>
+              <span class="header-label" data-original-text="Date">Date</span>
               <span class="sort-icon">{{ getSortIcon('date') || '♄' }}</span>
             </span>
           </th>
@@ -66,10 +66,12 @@
     </div>
   </div>
 </template>
+
 <script>
 import { computed, ref, watchEffect } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
+
 export default {
   name: 'Gate',
   props: {
@@ -100,6 +102,7 @@ export default {
     const rowCount = computed(() => props.links.length);
     const currentSortKey = ref(props.sortKey);
     const currentSortOrder = ref(props.sortOrder);
+
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
       const aValue = a[key] !== null ? a[key].toString() : '';
@@ -109,6 +112,7 @@ export default {
       }
       return (aValue > bValue ? 1 : -1) * modifier;
     };
+
     watchEffect(() => {
       if (!props.links || !props.links.length) {
         sortedLinks.value = [];
@@ -118,6 +122,7 @@ export default {
           sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
     });
+
     const handleClick = (event, key) => {
       if (key === 'url' && event.ctrlKey) {
         emit('handle-url-click', event, key);
@@ -131,10 +136,12 @@ export default {
         emit('sort', key, currentSortOrder.value);
       }
     };
+
     const formatDate = (dateString) => {
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('ru-RU').format(date);
     };
+
     const getDomain = (url) => {
       try {
         const { hostname } = new URL(url);
@@ -143,22 +150,26 @@ export default {
         return url;
       }
     };
+
     const getSortIcon = (key) => {
       if (props.sortKey === key) {
         return props.sortOrder === 'asc' ? '↑' : '↓';
       }
       return '';
     };
+
     const getFaviconUrl = (faviconName) => {
       return '';
       // return `https://your-supabase-url.com/storage/v1/object/public/favicons/${faviconName}`;
     };
+
     const handleFavClick = (link) => {
       sortedLinks.value = sortedLinks.value.map((l) => ({
         ...l,
         showDeleteIcon: l.id === link.id ? !l.showDeleteIcon : false,
       }));
     };
+
     const deleteLink = async (link) => {
       try {
         if (!link.url_hash) {
@@ -178,12 +189,33 @@ export default {
         alert(error.message);
       }
     };
+
     const formatKeywords = (keywords) => {
       if (Array.isArray(keywords)) {
         return keywords.join(', ');
       }
       return ''; // Возвращаем пустую строку, если keywords не массив
     };
+
+    const truncateHeaderLabel = () => {
+      const headers = document.querySelectorAll('.header-label-container');
+      headers.forEach(header => {
+        const label = header.querySelector('.header-label');
+        const sortIcon = header.querySelector('.sort-icon');
+        const maxWidth = header.offsetWidth - sortIcon.offsetWidth - 3;
+
+        if (label.scrollWidth > maxWidth) {
+          label.textContent = label.getAttribute('data-original-text').slice(0, 3) + '...';
+        } else {
+          label.textContent = label.getAttribute('data-original-text');
+        }
+      });
+    };
+
+    // Run truncate function on initial render and window resize
+    truncateHeaderLabel();
+    window.addEventListener('resize', truncateHeaderLabel);
+
     return {
       userId,
       sortedLinks,
@@ -202,6 +234,7 @@ export default {
   },
 };
 </script>
+
 <style scoped>
 th:nth-child(1),
 td:nth-child(1) {
@@ -253,17 +286,15 @@ th:nth-child(2) {
 .header-label-container {
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   background-color: red;
   border-radius: 5px;
-  padding: 5px 10px;
-  color: white;
   /*
-  display: inline-block;
+  padding: 5px 10px;
   */
+  color: white;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
   min-width: fit-content;
   max-width: 100%;
 }
@@ -272,9 +303,12 @@ th:nth-child(2) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: calc(100% - 26px); /* Adjust to accommodate the sort icon and padding */
 }
 .sort-icon {
-  margin-left: 5px;
+  /*
+  margin-left: 3px;
+  */
   flex-shrink: 0;
 }
 td {
