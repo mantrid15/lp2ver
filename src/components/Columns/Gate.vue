@@ -8,11 +8,11 @@
             <span class="header-label">{{ FAVORITE_ICON }}</span>
           </th>
           <th @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
-            <span class="header-label-container">
-              <span class="header-label">{{ URL_LABEL }}</span>
-              <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
-            </span>
-            <button class="row-count-button" @click.stop="toggleRowCount">{{ rowCount.toString().padStart(4, '0') }}</button>
+  <span class="header-label-container">
+    <span class="header-label">{{ URL_LABEL }}</span>
+    <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
+  </span>
+            <span class="row-count-button" >{{ rowCount.toString().padStart(4, '0') }}</span>
           </th>
           <th @click="(e) => handleClick(e, 'title')" style="cursor: pointer;" data-sort-key="title">
             <span class="header-label-container">
@@ -296,16 +296,21 @@ th:nth-child(2) {
   background-color: green;
 }
 .row-count-button {
-  background-color: green;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  height: 50%; /* Половина высоты заголовка */
-  float: right; /* Выравнивание кнопки счетчика по левому краю */
-  margin-right: 5px; /* Убедитесь, что у кнопки нет отступов слева */
-  cursor: pointer;
-  font-size: 0.75em;
+  height: 5px;
+  display: inline-flex; /* Используем inline-flex для выравнивания по одной линии */
+  align-items: center; /* Центрируем содержимое по вертикали */
+  writing-mode: vertical-lr; /* Вертикальное направление текста */
+  transform: rotate(180deg); /* Поворачиваем текст на 180 градусов */
+  margin-left: 10px; /* Отступ слева для отделения от заголовка */
+  cursor: pointer; /* Курсор при наведении */
+  color: white; /* Цвет текста (можно изменить) */
+  background-color: green; /* Цвет фона (можно изменить) */
+  padding: 0 5px; /* Отступы по горизонтали для создания заливки вокруг текста */
+  border-radius: 5px; /* Скругление углов */
+  width: fit-content; /* Заливка по содержимому */
+  min-width: 40px; /* Минимальная ширина для удобства нажатия */
 }
+
 .table-container {
   max-height: calc(100vh - 100px);
   overflow-y: auto;
@@ -324,6 +329,9 @@ th:nth-child(2) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /*
+  min-width: 120px; !* Фиксированная минимальная ширина *!
+  */
   min-width: fit-content;
   max-width: 100%;
 }
@@ -335,7 +343,13 @@ th:nth-child(2) {
 }
 .sort-icon {
   margin-left: 5px;
+  /*
+  margin-right: 5px;
+  */
+  /*
   flex-shrink: 0;
+  */
+  min-width: 15px; /* Установите минимальную ширину для иконки сортировки */
 }
 td {
   border: 1px solid gray;

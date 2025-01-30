@@ -117,7 +117,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue';
+import {ref, onMounted, computed, nextTick} from 'vue';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { supabase } from "@/clients/supabase";
@@ -264,99 +264,96 @@ export default {
       if (buttonLabel.value === buttonLabelOk.value) {
         await getInfo();
         parseLinkInfo();
-
         const userIdValue = userId.value;
         console.log('User ID:', userIdValue);
+
         if (!userIdValue) {
           showSnackbar('Незарегистрированный пользователь. Демо-режим.');
           return; // Завершаем выполнение, если пользователь не зарегистрирован
         }
+
         try {
-          if (userIdValue) {
-            showSnackbar('Url is sending to Supabase!!!');
+          showSnackbar('Url is sending to Supabase!!!');
+          snackbar.value = true;
+          const urlHash = await hashString(linkInfoParsed.value.url); // Рассчитываем url_hash
+          console.log('Calculated url_hash:', urlHash);
+
+          // Проверка существования url_hash в таблице links
+          const { data: existingLinks, error: checkError } = await supabase
+              .from('links')
+              .select('url_hash')
+              .eq('url_hash', urlHash);
+
+          if (checkError) {
+            console.error('Ошибка при проверке url_hash:', checkError);
+            snackbarMessage.value = 'Не удалось проверить существование ссылки. Попробуйте снова.';
             snackbar.value = true;
+            return; // Завершаем выполнение, если произошла ошибка
+          }
 
-            const urlHash = await hashString(linkInfoParsed.value.url); // Рассчитываем url_hash
-            console.log('Calculated url_hash:', urlHash);
+          if (existingLinks.length > 0) {
+            console.log('Такая ссылка в базе уже есть!!!');
+            snackbarMessage.value = 'Такая ссылка в базе уже есть!!!';
+            snackbar.value = true;
+            clearFields();
+            return; // Завершаем выполнение, если ссылка уже существует
+          }
 
-            // Проверка существования url_hash в таблице links
-            const { data: existingLinks, error: checkError } = await supabase
-                .from('links')
-                .select('url_hash')
-                .eq('url_hash', urlHash);
+          // Если url_hash не существует, продолжаем выполнение
+          const randomId = generateUid();
+          const faviconHash = await hashString(randomId); // Хеш для favicon_hash
 
-            if (checkError) {
-              console.error('Ошибка при проверке url_hash:', checkError);
-              snackbarMessage.value = 'Не удалось проверить существование ссылки. Попробуйте снова.';
-              snackbar.value = true;
-              return; // Завершаем выполнение, если произошла ошибка
-            }
+          // Данные для таблицы favicons
+          const faviconData = {
+            favicon_hash: faviconHash,
+            favicon_name: randomId,
+            storage_path: '', // Укажите путь, если необходимо
+            user_id: userIdValue,
+          };
+          console.log('Favicon Data:', faviconData);
 
-            if (existingLinks.length > 0) {
-              console.log('Такая ссылка в базе уже есть!!!');
-              snackbarMessage.value = 'Такая ссылка в базе уже есть!!!';
-              snackbar.value = true;
-              clearFields();
-              return; // Завершаем выполнение, если ссылка уже существует
-            }
+          // Отправляем данные в таблицу favicons
+          const { data: faviconDataResponse, error: faviconError } = await supabase.from('favicons').insert([faviconData]);
+          if (faviconError) {
+            console.error('Ошибка при отправке данных в таблицу favicons:', faviconError);
+            snackbarMessage.value = 'Не удалось отправить данные favicon. Попробуйте снова.';
+            snackbar.value = true;
+            return; // Завершаем выполнение, если произошла ошибка
+          }
 
-            const randomId = generateUid();
-            const faviconHash = await hashString(randomId); // Хеш для favicon_hash
+          // Данные для таблицы links
+          const linkData = {
+            date: new Date().toISOString(), // Используем ISO формат
+            url_hash: urlHash, // Используем рассчитанный url_hash
+            favicon_name: randomId,
+            url: linkInfoParsed.value.url,
+            title: linkInfoParsed.value.title,
+            description: linkInfoParsed.value.description.trim(),
+            title_translation: '',
+            keywords: Array.isArray(linkInfoParsed.value.keywords) && linkInfoParsed.value.keywords.length > 0
+                ? linkInfoParsed.value.keywords
+                : null, // Возвращаем null, если список пустой
+            ai_tag: '',
+            favicon_hash: faviconHash, // Используем хеш для favicon_hash
+            user_id: userIdValue, // Используем извлеченное значение
+            dir_hash: '', // Укажите dir_hash, если необходимо
+            subdir_hash: '', // Укажите subdir_hash, если необходимо
+          };
+          console.log('Link Data:', linkData);
 
-            // Данные для таблицы favicons
-            const faviconData = {
-              favicon_hash: faviconHash,
-              favicon_name: randomId,
-              storage_path: '', // Укажите путь, если необходимо
-              user_id: userIdValue,
-            };
-            console.log('Favicon Data:', faviconData);
+          // Отправляем данные в таблицу links
+          const { data: linkDataResponse, error: linkError } = await supabase
+              .from('links')
+              .insert([linkData])
+              .select(); // Запрос на возврат вставленных данных
 
-            // Отправляем данные в таблицу favicons
-            const { data: faviconDataResponse, error: faviconError } = await supabase.from('favicons').insert([faviconData]);
-
-            if (faviconError) {
-              console.error('Ошибка при отправке данных в таблицу favicons:', faviconError);
-              snackbarMessage.value = 'Не удалось отправить данные favicon. Попробуйте снова.';
-              snackbar.value = true;
-              return; // Завершаем выполнение, если произошла ошибка
-            }
-
-            // Данные для таблицы links
-            const linkData = {
-              date: new Date().toISOString(), // Используем ISO формат
-              url_hash: urlHash, // Используем рассчитанный url_hash
-              favicon_name: randomId,
-              url: linkInfoParsed.value.url,
-              title: linkInfoParsed.value.title,
-              description: linkInfoParsed.value.description.trim(),
-              title_translation: '',
-              // keywords: linkInfoParsed.value.keywords.split(',') || [],
-              keywords: Array.isArray(linkInfoParsed.value.keywords) && linkInfoParsed.value.keywords.length > 0
-                  ? linkInfoParsed.value.keywords
-                  : null, // Возвращаем null, если список пустой
-              ai_tag: '',
-              favicon_hash: faviconHash, // Используем хеш для favicon_hash
-              user_id: userIdValue, // Используем извлеченное значение
-              dir_hash: '', // Укажите dir_hash, если необходимо
-              subdir_hash: '', // Укажите subdir_hash, если необходимо
-            };
-            console.log('Link Data:', linkData);
-
-            // Отправляем данные в таблицу links
-            const { data: linkDataResponse, error: linkError } = await supabase
-                .from('links')
-                .insert([linkData])
-                .select(); // Запрос на возврат вставленных данных
-
-            if (linkError) {
-              console.error('Ошибка при отправке данных в Supabase:', linkError);
-              showSnackbar('Не удалось отправить данные. Попробуйте снова.');
-            } else {
-              console.log('Данные успешно отправлены:', linkDataResponse);
-              showSnackbar('Данные успешно отправлены!');
-              clearFields();
-            }
+          if (linkError) {
+            console.error('Ошибка при отправке данных в Supabase:', linkError);
+            showSnackbar('Не удалось отправить данные. Попробуйте снова.');
+          } else {
+            console.log('Данные успешно отправлены:', linkDataResponse);
+            showSnackbar('Данные успешно отправлены!');
+            clearFields();
           }
         } catch (error) {
           console.error('Произошла ошибка:', error);
@@ -365,8 +362,15 @@ export default {
       } else {
         await fetchPageInfo();
       }
-    };
 
+      // Устанавливаем фокус на поле ввода после обработки
+      await nextTick(); // Ждем, пока обновится DOM
+      if (urlInput.value) {
+        urlInput.value.focus(); // Устанавливаем фокус, если элемент доступен
+      } else {
+        console.error('urlInput не найден или не смонтирован');
+      }
+    };
 
     const fetchPageInfo = async () => {
       if (url.value) {
@@ -382,19 +386,36 @@ export default {
         linkInfo.value = 'Это не URL';
       }
     };
-    const clearFields = () => {
+
+    const clearFields = async () => {
       url.value = '';
       linkInfo.value = '';
       statusMessage.value = '';
       buttonLabel.value = 'URL';
       linkInfoParsed.value = null;
+      // Ждем, пока обновится DOM
+      await nextTick();
+      if (urlInput.value) {
+        urlInput.value.focus(); // Устанавливаем фокус, если элемент доступен
+      } else {
+        console.error('urlInput не найден или не смонтирован');
+      }
+
     };
 
     const handleContextMenu = (event) => {
-      event.preventDefault();
-      clearFields();
+      if (event.ctrlKey || event.shiftKey) {
+        // Если нажата клавиша Ctrl или Shift, показываем стандартное меню
+        return;
+      }
+      event.preventDefault(); // Отменяем стандартное контекстное меню
       navigator.clipboard.readText().then((text) => {
-        url.value = text;
+        url.value = text; // Вставляем текст из буфера обмена в поле ввода
+        if (urlInput.value) {
+          urlInput.value.focus(); // Устанавливаем фокус на поле ввода
+        }
+      }).catch(err => {
+        console.error('Ошибка при получении текста из буфера обмена:', err);
       });
     };
 
@@ -410,7 +431,9 @@ export default {
 
     onMounted(() => {
       window.addEventListener('changeButtonColor', (event) => changeButtonColor(event.detail));
-      urlInput.value.focus();
+      if (urlInput.value) {
+        urlInput.value.focus(); // Устанавливаем фокус на поле ввода
+      }
       urlInput.value.addEventListener('contextmenu', handleContextMenu);
     });
 
@@ -455,11 +478,12 @@ export default {
       isFetching,
       buttonColor,
       url,
+      urlInput,
+      handleContextMenu,
       linkInfo,
       statusMessage,
       handleButtonClick,
       clearFields,
-      urlInput,
       handleEnter,
       linkInfoParsed,
       parseLinkInfo,
