@@ -20,20 +20,18 @@
                style="padding: 5px;"
                @click="isLoggedIn ? handleLoginStateChange(false) : null"
         ><span style="margin-right: 10px">
-        {{ loginButtonText }}
-                      </span>
-
+{{ loginButtonText }}
+</span>
           <v-img
               src="/lpicon.png"
               alt="Login Icon"
               width="20"
               height="20"
               class="mr-2 ml-2"
-              :color="loginButtonColor"        />
+              :color="loginButtonColor" />
         </v-btn>
       </v-toolbar>
     </header>
-
     <v-main class="main-with-margin">
       <div class="content">
         <router-view v-slot="{ Component }">
@@ -47,7 +45,6 @@
         </router-view>
       </div>
     </v-main>
-
     <v-footer class="custom-footer" dark color="primary" app>
       <v-row justify="center" no-gutters>
         <v-col class="text-center" cols="12">
@@ -63,23 +60,19 @@ import { ref, computed } from 'vue';
 import RowTool from "@/components/MainRowTool.vue";
 import { supabase } from "@/clients/supabase";
 import { useStore } from 'vuex';
-
 const store = useStore();
 const userId = computed(() => store.state.userId);
 const buttonColor = ref('red');
 const loginButtonText = ref('Login');
 const loginButtonColor = ref('red');
 const isLoggedIn = ref(false);
-
 supabase.auth.onAuthStateChange((event, session) => {
   isLoggedIn.value = !!session;
   handleLoginStateChange(isLoggedIn.value);
 });
-
 const changeButtonColorHandler = (color) => {
   buttonColor.value = color;
 };
-
 const handleLoginStateChange = (isLoggedIn) => {
   if (isLoggedIn) {
     loginButtonText.value = 'Logout';
@@ -92,7 +85,6 @@ const handleLoginStateChange = (isLoggedIn) => {
   }
 };
 </script>
-
 <style scoped>
 .fixed-toolbar {
   position: fixed;
@@ -101,14 +93,12 @@ const handleLoginStateChange = (isLoggedIn) => {
   right: 0;
   z-index: 1000;
 }
-
 .main-with-margin {
   height: calc(100vh - 85px); /* Высота v-main с учетом header и отступа */
   overflow: hidden; /* Убираем прокрутку */
 }
-
 .content {
-  padding: 20px; /* Отступ для содержимого */
+  padding-top: 20px; /* Отступ для содержимого */
 }
 .fixed-size-button {
   width: 120px;

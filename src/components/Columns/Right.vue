@@ -25,7 +25,7 @@
               md="4"
               class="d-flex align-start"
           >
-            <v-card class="folder-card ma-2">
+            <v-card class="folder-card">
               <v-card-title>{{ folder.dir_name }}</v-card-title>
             </v-card>
           </v-col>
@@ -277,8 +277,10 @@ export default {
   margin-right: 5px;
 }
 .folder-card {
-  width: 100%;
-  max-width: 250px; /* Максимальная ширина каждой карточки */
+  flex: 1; /* Карточка занимает весь доступный пространство */
+  margin: 10px; /* Отступы между карточками */
+  width: 80%;
+  height: 90%; /* Карточка занимает всю высоту колонки */
 }
 .v-main {
   overflow-y: auto; /* Добавление вертикальной прокрутки */

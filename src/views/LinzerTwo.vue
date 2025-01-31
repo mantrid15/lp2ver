@@ -255,7 +255,7 @@ export default {
 <style scoped>
 .container {
   display: flex;
-  height: calc(100vh - 50px); /* Уменьшаем высоту на 50 пикселей */
+  height: calc(100vh - 107px); /* Уменьшаем высоту на 100 пикселей (50px для футера и 50px для других элементов) */
   overflow: hidden;
   margin-top: 45px; /* Добавляем отступ сверху */
 }
@@ -272,7 +272,7 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: calc(100vh - 50px); /* Уменьшаем высоту на 50 пикселей */
+  height: calc(100vh - 100px); /* Уменьшаем высоту на 100 пикселей */
   font-size: 1.5rem;
   color: #666;
   margin-top: 50px; /* Добавляем отступ сверху */
