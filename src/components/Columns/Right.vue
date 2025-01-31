@@ -15,7 +15,7 @@
       </div>
     </v-app-bar>
     <v-main>
-      <v-container class="bg-surface-variant fill-height pa-0">
+      <v-container class="brown-background fill-height">
         <v-row no-gutters class="fill-height">
           <v-col
               v-for="(folder, index) in visibleFolders"
@@ -55,7 +55,6 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js'; // Импорт Supabase из указанного файла
-
 export default {
   name: 'Right',
   props: {
@@ -73,7 +72,6 @@ export default {
     const errorMessage = ref('');
     const successMessage = ref('');
     let realtimeChannel = null;
-
     // Функция для вычисления хеша
     const hashString = async (inputString) => {
       try {
@@ -88,13 +86,12 @@ export default {
         throw error;
       }
     };
-
     const fetchFolders = async () => {
       try {
         const { data, error } = await supabase
-          .from('dir')
-          .select('*')
-          .eq('user_id', userId.value);
+            .from('dir')
+            .select('*')
+            .eq('user_id', userId.value);
         if (error) throw error;
         folders.value = data || [];
         console.log('Полученные директории:', folders.value);
@@ -102,14 +99,13 @@ export default {
         console.error('Ошибка при получении директорий:', error);
       }
     };
-
     const checkHashUniqueness = async (dirHash) => {
       try {
         const { data, error } = await supabase
-          .from('dir')
-          .select('*')
-          .eq('dir_hash', dirHash)
-          .eq('user_id', userId.value);
+            .from('dir')
+            .select('*')
+            .eq('dir_hash', dirHash)
+            .eq('user_id', userId.value);
         if (error) throw error;
         console.log('Результат проверки уникальности:', data);
         return data.length === 0;
@@ -118,13 +114,11 @@ export default {
         return false;
       }
     };
-
     const createDirectory = async () => {
       try {
         if (newFolderName.value.trim()) {
           const upperCaseFolderName = newFolderName.value.toUpperCase();
           const dirHash = await hashString(upperCaseFolderName); // Вычисление хеша
-
           const isUnique = await checkHashUniqueness(dirHash);
           if (!isUnique) {
             errorMessage.value = 'Директория с таким именем уже существует!';
@@ -133,16 +127,15 @@ export default {
             }, 2000);
             return;
           }
-
           const { data, error } = await supabase
-            .from('dir')
-            .insert([
-              {
-                dir_name: upperCaseFolderName,
-                dir_hash: dirHash,
-                user_id: userId.value
-              }
-            ]);
+              .from('dir')
+              .insert([
+                {
+                  dir_name: upperCaseFolderName,
+                  dir_hash: dirHash,
+                  user_id: userId.value
+                }
+              ]);
           if (error) {
             errorMessage.value = 'Ошибка при создании директории!';
             setTimeout(() => {
@@ -151,7 +144,6 @@ export default {
             console.error('Ошибка при создании директории:', error);
             return;
           }
-
           console.log('Ответ от Supabase:', data);
           // Закрываем диалоговое окно и показываем сообщение об успешном создании
           successMessage.value = 'Dir Is Created!!!';
@@ -167,64 +159,56 @@ export default {
         }, 2000);
       }
     };
-
     const openDialog = () => {
       console.log('Открываем диалоговое окно');
       dialog.value = true;
       errorMessage.value = '';
       successMessage.value = '';
     };
-
     const closeDialog = () => {
       dialog.value = false;
       newFolderName.value = '';
       errorMessage.value = '';
       successMessage.value = '';
     };
-
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
-        .channel('realtime-dirs')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'dir' },
-          (payload) => {
-            if (payload.eventType === 'INSERT') {
-              if (payload.new.user_id === userId.value) {
-                folders.value.push(payload.new);
+          .channel('realtime-dirs')
+          .on(
+              'postgres_changes',
+              { event: '*', schema: 'public', table: 'dir' },
+              (payload) => {
+                if (payload.eventType === 'INSERT') {
+                  if (payload.new.user_id === userId.value) {
+                    folders.value.push(payload.new);
+                  }
+                } else if (payload.eventType === 'UPDATE') {
+                  const index = folders.value.findIndex(folder => folder.id === payload.new.id);
+                  if (index !== -1) {
+                    folders.value[index] = payload.new;
+                  }
+                } else if (payload.eventType === 'DELETE') {
+                  folders.value = folders.value.filter(folder => folder.id !== payload.old.id);
+                }
               }
-            } else if (payload.eventType === 'UPDATE') {
-              const index = folders.value.findIndex(folder => folder.id === payload.new.id);
-              if (index !== -1) {
-                folders.value[index] = payload.new;
-              }
-            } else if (payload.eventType === 'DELETE') {
-              folders.value = folders.value.filter(folder => folder.id !== payload.old.id);
-            }
-          }
-        )
-        .subscribe();
+          )
+          .subscribe();
     };
-
     const unsubscribeFromRealtimeChanges = () => {
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }
     };
-
     onMounted(() => {
       fetchFolders();
       subscribeToRealtimeChanges();
     });
-
     onUnmounted(() => {
       unsubscribeFromRealtimeChanges();
     });
-
     const visibleFolders = computed(() => {
       return folders.value.slice(0, 12);
     });
-
     return {
       userId,
       dialog,
@@ -277,16 +261,28 @@ export default {
   margin-right: 5px;
 }
 .folder-card {
-  flex: 1; /* Карточка занимает весь доступный пространство */
-  margin: 10px; /* Отступы между карточками */
-  width: 80%;
+  width: 90%;
   height: 90%; /* Карточка занимает всю высоту колонки */
+  /*
+  margin: 5px;
+  */
 }
 .v-main {
   overflow-y: auto; /* Добавление вертикальной прокрутки */
-  max-height: calc(100vh - 64px); /* Вычитаем высоту app-bar */
+  max-height: calc(100vh - 80px); /* Вычитаем высоту app-bar */
 }
 .v-container {
-  padding: 0; /* Убираем внутренние отступы контейнера */
+  /*
+  padding: 5px; !* Устанавливаем отступы вокруг контейнера *!
+  */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  /*
+  gap: 5px; !* Устанавливаем расстояние между карточками *!
+  */
+}
+.brown-background {
+
+  background-color: brown; /* Устанавливаем коричневый фон */
 }
 </style>
