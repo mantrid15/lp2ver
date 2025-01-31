@@ -273,8 +273,6 @@ export default {
         }
 
         try {
-          showSnackbar('Url is sending to Supabase!!!');
-          snackbar.value = true;
           const urlHash = await hashString(linkInfoParsed.value.url); // Рассчитываем url_hash
           console.log('Calculated url_hash:', urlHash);
 
@@ -299,7 +297,10 @@ export default {
             return; // Завершаем выполнение, если ссылка уже существует
           }
 
-          // Если url_hash не существует, продолжаем выполнение
+          // Здесь уведомляем пользователя о том, что данные отправляются в Supabase
+          showSnackbar('Url is sending to Supabase!!!');
+          snackbar.value = true;
+
           const randomId = generateUid();
           const faviconHash = await hashString(randomId); // Хеш для favicon_hash
 
@@ -502,10 +503,12 @@ export default {
   border: none; /* Убираем границу */
 }
 .custom-snackbar {
-  background-color: red !important; /* Красный фон */
+  /*
+  background-color: red !important; !* Красный фон *!
+  */
   color: black !important; /* Черный текст */
-  position: relative; /* Фиксированное позиционирование */
-  top: 20px; /* Отступ сверху */
+  position: inherit; /* Фиксированное позиционирование */
+  top: 10px; /* Отступ сверху */
   right: 20px; /* Отступ справа */
   z-index: 200; /* Убедитесь, что snackbar выше других элементов */
 }
@@ -553,82 +556,12 @@ export default {
 .clear-button {
   color: white;
 }
-
-
 .divider {
   border-right: 1px solid white; /* Добавляем белую границу справа для разделителей */
-
 }
-
 .divider:last-child {
   border-right: none; /* Убираем границу у последнего столбца */
 }
 
-/*
-.custom-snackbar {
-  !*background-color: red !important; !* Красный фон *!*!
-  background-color: rgba(255, 0, 0, 0.5) !important; !* Прозрачный красный фон *!
-  color: black !important; !* Черный текст *!
-  position: relative; !* Фиксированное позиционирование *!
-  top: 20px; !* Отступ сверху *!
-  right: 20px; !* Отступ справа *!
-  z-index: 200; !* Убедитесь, что snackbar выше других элементов *!
-}
-.text-ellipsis {
-  white-space: nowrap; !* Запрет на перенос строк *!
-  overflow: hidden; !* Скрытие переполненного текста *!
-  text-overflow: ellipsis; !* Добавление многоточия в конце переполненного текста *!
-}
-.favicon-container {
-  background-color: transparent; !* Прозрачный фон *!
-  !*background-color: white;*!
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.url-input {
-  margin-right: 20px;
-  color: black;
-  !*background: white;*!
-  background-color: transparent; !* Прозрачный фон *!
-  border: 2px solid red;
-  transition: border-color 0.3s;
-  width: 300px;
-}
-.url-input:hover {
-  border-color: green;
-}
-.url-input:focus {
-  border-color: green;
-}
-.red-button {
-  background-color: red;
-  color: white;
-}
-.purple-button {
-  background-color: purple; !* Цвет для фиолетовой кнопки *!
-}
-.fixed-size-button {
-  width: 120px;
-  height: 20px;
-  min-width: 120px;
-  min-height: 20px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.clear-button {
-  color: white;
-}
-.divider {
-  border-right: 1px solid white; !* Добавляем белую границу справа для разделителей *!
-
-}
-
-.divider:last-child {
-  background-color: transparent; !* Прозрачный фон *!
-  border-right: none; !* Убираем границу у последнего столбца *!
-}
-*/
 
 </style>
