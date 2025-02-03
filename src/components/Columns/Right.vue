@@ -15,7 +15,21 @@
       </div>
     </v-app-bar>
     <v-main>
-      <v-container class="brown-background fill-height mb-0">
+      <v-container class="brown-background folders-container" >
+        <v-row >
+          <v-col v-for="(folder, index) in folders"
+              :key="index"
+              :cols="columnSize">
+            <v-sheet class="pa-12"
+                color="grey"
+                :key="index"
+            >{{ folder.dir_name }}
+            </v-sheet>
+          </v-col>
+        </v-row>
+      </v-container>
+
+<!--      <v-container class="brown-background fill-height mb-0" >
         <v-row no-gutters class="fill-height folders-container">
           <v-col
               v-for="(folder, index) in folders"
@@ -23,12 +37,17 @@
               :cols="columnSize"
               class="d-flex align-start folder-column"
           >
-            <v-card class="folder-card">
+
+            <v-sheet class="folder-card">
+              {{ folder.dir_name }}
+            </v-sheet>
+&lt;!&ndash;            <v-card class="folder-card">
               <v-card-title>{{ folder.dir_name }}</v-card-title>
-            </v-card>
+            </v-card>&ndash;&gt;
           </v-col>
         </v-row>
-      </v-container>
+      </v-container>-->
+
     </v-main>
     <!-- Диалоговое окно -->
     <v-dialog v-model="dialog" max-width="400px">
@@ -251,11 +270,11 @@ export default {
 </script>
 
 <style scoped>
-.column {
+/*.column {
   flex-shrink: 0;
   overflow: hidden;
   height: 100%;
-}
+}*/
 
 .user-info {
   padding: 2px;
@@ -292,13 +311,17 @@ export default {
 
 .folder-card {
   width: 90%;
-  height: 135%;
-  margin: 8px;
+  height: 100%;
+  margin-bottom: 8px;
+  /*
   flex-shrink: 0;
+  */
 }
 
 .v-main {
+  /*
   overflow: hidden;
+  */
   height: calc(100vh - 64px);
 }
 
@@ -312,14 +335,19 @@ export default {
 
 .folders-container {
   height: auto;
-  min-height: 100%;
-  margin: 0;
-  padding: 16px;
+  /*
+  min-height: 200%;
+  */
   display: flex;
   flex-wrap: wrap;
+  padding: 16px 16px 10px;
+  /*
+  padding-bottom: 20px;
+  */
 }
 
 .folder-column {
+
   min-height: fit-content;
   height: 120px;
   flex-grow: 1; /* Растягиваем элементы на всю доступную ширину */
@@ -327,7 +355,7 @@ export default {
 
 /* Добавляем стили для скроллбара */
 .brown-background::-webkit-scrollbar {
-  width: 8px;
+  width: 20px;
 }
 
 .brown-background::-webkit-scrollbar-track {
