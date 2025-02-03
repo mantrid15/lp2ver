@@ -20,9 +20,7 @@
           <v-col
               v-for="(folder, index) in folders"
               :key="index"
-              cols="12"
-              sm="6"
-              md="4"
+              :cols="columnSize"
               class="d-flex align-start folder-column"
           >
             <v-card class="folder-card">
@@ -52,7 +50,7 @@
 </template>
 
 <script>
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
 
@@ -73,6 +71,26 @@ export default {
     const errorMessage = ref('');
     const successMessage = ref('');
     let realtimeChannel = null;
+
+    // Вычисляемое свойство для определения количества столбцов
+    const columnSize = computed(() => {
+      const widthValue = parseFloat(props.width);
+      if (widthValue > 22) {
+        return 4; // 3 столбца (12 / 4 = 3)
+      } else if (widthValue > 14) {
+        return 6; // 2 столбца (12 / 6 = 2)
+      } else {
+        return 12; // 1 столбец (12 / 12 = 1)
+      }
+    });
+
+    // Отслеживание изменения значения width
+    watch(
+        () => props.width,
+        (newWidth) => {
+          console.log('Новое значение width:', newWidth);
+        }
+    );
 
     const hashString = async (inputString) => {
       try {
@@ -225,7 +243,8 @@ export default {
       errorMessage,
       successMessage,
       openDialog,
-      closeDialog
+      closeDialog,
+      columnSize // Возвращаем вычисляемое свойство
     };
   }
 };
@@ -296,11 +315,14 @@ export default {
   min-height: 100%;
   margin: 0;
   padding: 16px;
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .folder-column {
   min-height: fit-content;
   height: 120px;
+  flex-grow: 1; /* Растягиваем элементы на всю доступную ширину */
 }
 
 /* Добавляем стили для скроллбара */
