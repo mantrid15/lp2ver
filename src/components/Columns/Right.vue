@@ -21,13 +21,13 @@
               v-for="(folder, index) in folders"
               :key="index"
               :cols="columnSize" class="folder-column"
-
           >
-            <v-sheet
-                class="pa-xxl-15"
-                height="160">
-              {{ folder.dir_name }}
-            </v-sheet>
+            <v-card class="folder-card">
+              <v-card-title class="folder-title">
+                <v-icon class="folder-icon">mdi-folder</v-icon>
+                <span class="folder-name">{{ folder.dir_name }}</span>
+              </v-card-title>
+            </v-card>
           </v-col>
         </v-row>
       </v-container>
@@ -260,13 +260,11 @@ export default {
   font-size: 0.7rem;
   margin-top: 0;
 }
-
 .app-bar-container {
   display: flex;
   align-items: center;
   width: 100%;
 }
-
 .yellow-box {
   flex: 1;
   height: 40px;
@@ -276,7 +274,6 @@ export default {
   display: flex;
   align-items: flex-start;
 }
-
 .green-box {
   flex: 1;
   height: 40px;
@@ -286,7 +283,6 @@ export default {
   align-items: center;
   margin-right: 5px;
 }
-
 .brown-background {
   background-color: brown;
   height: 100%;
@@ -294,35 +290,52 @@ export default {
   overflow-y: auto;
   max-height: calc(100vh - 64px);
 }
-
 .folders-container {
   height: 90%;
-/*  display: flex;
-  flex-wrap: wrap;*/
-  padding: 3% 5px 5%;
+  padding: 3% 10px 5%;
 }
-
-/*.folder-column {
-  min-height: fit-content;
-  height: 120px;
-  flex-grow: 1;
-  !*Растягиваем элементы на всю доступную ширину *!
-}*/
-
+.folder-card {
+  background-color: #fff; /* Белый фон для карточки */
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px; /* Увеличенная высота карточки */
+}
+.folder-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+.folder-name {
+  font-size: 1.0rem;
+  margin-bottom: 16px; /* Отступ между названием и иконкой */
+}
+.folder-icon {
+  font-size: 10rem; /* Очень большой размер иконки */
+  color: transparent;
+  background: linear-gradient(to bottom, #f0e68c, #d2b48c); /* Градиентный цвет иконки */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 /* Добавляем стили для скроллбара */
 .brown-background::-webkit-scrollbar {
   width: 12px;
 }
-
 .brown-background::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.1);
 }
-
 .brown-background::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.3);
   border-radius: 4px;
 }
-
 .brown-background::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.5);
 }
