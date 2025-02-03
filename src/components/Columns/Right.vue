@@ -15,10 +15,10 @@
       </div>
     </v-app-bar>
     <v-main>
-      <v-container class="brown-background fill-height">
-        <v-row no-gutters class="fill-height">
+      <v-container class="brown-background fill-height mb-0">
+        <v-row no-gutters class="fill-height" >
           <v-col
-              v-for="(folder, index) in visibleFolders"
+              v-for="(folder, index) in folders"
               :key="index"
               cols="12"
               sm="6"
@@ -50,7 +50,6 @@
     </v-dialog>
   </v-app>
 </template>
-
 <script>
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
@@ -215,7 +214,6 @@ export default {
       newFolderName,
       folders,
       createDirectory,
-      visibleFolders,
       errorMessage,
       successMessage,
       openDialog,
@@ -224,24 +222,26 @@ export default {
   }
 };
 </script>
-
 <style scoped>
 .column {
   flex-shrink: 0;
   overflow: hidden;
   height: 100%;
 }
+
 .user-info {
   padding: 2px; /* Паддинг в 2 пикселя */
   color: black;
   font-size: 0.7rem; /* Меньший размер текста */
   margin-top: 0; /* Прижатие к верхней части */
 }
+
 .app-bar-container {
   display: flex;
   align-items: center;
   width: 100%;
 }
+
 .yellow-box {
   flex: 1;
   height: 40px;
@@ -251,6 +251,7 @@ export default {
   display: flex;
   align-items: flex-start; /* Прижатие содержимого к верхней части */
 }
+
 .green-box {
   flex: 1;
   height: 40px;
@@ -260,6 +261,7 @@ export default {
   align-items: center;
   margin-right: 5px;
 }
+
 .folder-card {
   width: 90%;
   height: 90%; /* Карточка занимает всю высоту колонки */
@@ -267,22 +269,20 @@ export default {
   margin: 5px;
   */
 }
+
 .v-main {
   overflow-y: auto; /* Добавление вертикальной прокрутки */
   max-height: calc(100vh - 80px); /* Вычитаем высоту app-bar */
 }
-.v-container {
-  /*
-  padding: 5px; !* Устанавливаем отступы вокруг контейнера *!
-  */
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  /*
-  gap: 5px; !* Устанавливаем расстояние между карточками *!
-  */
-}
-.brown-background {
 
+.v-container {
+  /*  padding: 5px; !* Устанавливаем отступы вокруг контейнера *!
+    display: grid;*/
+  /* grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+   gap: 5px; !* Устанавливаем расстояние между карточками *!*/
+}
+
+.brown-background {
   background-color: brown; /* Устанавливаем коричневый фон */
 }
 </style>
