@@ -16,14 +16,14 @@
     </v-app-bar>
     <v-main>
       <v-container class="brown-background fill-height mb-0">
-        <v-row no-gutters class="fill-height" >
+        <v-row no-gutters class="fill-height folders-container">
           <v-col
               v-for="(folder, index) in folders"
               :key="index"
               cols="12"
               sm="6"
               md="4"
-              class="d-flex align-start"
+              class="d-flex align-start folder-column"
           >
             <v-card class="folder-card">
               <v-card-title>{{ folder.dir_name }}</v-card-title>
@@ -50,10 +50,12 @@
     </v-dialog>
   </v-app>
 </template>
+
 <script>
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
-import { supabase } from '@/clients/supabase.js'; // Импорт Supabase из указанного файла
+import { supabase } from '@/clients/supabase.js';
+
 export default {
   name: 'Right',
   props: {
@@ -71,7 +73,7 @@ export default {
     const errorMessage = ref('');
     const successMessage = ref('');
     let realtimeChannel = null;
-    // Функция для вычисления хеша
+
     const hashString = async (inputString) => {
       try {
         const encoder = new TextEncoder();
@@ -85,6 +87,7 @@ export default {
         throw error;
       }
     };
+
     const fetchFolders = async () => {
       try {
         const { data, error } = await supabase
@@ -98,6 +101,7 @@ export default {
         console.error('Ошибка при получении директорий:', error);
       }
     };
+
     const checkHashUniqueness = async (dirHash) => {
       try {
         const { data, error } = await supabase
@@ -113,11 +117,12 @@ export default {
         return false;
       }
     };
+
     const createDirectory = async () => {
       try {
         if (newFolderName.value.trim()) {
           const upperCaseFolderName = newFolderName.value.toUpperCase();
-          const dirHash = await hashString(upperCaseFolderName); // Вычисление хеша
+          const dirHash = await hashString(upperCaseFolderName);
           const isUnique = await checkHashUniqueness(dirHash);
           if (!isUnique) {
             errorMessage.value = 'Директория с таким именем уже существует!';
@@ -144,7 +149,6 @@ export default {
             return;
           }
           console.log('Ответ от Supabase:', data);
-          // Закрываем диалоговое окно и показываем сообщение об успешном создании
           successMessage.value = 'Dir Is Created!!!';
           setTimeout(() => {
             closeDialog();
@@ -158,18 +162,21 @@ export default {
         }, 2000);
       }
     };
+
     const openDialog = () => {
       console.log('Открываем диалоговое окно');
       dialog.value = true;
       errorMessage.value = '';
       successMessage.value = '';
     };
+
     const closeDialog = () => {
       dialog.value = false;
       newFolderName.value = '';
       errorMessage.value = '';
       successMessage.value = '';
     };
+
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
           .channel('realtime-dirs')
@@ -193,21 +200,22 @@ export default {
           )
           .subscribe();
     };
+
     const unsubscribeFromRealtimeChanges = () => {
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }
     };
+
     onMounted(() => {
       fetchFolders();
       subscribeToRealtimeChanges();
     });
+
     onUnmounted(() => {
       unsubscribeFromRealtimeChanges();
     });
-    const visibleFolders = computed(() => {
-      return folders.value.slice(0, 12);
-    });
+
     return {
       userId,
       dialog,
@@ -222,6 +230,7 @@ export default {
   }
 };
 </script>
+
 <style scoped>
 .column {
   flex-shrink: 0;
@@ -230,10 +239,10 @@ export default {
 }
 
 .user-info {
-  padding: 2px; /* Паддинг в 2 пикселя */
+  padding: 2px;
   color: black;
-  font-size: 0.7rem; /* Меньший размер текста */
-  margin-top: 0; /* Прижатие к верхней части */
+  font-size: 0.7rem;
+  margin-top: 0;
 }
 
 .app-bar-container {
@@ -249,7 +258,7 @@ export default {
   margin-right: 5px;
   margin-left: 5px;
   display: flex;
-  align-items: flex-start; /* Прижатие содержимого к верхней части */
+  align-items: flex-start;
 }
 
 .green-box {
@@ -264,25 +273,51 @@ export default {
 
 .folder-card {
   width: 90%;
-  height: 90%; /* Карточка занимает всю высоту колонки */
-  /*
-  margin: 5px;
-  */
+  height: 135%;
+  margin: 8px;
+  flex-shrink: 0;
 }
 
 .v-main {
-  overflow-y: auto; /* Добавление вертикальной прокрутки */
-  max-height: calc(100vh - 80px); /* Вычитаем высоту app-bar */
-}
-
-.v-container {
-  /*  padding: 5px; !* Устанавливаем отступы вокруг контейнера *!
-    display: grid;*/
-  /* grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-   gap: 5px; !* Устанавливаем расстояние между карточками *!*/
+  overflow: hidden;
+  height: calc(100vh - 64px);
 }
 
 .brown-background {
-  background-color: brown; /* Устанавливаем коричневый фон */
+  background-color: brown;
+  height: 100%;
+  padding: 0;
+  overflow-y: auto;
+  max-height: calc(100vh - 64px);
+}
+
+.folders-container {
+  height: auto;
+  min-height: 100%;
+  margin: 0;
+  padding: 16px;
+}
+
+.folder-column {
+  min-height: fit-content;
+  height: 120px;
+}
+
+/* Добавляем стили для скроллбара */
+.brown-background::-webkit-scrollbar {
+  width: 8px;
+}
+
+.brown-background::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.brown-background::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.brown-background::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
 }
 </style>
