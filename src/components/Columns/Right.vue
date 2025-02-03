@@ -15,39 +15,22 @@
       </div>
     </v-app-bar>
     <v-main>
-      <v-container class="brown-background folders-container" >
-        <v-row >
-          <v-col v-for="(folder, index) in folders"
+      <v-container class="brown-background folders-container">
+        <v-row>
+          <v-col
+              v-for="(folder, index) in folders"
               :key="index"
-              :cols="columnSize">
-            <v-sheet class="pa-12"
-                color="grey"
-                :key="index"
-            >{{ folder.dir_name }}
+              :cols="columnSize" class="folder-column"
+
+          >
+            <v-sheet
+                class="pa-xxl-15"
+                height="160">
+              {{ folder.dir_name }}
             </v-sheet>
           </v-col>
         </v-row>
       </v-container>
-
-<!--      <v-container class="brown-background fill-height mb-0" >
-        <v-row no-gutters class="fill-height folders-container">
-          <v-col
-              v-for="(folder, index) in folders"
-              :key="index"
-              :cols="columnSize"
-              class="d-flex align-start folder-column"
-          >
-
-            <v-sheet class="folder-card">
-              {{ folder.dir_name }}
-            </v-sheet>
-&lt;!&ndash;            <v-card class="folder-card">
-              <v-card-title>{{ folder.dir_name }}</v-card-title>
-            </v-card>&ndash;&gt;
-          </v-col>
-        </v-row>
-      </v-container>-->
-
     </v-main>
     <!-- Диалоговое окно -->
     <v-dialog v-model="dialog" max-width="400px">
@@ -270,11 +253,6 @@ export default {
 </script>
 
 <style scoped>
-/*.column {
-  flex-shrink: 0;
-  overflow: hidden;
-  height: 100%;
-}*/
 
 .user-info {
   padding: 2px;
@@ -309,22 +287,6 @@ export default {
   margin-right: 5px;
 }
 
-.folder-card {
-  width: 90%;
-  height: 100%;
-  margin-bottom: 8px;
-  /*
-  flex-shrink: 0;
-  */
-}
-
-.v-main {
-  /*
-  overflow: hidden;
-  */
-  height: calc(100vh - 64px);
-}
-
 .brown-background {
   background-color: brown;
   height: 100%;
@@ -334,28 +296,22 @@ export default {
 }
 
 .folders-container {
-  height: auto;
-  /*
-  min-height: 200%;
-  */
-  display: flex;
-  flex-wrap: wrap;
-  padding: 16px 16px 10px;
-  /*
-  padding-bottom: 20px;
-  */
+  height: 90%;
+/*  display: flex;
+  flex-wrap: wrap;*/
+  padding: 3% 5px 5%;
 }
 
-.folder-column {
-
+/*.folder-column {
   min-height: fit-content;
   height: 120px;
-  flex-grow: 1; /* Растягиваем элементы на всю доступную ширину */
-}
+  flex-grow: 1;
+  !*Растягиваем элементы на всю доступную ширину *!
+}*/
 
 /* Добавляем стили для скроллбара */
 .brown-background::-webkit-scrollbar {
-  width: 20px;
+  width: 12px;
 }
 
 .brown-background::-webkit-scrollbar-track {
