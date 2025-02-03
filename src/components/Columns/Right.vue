@@ -20,7 +20,7 @@
           <v-col v-for="(folder, index) in folders"
               :key="index"
               :cols="columnSize">
-            <v-sheet class="pa-12"
+            <v-sheet class="pa-14"
                 color="grey"
                 :key="index"
             >{{ folder.dir_name }}
@@ -309,21 +309,9 @@ export default {
   margin-right: 5px;
 }
 
-.folder-card {
-  width: 90%;
-  height: 100%;
-  margin-bottom: 8px;
-  /*
-  flex-shrink: 0;
-  */
-}
 
-.v-main {
-  /*
-  overflow: hidden;
-  */
-  height: calc(100vh - 64px);
-}
+
+
 
 .brown-background {
   background-color: brown;
@@ -334,16 +322,13 @@ export default {
 }
 
 .folders-container {
-  height: auto;
-  /*
-  min-height: 200%;
-  */
+  height: 90%;
   display: flex;
   flex-wrap: wrap;
-  padding: 16px 16px 10px;
   /*
-  padding-bottom: 20px;
+  padding: 10px 10px;
   */
+  padding-bottom: 20px;
 }
 
 .folder-column {
