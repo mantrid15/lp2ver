@@ -1,20 +1,23 @@
 <template>
   <v-app :style="{ width: width, margin: '0 auto' }">
     <v-app-bar app color="red" dark>
-      <div class="app-bar-container" :class="{ 'single-column': columnSize === 12 }">
+      <div class="app-bar-container">
+        <!-- Желтый модуль -->
         <div v-if="columnSize <= 4" class="yellow-box">
           <div v-if="userId" class="user-info">
             User ID: {{ userId }}
           </div>
         </div>
-        <div v-if="columnSize <= 6" class="blue-box" :class="{ 'narrow': columnSize === 12 }">
+        <!-- Синий модуль -->
+        <div :class="['blue-box', { 'blue-box-small': columnSize === 1, 'blue-box-margin': columnSize === 6 }]">
           <div class="blue-content">
-            Filters
+            Filter
           </div>
         </div>
-        <div class="green-box" :class="{ 'narrow': columnSize === 12 }">
+        <!-- Зеленый модуль -->
+        <div :class="['green-box', { 'green-box-small': columnSize === 1 }]">
           <v-btn icon color="white" @click="openDialog">
-            <v-icon class="full-icon">mdi-folder-plus</v-icon>
+            <v-icon>mdi-folder-plus</v-icon>
           </v-btn>
         </div>
       </div>
@@ -282,6 +285,7 @@ export default {
   margin-left: 5px;
   display: flex;
   align-items: flex-start;
+  border-radius: 5px; /* Закругление углов */
 }
 .blue-box {
   flex: 1;
@@ -291,10 +295,13 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 5px; /* Закругление углов */
 }
-.blue-content {
-  color: white;
-  font-size: 0.9rem;
+.blue-box-small {
+  flex: 0.67; /* Уменьшаем ширину на 1/3 */
+}
+.blue-box-margin {
+  margin-left: 5px; /* Отступ слева для blue-box при 2 столбцах */
 }
 .green-box {
   flex: 1;
@@ -304,12 +311,11 @@ export default {
   justify-content: center;
   align-items: center;
   margin-right: 5px;
+  border-radius: 5px; /* Закругление углов */
 }
-.full-icon {
-  font-size: 2rem; /* Задайте размер иконки */
-  width: 100%; /* Занимает все пространство */
+.green-box-small {
+  flex: 0.33; /* Уменьшаем ширину в 3 раза */
 }
-
 .brown-background {
   background-color: brown;
   height: 100%;
@@ -353,31 +359,23 @@ export default {
   background: linear-gradient(to bottom, #f0e68c, #d2b48c); /* Градиентный цвет иконки */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  transition: font-size 0.3s ease;
-}
-
-.single-column {
-  flex-direction: row; /* Горизонтальное расположение */
-}
-
-.narrow {
-  flex: 0.5; /* Уменьшаем ширину до половины */
+  transition: font-size 0.3s ease; /* Плавное изменение размера иконки */
 }
 
 @media (max-width: 768px) {
   .folder-card {
-    height: 150px;
+    height: 150px; /* Уменьшаем высоту карточки на маленьких экранах */
   }
 
   .folder-name {
-    font-size: calc(0.8rem + (100% - 150px) * 0.5 / 300);
+    font-size: calc(0.8rem + (100% - 150px) * 0.5 / 300); /* Меньший начальный размер шрифта */
   }
 
   .folder-icon {
-    font-size: calc(4rem + (100% - 150px) * 5 / 300);
+    font-size: calc(4rem + (100% - 150px) * 5 / 300); /* Меньший начальный размер иконки */
   }
 }
-
+/* Добавляем стили для скроллбара */
 .brown-background::-webkit-scrollbar {
   width: 12px;
 }
