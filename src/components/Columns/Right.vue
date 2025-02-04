@@ -4,7 +4,7 @@
       <div class="app-bar-container">
         <div class="yellow-box">
           <div v-if="userId" class="user-info">
-            ID пользователя: {{ userId }}
+            User ID: {{ userId }}
           </div>
         </div>
         <div class="green-box">
@@ -67,6 +67,11 @@ export default {
   setup(props) {
     const store = useStore();
     const userId = computed(() => store.state.userId);
+/*    const email = computed(() => {
+      const userMetadata = store.state.user_metadata;
+      return userMetadata ? userMetadata.email : null; // Возвращаем email, если userMetadata существует
+    });*/
+
     const dialog = ref(false);
     const newFolderName = ref('');
     const folders = ref([]);
@@ -306,6 +311,7 @@ export default {
   align-items: center;
   justify-content: center;
   height: 200px; /* Увеличенная высота карточки */
+  transition: all 0.3s ease; /* Добавляем плавный переход */
 }
 .folder-title {
   display: flex;
@@ -315,8 +321,9 @@ export default {
   margin: 0;
 }
 .folder-name {
-  font-size: 1.0rem;
+  font-size: calc(1rem + (100% - 200px) * 0.5 / 300); /* Адаптивный размер шрифта */
   margin-bottom: 16px; /* Отступ между названием и иконкой */
+  transition: font-size 0.3s ease; /* Плавное изменение размера шрифта */
 }
 .folder-icon {
   font-size: 10rem; /* Очень большой размер иконки */
@@ -324,6 +331,20 @@ export default {
   background: linear-gradient(to bottom, #f0e68c, #d2b48c); /* Градиентный цвет иконки */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+@media (max-width: 768px) {
+  .folder-card {
+    height: 150px; /* Уменьшаем высоту карточки на маленьких экранах */
+  }
+
+  .folder-name {
+    font-size: calc(0.8rem + (100% - 150px) * 0.5 / 300); /* Меньший начальный размер шрифта */
+  }
+
+  .folder-icon {
+    font-size: calc(4rem + (100% - 150px) * 5 / 300); /* Меньший начальный размер иконки */
+  }
 }
 /* Добавляем стили для скроллбара */
 .brown-background::-webkit-scrollbar {
