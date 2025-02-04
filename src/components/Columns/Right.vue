@@ -258,7 +258,6 @@ export default {
 </script>
 
 <style scoped>
-
 .user-info {
   padding: 2px;
   color: black;
@@ -310,7 +309,7 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 200px; /* Увеличенная высота карточки */
+  height: 130px; /* Увеличенная высота карточки */
   transition: all 0.3s ease; /* Добавляем плавный переход */
 }
 .folder-title {
@@ -322,15 +321,16 @@ export default {
 }
 .folder-name {
   font-size: calc(1rem + (100% - 200px) * 0.5 / 300); /* Адаптивный размер шрифта */
-  margin-bottom: 16px; /* Отступ между названием и иконкой */
+  margin-bottom: 15px; /* Отступ между названием и иконкой */
   transition: font-size 0.3s ease; /* Плавное изменение размера шрифта */
 }
 .folder-icon {
-  font-size: 10rem; /* Очень большой размер иконки */
+  font-size: calc(5rem + (100% - 200px) * 5 / 300); /* Адаптивный размер иконки */
   color: transparent;
   background: linear-gradient(to bottom, #f0e68c, #d2b48c); /* Градиентный цвет иконки */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  transition: font-size 0.3s ease; /* Плавное изменение размера иконки */
 }
 
 @media (max-width: 768px) {
