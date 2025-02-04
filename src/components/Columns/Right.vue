@@ -1,15 +1,20 @@
 <template>
   <v-app :style="{ width: width, margin: '0 auto' }">
     <v-app-bar app color="red" dark>
-      <div class="app-bar-container">
-        <div class="yellow-box">
+      <div class="app-bar-container" :class="{ 'single-column': columnSize === 12 }">
+        <div v-if="columnSize <= 4" class="yellow-box">
           <div v-if="userId" class="user-info">
             User ID: {{ userId }}
           </div>
         </div>
-        <div class="green-box">
+        <div v-if="columnSize <= 6" class="blue-box" :class="{ 'narrow': columnSize === 12 }">
+          <div class="blue-content">
+            Filters
+          </div>
+        </div>
+        <div class="green-box" :class="{ 'narrow': columnSize === 12 }">
           <v-btn icon color="white" @click="openDialog">
-            <v-icon>mdi-folder-plus</v-icon>
+            <v-icon class="full-icon">mdi-folder-plus</v-icon>
           </v-btn>
         </div>
       </div>
@@ -278,6 +283,19 @@ export default {
   display: flex;
   align-items: flex-start;
 }
+.blue-box {
+  flex: 1;
+  height: 40px;
+  background-color: blue;
+  margin-right: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.blue-content {
+  color: white;
+  font-size: 0.9rem;
+}
 .green-box {
   flex: 1;
   height: 40px;
@@ -287,6 +305,11 @@ export default {
   align-items: center;
   margin-right: 5px;
 }
+.full-icon {
+  font-size: 2rem; /* Задайте размер иконки */
+  width: 100%; /* Занимает все пространство */
+}
+
 .brown-background {
   background-color: brown;
   height: 100%;
@@ -330,23 +353,31 @@ export default {
   background: linear-gradient(to bottom, #f0e68c, #d2b48c); /* Градиентный цвет иконки */
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  transition: font-size 0.3s ease; /* Плавное изменение размера иконки */
+  transition: font-size 0.3s ease;
+}
+
+.single-column {
+  flex-direction: row; /* Горизонтальное расположение */
+}
+
+.narrow {
+  flex: 0.5; /* Уменьшаем ширину до половины */
 }
 
 @media (max-width: 768px) {
   .folder-card {
-    height: 150px; /* Уменьшаем высоту карточки на маленьких экранах */
+    height: 150px;
   }
 
   .folder-name {
-    font-size: calc(0.8rem + (100% - 150px) * 0.5 / 300); /* Меньший начальный размер шрифта */
+    font-size: calc(0.8rem + (100% - 150px) * 0.5 / 300);
   }
 
   .folder-icon {
-    font-size: calc(4rem + (100% - 150px) * 5 / 300); /* Меньший начальный размер иконки */
+    font-size: calc(4rem + (100% - 150px) * 5 / 300);
   }
 }
-/* Добавляем стили для скроллбара */
+
 .brown-background::-webkit-scrollbar {
   width: 12px;
 }
