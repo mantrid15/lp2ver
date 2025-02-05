@@ -2,16 +2,16 @@ import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import vueDevTools from 'vite-plugin-vue-devtools';
+import vuetify from 'vite-plugin-vuetify'; // Импортируем плагин Vuetify
 import path from 'path'; // Не забудьте импортировать path
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
+    vuetify({ autoImport: true }), // Добавляем плагин Vuetify с автоимпортом
     // vueDevTools(),
-
   ],
-
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)), // Указывает на папку src
@@ -25,7 +25,6 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''), // Удаляет '/api' из пути
       },
-
     },
     hmr: {
       overlay: false

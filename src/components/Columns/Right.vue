@@ -1,4 +1,4 @@
-vue
+
 <template>
   <v-app :style="{ width: width, margin: '0 auto' }">
     <v-app-bar app color="red" dark>
@@ -77,18 +77,16 @@ vue
         <v-card-text>
           <v-list>
             <v-list-item v-for="(folder, index) in folders" :key="index" style="display: flex; align-items: center; margin: 3px 0;">
-              <v-list-item-content>
-                <v-list-item-title style="display: flex; align-items: center;">
-                  <v-radio
-                      :value="folder.id"
-                      v-model="selectedFolderId"
-                      color="primary"
-                      @change="setSelectedFolder(folder.id)"
-                      @click.stop="toggleFolder(folder.id)"
-                  ></v-radio>
-                  <span>{{ folder.dir_name }}</span>
-                </v-list-item-title>
-              </v-list-item-content>
+              <v-list-item-title style="display: flex; align-items: center;">
+                <v-radio
+                    :value="folder.id"
+                    v-model="selectedFolderId"
+                    color="primary"
+                    @change="setSelectedFolder(folder.id)"
+                    @click.stop="toggleFolder(folder.id)"
+                ></v-radio>
+                <span>{{ folder.dir_name }}</span>
+              </v-list-item-title>
             </v-list-item>
           </v-list>
         </v-card-text>
@@ -101,17 +99,23 @@ vue
     </v-dialog>
   </v-app>
 </template>
-
 <script>
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
+import { VList, VListItem,VListItemTitle, VRadio } from 'vuetify/components';
 
 const SORT_ASC_ICON = '↑';
 const SORT_DESC_ICON = '↓';
 const SORT_DEFAULT_ICON = '⇅';
 
 export default {
+  components: {
+    VList,
+    VListItem,
+    VListItemTitle,
+    VRadio
+  },
   name: 'Right',
   props: {
     width: {
@@ -235,12 +239,12 @@ export default {
       }
     };
 
-    const deleteFolder = async (folderName) => {
+    const deleteFolderById = async (folderId) => {
       try {
         const { data, error } = await supabase
             .from('dir')
             .delete()
-            .eq('dir_name', folderName); // Удаляем по имени папки
+            .eq('id', folderId); // Удаляем по уникальному ID
         if (error) {
           throw error;
         }
@@ -255,6 +259,13 @@ export default {
         setTimeout(() => {
           errorMessage.value = '';
         }, 2000);
+      }
+    };
+
+    const deleteSelectedFolder = async () => {
+      if (selectedFolderId.value) {
+        await deleteFolderById(selectedFolderId.value); // Удаляем по ID
+        selectedFolderId.value = null;
       }
     };
 
@@ -288,22 +299,8 @@ export default {
       }
     };
 
-    const deleteSelectedFolder = async () => {
-      if (selectedFolderId.value) {
-        const folderToDelete = folders.value.find(folder => folder.id === selectedFolderId.value);
-        if (folderToDelete) {
-          await deleteFolder(folderToDelete.dir_name); // Удаляем папку по имени
-          selectedFolderId.value = null; // Сбросить выбор после удаления
-        }
-      }
-    };
-
     onMounted(() => {
       fetchFolders();
-    });
-
-    onUnmounted(() => {
-      // Очистка ресурсов, если необходимо
     });
 
     return {
@@ -315,7 +312,6 @@ export default {
       filter,
       filteredFolders,
       createDirectory,
-      deleteFolder,
       errorMessage,
       successMessage,
       openDialog,
@@ -333,7 +329,6 @@ export default {
   }
 };
 </script>
-
 <style scoped>
 .filter-input {
   margin-left: 5px;
