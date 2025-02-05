@@ -16,14 +16,13 @@ vue
                 v-model="filter"
                 placeholder="Фильтр"
                 class="filter-input"
-                :style="{ width: '66%', height: '30px', padding: '0 10px', borderRadius: '5px', border: '1px solid #ccc' }"
+                :style="{ width: '80%', height: '30px', padding: '0', borderRadius: '5px', border: '1px solid #ccc' }"
             />
-            <div class="sort-icons">
+            <div class="sort-icons" style="width: 20%;">
               <v-btn @click="cycleSort" icon>
                 <v-icon color="white">{{ currentSortIcon }}</v-icon>
               </v-btn>
             </div>
-
           </div>
         </div>
         <!-- Зеленый модуль -->
@@ -253,6 +252,14 @@ export default {
 .filter-input {
   margin-left: 5px; /* Отступ между полем ввода и кнопками сортировки */
   background-color: white; /* Устанавливаем белый цвет фона */
+  padding: 0; /* Убираем отступы */
+  border: 1px solid #ccc; /* Убедитесь, что граница установлена */
+  border-radius: 5px; /* Закругление углов */
+}
+.filter-input:focus {
+  border-color: #ff8c00; /* Цвет границы при фокусе */
+  background-color: #ffe5b4; /* Оранжевый фон при фокусе */
+  outline: none; /* Убираем стандартное обводка при фокусе */
 }
 .user-info {
   padding: 2px;
