@@ -27,8 +27,11 @@ vue
         </div>
         <!-- Зеленый модуль -->
         <div :class="['green-box', { 'green-box-small': columnSize === 1 }]">
-          <v-btn icon color="white" @click="openDialog">
-            <v-icon>mdi-folder-plus</v-icon>
+          <v-btn icon color="white" @click="openDialog" style="display: flex; justify-content: right; align-items: center; height: 100%; margin-left: 40px">
+            <v-icon style="font-size: 36px;">mdi-folder-plus</v-icon>
+          </v-btn>
+          <v-btn icon color="white" @click="openFolderListDialog" style="position: relative; margin-left: auto;">
+            <v-icon class="delete-icon" style="font-size: 18px; color: black; position: absolute; bottom: 0; right: 0; left:30px; top: 25px;cursor: pointer;">mdi-delete</v-icon>
           </v-btn>
         </div>
       </div>
@@ -51,7 +54,7 @@ vue
         </v-row>
       </v-container>
     </v-main>
-    <!-- Диалоговое окно -->
+    <!-- Диалоговое окно для создания новой директории -->
     <v-dialog v-model="dialog" max-width="400px">
       <v-card>
         <v-card-title class="headline">Создание новой директории</v-card-title>
@@ -63,7 +66,36 @@ vue
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="green darken-1" text @click="closeDialog">Отмена</v-btn>
-          <v-btn color="green darken-1" text @click="createDirectory">Create Dir</v-btn>
+          <v-btn color="green darken-1" text @click="createDirectory">Создать директорию</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <!-- Диалоговое окно для отображения списка папок -->
+    <v-dialog v-model="folderListDialog" max-width="300px">
+      <v-card>
+        <v-card-title class="headline">Список папок</v-card-title>
+        <v-card-text>
+          <v-list>
+            <v-list-item v-for="(folder, index) in folders" :key="index" style="display: flex; align-items: center; margin: 3px 0;">
+              <v-list-item-content>
+                <v-list-item-title style="display: flex; align-items: center;">
+                  <v-radio
+                      :value="folder.id"
+                      v-model="selectedFolderId"
+                      color="primary"
+                      @change="setSelectedFolder(folder.id)"
+                      @click.stop="toggleFolder(folder.id)"
+                  ></v-radio>
+                  <span>{{ folder.dir_name }}</span>
+                </v-list-item-title>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="green darken-1" text @click="folderListDialog = false">Закрыть</v-btn>
+          <v-btn color="red darken-1" text @click="deleteSelectedFolder" :disabled="!selectedFolderId">Удалить</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -74,6 +106,7 @@ vue
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
+
 const SORT_ASC_ICON = '↑';
 const SORT_DESC_ICON = '↓';
 const SORT_DEFAULT_ICON = '⇅';
@@ -90,39 +123,36 @@ export default {
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const dialog = ref(false);
+    const folderListDialog = ref(false);
     const newFolderName = ref('');
     const folders = ref([]);
     const errorMessage = ref('');
     const successMessage = ref('');
     const filter = ref('');
-    const currentSortOrder = ref(0); // 0 - default, 1 - asc, 2 - desc
+    const currentSortOrder = ref(0);
     const sortOrderIcons = [SORT_DEFAULT_ICON, SORT_ASC_ICON, SORT_DESC_ICON];
     const sortOrderValues = ['default', 'asc', 'desc'];
-    let realtimeChannel = null;
+    const selectedFolderId = ref(null);
 
-    // Вычисляемое свойство для определения количества столбцов
     const columnSize = computed(() => {
       const widthValue = parseFloat(props.width);
       if (widthValue > 22) {
-        return 4; // 3 столбца (12 / 4 = 3)
+        return 4;
       } else if (widthValue > 14) {
-        return 6; // 2 столбца (12 / 6 = 2)
+        return 6;
       } else {
-        return 12; // 1 столбец (12 / 12 = 1)
+        return 12;
       }
     });
 
-    // Вычисляемое свойство для проверки наличия фильтра
     const hasFilter = computed(() => {
-      return filter.value.trim() !== ''; // Проверяем, есть ли введенный фильтр
+      return filter.value.trim() !== '';
     });
 
-    // Вычисляемое свойство для текущей иконки сортировки
     const currentSortIcon = computed(() => {
       return sortOrderIcons[currentSortOrder.value];
     });
 
-    // Отслеживание изменения значения width
     watch(
         () => props.width,
         (newWidth) => {
@@ -146,7 +176,7 @@ export default {
 
     const filteredFolders = computed(() => {
       let result = folders.value.filter(folder =>
-        folder.dir_name.toLowerCase().includes(filter.value.toLowerCase())
+          folder.dir_name.toLowerCase().includes(filter.value.toLowerCase())
       );
       if (sortOrderValues[currentSortOrder.value] === 'asc') {
         result.sort((a, b) => a.id - b.id);
@@ -191,7 +221,7 @@ export default {
             return;
           }
           console.log('Ответ от Supabase:', data);
-          successMessage.value = 'Dir Is Created!!!';
+          successMessage.value = 'Директория создана!';
           setTimeout(() => {
             closeDialog();
           }, 1000);
@@ -199,6 +229,29 @@ export default {
       } catch (error) {
         console.error('Необработанная ошибка при создании директории:', error);
         errorMessage.value = 'Произошла неизвестная ошибка при создании директории!';
+        setTimeout(() => {
+          errorMessage.value = '';
+        }, 2000);
+      }
+    };
+
+    const deleteFolder = async (folderName) => {
+      try {
+        const { data, error } = await supabase
+            .from('dir')
+            .delete()
+            .eq('dir_name', folderName); // Удаляем по имени папки
+        if (error) {
+          throw error;
+        }
+        await fetchFolders();
+        successMessage.value = 'Папка успешно удалена!';
+        setTimeout(() => {
+          successMessage.value = '';
+        }, 2000);
+      } catch (error) {
+        console.error('Ошибка при удалении папки:', error);
+        errorMessage.value = 'Ошибка при удалении папки!';
         setTimeout(() => {
           errorMessage.value = '';
         }, 2000);
@@ -219,6 +272,32 @@ export default {
       successMessage.value = '';
     };
 
+    const openFolderListDialog = () => {
+      folderListDialog.value = true;
+    };
+
+    const setSelectedFolder = (folderId) => {
+      selectedFolderId.value = folderId;
+    };
+
+    const toggleFolder = (folderId) => {
+      if (selectedFolderId.value === folderId) {
+        selectedFolderId.value = null; // Снять выбор, если уже выбран
+      } else {
+        selectedFolderId.value = folderId; // Установить выбор
+      }
+    };
+
+    const deleteSelectedFolder = async () => {
+      if (selectedFolderId.value) {
+        const folderToDelete = folders.value.find(folder => folder.id === selectedFolderId.value);
+        if (folderToDelete) {
+          await deleteFolder(folderToDelete.dir_name); // Удаляем папку по имени
+          selectedFolderId.value = null; // Сбросить выбор после удаления
+        }
+      }
+    };
+
     onMounted(() => {
       fetchFolders();
     });
@@ -230,11 +309,13 @@ export default {
     return {
       userId,
       dialog,
+      folderListDialog,
       newFolderName,
       folders,
       filter,
       filteredFolders,
       createDirectory,
+      deleteFolder,
       errorMessage,
       successMessage,
       openDialog,
@@ -242,7 +323,12 @@ export default {
       columnSize,
       hasFilter,
       currentSortIcon,
-      cycleSort
+      cycleSort,
+      openFolderListDialog,
+      selectedFolderId,
+      deleteSelectedFolder,
+      setSelectedFolder,
+      toggleFolder,
     };
   }
 };
@@ -250,16 +336,16 @@ export default {
 
 <style scoped>
 .filter-input {
-  margin-left: 5px; /* Отступ между полем ввода и кнопками сортировки */
-  background-color: white; /* Устанавливаем белый цвет фона */
-  padding: 0; /* Убираем отступы */
-  border: 1px solid #ccc; /* Убедитесь, что граница установлена */
-  border-radius: 5px; /* Закругление углов */
+  margin-left: 5px;
+  background-color: white;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }
 .filter-input:focus {
-  border-color: #ff8c00; /* Цвет границы при фокусе */
-  background-color: #ffe5b4; /* Оранжевый фон при фокусе */
-  outline: none; /* Убираем стандартное обводка при фокусе */
+  border-color: #ff8c00;
+  background-color: #ffe5b4;
+  outline: none;
 }
 .user-info {
   padding: 2px;
@@ -280,7 +366,7 @@ export default {
   margin-left: 5px;
   display: flex;
   align-items: flex-start;
-  border-radius: 5px; /* Закругление углов */
+  border-radius: 5px;
 }
 .blue-box {
   flex: 1;
@@ -290,18 +376,18 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 5px; /* Закругление углов */
+  border-radius: 5px;
 }
 .blue-box-small {
-  flex: 0.67; /* Уменьшаем ширину на 1/3 */
+  flex: 0.67;
 }
 .blue-box-margin {
-  margin-left: 5px; /* Отступ слева для blue-box при 2 столбцах */
+  margin-left: 5px;
 }
 .blue-content {
   display: flex;
-  align-items: center; /* Выравниваем элементы по центру по вертикали */
-  justify-content: center; /* Выравниваем элементы по центру по горизонтали */
+  align-items: center;
+  justify-content: center;
   width: 100%;
 }
 .green-box {
@@ -312,10 +398,10 @@ export default {
   justify-content: center;
   align-items: center;
   margin-right: 5px;
-  border-radius: 5px; /* Закругление углов */
+  border-radius: 5px;
 }
 .green-box-small {
-  flex: 0.33; /* Уменьшаем ширину в 3 раза */
+  flex: 0.33;
 }
 .brown-background {
   background-color: brown;
@@ -329,7 +415,7 @@ export default {
   padding: 3% 10px 5%;
 }
 .folder-card {
-  background-color: #fff; /* Белый фон для карточки */
+  background-color: #fff;
   border: 1px solid #d9d9d9;
   border-radius: 4px;
   padding: 24px;
@@ -339,8 +425,8 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 130px; /* Увеличенная высота карточки */
-  transition: all 0.3s ease; /* Добавляем плавный переход */
+  height: 130px;
+  transition: all 0.3s ease;
 }
 .folder-title {
   display: flex;
@@ -350,30 +436,29 @@ export default {
   margin: 0;
 }
 .folder-name {
-  font-size: calc(1rem + (100% - 200px) * 0.5 / 300); /* Адаптивный размер шрифта */
-  margin-bottom: 15px; /* Отступ между названием и иконкой */
-  transition: font-size 0.3s ease; /* Плавное изменение размера шрифта */
+  font-size: calc(1rem + (100% - 200px) * 0.5 / 300);
+  margin-bottom: 15px;
+  transition: font-size 0.3s ease;
 }
 .folder-icon {
-  font-size: calc(5rem + (100% - 200px) * 5 / 300); /* Адаптивный размер иконки */
+  font-size: calc(5rem + (100% - 200px) * 5 / 300);
   color: transparent;
-  background: linear-gradient(to bottom, #f0e68c, #d2b48c); /* Градиентный цвет иконки */
+  background: linear-gradient(to bottom, #f0e68c, #d2b48c);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  transition: font-size 0.3s ease; /* Плавное изменение размера иконки */
+  transition: font-size 0.3s ease;
 }
 @media (max-width: 768px) {
   .folder-card {
-    height: 150px; /* Уменьшаем высоту карточки на маленьких экранах */
+    height: 150px;
   }
   .folder-name {
-    font-size: calc(0.8rem + (100% - 150px) * 0.5 / 300); /* Меньший начальный размер шрифта */
+    font-size: calc(0.8rem + (100% - 150px) * 0.5 / 300);
   }
   .folder-icon {
-    font-size: calc(4rem + (100% - 150px) * 5 / 300); /* Меньший начальный размер иконки */
+    font-size: calc(4rem + (100% - 150px) * 5 / 300);
   }
 }
-/* Добавляем стили для скроллбара */
 .brown-background::-webkit-scrollbar {
   width: 12px;
 }
@@ -388,7 +473,7 @@ export default {
   background: rgba(0, 0, 0, 0.5);
 }
 .sort-icons {
-  margin-right: 10px; /* Отступ между иконками сортировки и полем ввода */
+  margin-right: 10px;
   color: white;
 }
 </style>
