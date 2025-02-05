@@ -1,3 +1,4 @@
+vue
 <template>
   <v-app :style="{ width: width, margin: '0 auto' }">
     <v-app-bar app color="red" dark>
@@ -8,10 +9,21 @@
             User ID: {{ userId }}
           </div>
         </div>
-        <!-- Синий модуль -->
+        <!-- Синий модуль с фильтром и сортировкой -->
         <div :class="['blue-box', { 'blue-box-small': columnSize === 1, 'blue-box-margin': columnSize === 6 }]">
           <div class="blue-content">
-            Filter
+            <input
+                v-model="filter"
+                placeholder="Фильтр"
+                class="filter-input"
+                :style="{ width: '66%', height: '30px', padding: '0 10px', borderRadius: '5px', border: '1px solid #ccc' }"
+            />
+            <div class="sort-icons">
+              <v-btn @click="cycleSort" icon>
+                <v-icon color="white">{{ currentSortIcon }}</v-icon>
+              </v-btn>
+            </div>
+
           </div>
         </div>
         <!-- Зеленый модуль -->
@@ -26,7 +38,7 @@
       <v-container class="brown-background folders-container">
         <v-row>
           <v-col
-              v-for="(folder, index) in folders"
+              v-for="(folder, index) in filteredFolders"
               :key="index"
               :cols="columnSize" class="folder-column"
           >
@@ -63,6 +75,9 @@
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
+const SORT_ASC_ICON = '↑';
+const SORT_DESC_ICON = '↓';
+const SORT_DEFAULT_ICON = '⇅';
 
 export default {
   name: 'Right',
@@ -75,16 +90,15 @@ export default {
   setup(props) {
     const store = useStore();
     const userId = computed(() => store.state.userId);
-/*    const email = computed(() => {
-      const userMetadata = store.state.user_metadata;
-      return userMetadata ? userMetadata.email : null; // Возвращаем email, если userMetadata существует
-    });*/
-
     const dialog = ref(false);
     const newFolderName = ref('');
     const folders = ref([]);
     const errorMessage = ref('');
     const successMessage = ref('');
+    const filter = ref('');
+    const currentSortOrder = ref(0); // 0 - default, 1 - asc, 2 - desc
+    const sortOrderIcons = [SORT_DEFAULT_ICON, SORT_ASC_ICON, SORT_DESC_ICON];
+    const sortOrderValues = ['default', 'asc', 'desc'];
     let realtimeChannel = null;
 
     // Вычисляемое свойство для определения количества столбцов
@@ -99,6 +113,16 @@ export default {
       }
     });
 
+    // Вычисляемое свойство для проверки наличия фильтра
+    const hasFilter = computed(() => {
+      return filter.value.trim() !== ''; // Проверяем, есть ли введенный фильтр
+    });
+
+    // Вычисляемое свойство для текущей иконки сортировки
+    const currentSortIcon = computed(() => {
+      return sortOrderIcons[currentSortOrder.value];
+    });
+
     // Отслеживание изменения значения width
     watch(
         () => props.width,
@@ -106,20 +130,6 @@ export default {
           console.log('Новое значение width:', newWidth);
         }
     );
-
-    const hashString = async (inputString) => {
-      try {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(inputString);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
-        return hashHex;
-      } catch (error) {
-        console.error('Ошибка при вычислении хеша:', error);
-        throw error;
-      }
-    };
 
     const fetchFolders = async () => {
       try {
@@ -135,20 +145,20 @@ export default {
       }
     };
 
-    const checkHashUniqueness = async (dirHash) => {
-      try {
-        const { data, error } = await supabase
-            .from('dir')
-            .select('*')
-            .eq('dir_hash', dirHash)
-            .eq('user_id', userId.value);
-        if (error) throw error;
-        console.log('Результат проверки уникальности:', data);
-        return data.length === 0;
-      } catch (error) {
-        console.error('Ошибка при проверке уникальности хеша:', error);
-        return false;
+    const filteredFolders = computed(() => {
+      let result = folders.value.filter(folder =>
+        folder.dir_name.toLowerCase().includes(filter.value.toLowerCase())
+      );
+      if (sortOrderValues[currentSortOrder.value] === 'asc') {
+        result.sort((a, b) => a.id - b.id);
+      } else if (sortOrderValues[currentSortOrder.value] === 'desc') {
+        result.sort((a, b) => b.id - a.id);
       }
+      return result;
+    });
+
+    const cycleSort = () => {
+      currentSortOrder.value = (currentSortOrder.value + 1) % sortOrderIcons.length;
     };
 
     const createDirectory = async () => {
@@ -210,43 +220,12 @@ export default {
       successMessage.value = '';
     };
 
-    const subscribeToRealtimeChanges = () => {
-      realtimeChannel = supabase
-          .channel('realtime-dirs')
-          .on(
-              'postgres_changes',
-              { event: '*', schema: 'public', table: 'dir' },
-              (payload) => {
-                if (payload.eventType === 'INSERT') {
-                  if (payload.new.user_id === userId.value) {
-                    folders.value.push(payload.new);
-                  }
-                } else if (payload.eventType === 'UPDATE') {
-                  const index = folders.value.findIndex(folder => folder.id === payload.new.id);
-                  if (index !== -1) {
-                    folders.value[index] = payload.new;
-                  }
-                } else if (payload.eventType === 'DELETE') {
-                  folders.value = folders.value.filter(folder => folder.id !== payload.old.id);
-                }
-              }
-          )
-          .subscribe();
-    };
-
-    const unsubscribeFromRealtimeChanges = () => {
-      if (realtimeChannel) {
-        supabase.removeChannel(realtimeChannel);
-      }
-    };
-
     onMounted(() => {
       fetchFolders();
-      subscribeToRealtimeChanges();
     });
 
     onUnmounted(() => {
-      unsubscribeFromRealtimeChanges();
+      // Очистка ресурсов, если необходимо
     });
 
     return {
@@ -254,18 +233,27 @@ export default {
       dialog,
       newFolderName,
       folders,
+      filter,
+      filteredFolders,
       createDirectory,
       errorMessage,
       successMessage,
       openDialog,
       closeDialog,
-      columnSize // Возвращаем вычисляемое свойство
+      columnSize,
+      hasFilter,
+      currentSortIcon,
+      cycleSort
     };
   }
 };
 </script>
 
 <style scoped>
+.filter-input {
+  margin-left: 5px; /* Отступ между полем ввода и кнопками сортировки */
+  background-color: white; /* Устанавливаем белый цвет фона */
+}
 .user-info {
   padding: 2px;
   color: black;
@@ -302,6 +290,12 @@ export default {
 }
 .blue-box-margin {
   margin-left: 5px; /* Отступ слева для blue-box при 2 столбцах */
+}
+.blue-content {
+  display: flex;
+  align-items: center; /* Выравниваем элементы по центру по вертикали */
+  justify-content: center; /* Выравниваем элементы по центру по горизонтали */
+  width: 100%;
 }
 .green-box {
   flex: 1;
@@ -361,16 +355,13 @@ export default {
   -webkit-text-fill-color: transparent;
   transition: font-size 0.3s ease; /* Плавное изменение размера иконки */
 }
-
 @media (max-width: 768px) {
   .folder-card {
     height: 150px; /* Уменьшаем высоту карточки на маленьких экранах */
   }
-
   .folder-name {
     font-size: calc(0.8rem + (100% - 150px) * 0.5 / 300); /* Меньший начальный размер шрифта */
   }
-
   .folder-icon {
     font-size: calc(4rem + (100% - 150px) * 5 / 300); /* Меньший начальный размер иконки */
   }
@@ -388,5 +379,9 @@ export default {
 }
 .brown-background::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.5);
+}
+.sort-icons {
+  margin-right: 10px; /* Отступ между иконками сортировки и полем ввода */
+  color: white;
 }
 </style>
