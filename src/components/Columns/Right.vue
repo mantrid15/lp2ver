@@ -132,6 +132,8 @@ export default {
     const folders = ref([]);
     const errorMessage = ref('');
     const successMessage = ref('');
+    let realtimeChannel = null;
+
     const filter = ref('');
     const currentSortOrder = ref(0);
     const sortOrderIcons = [SORT_DEFAULT_ICON, SORT_ASC_ICON, SORT_DESC_ICON];
@@ -164,6 +166,20 @@ export default {
         }
     );
 
+    const hashString = async (inputString) => {
+      try {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(inputString);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+        return hashHex;
+      } catch (error) {
+        console.error('Ошибка при вычислении хеша:', error);
+        throw error;
+      }
+    };
+
     const fetchFolders = async () => {
       try {
         const { data, error } = await supabase
@@ -178,6 +194,21 @@ export default {
       }
     };
 
+    const checkHashUniqueness = async (dirHash) => {
+      try {
+        const { data, error } = await supabase
+            .from('dir')
+            .select('*')
+            .eq('dir_hash', dirHash)
+            .eq('user_id', userId.value);
+        if (error) throw error;
+        console.log('Результат проверки уникальности:', data);
+        return data.length === 0;
+      } catch (error) {
+        console.error('Ошибка при проверке уникальности хеша:', error);
+        return false;
+      }
+    };
     const filteredFolders = computed(() => {
       let result = folders.value.filter(folder =>
           folder.dir_name.toLowerCase().includes(filter.value.toLowerCase())
@@ -282,7 +313,35 @@ export default {
       errorMessage.value = '';
       successMessage.value = '';
     };
+    const subscribeToRealtimeChanges = () => {
+      realtimeChannel = supabase
+          .channel('realtime-dirs')
+          .on(
+              'postgres_changes',
+              { event: '*', schema: 'public', table: 'dir' },
+              (payload) => {
+                if (payload.eventType === 'INSERT') {
+                  if (payload.new.user_id === userId.value) {
+                    folders.value.push(payload.new);
+                  }
+                } else if (payload.eventType === 'UPDATE') {
+                  const index = folders.value.findIndex(folder => folder.id === payload.new.id);
+                  if (index !== -1) {
+                    folders.value[index] = payload.new;
+                  }
+                } else if (payload.eventType === 'DELETE') {
+                  folders.value = folders.value.filter(folder => folder.id !== payload.old.id);
+                }
+              }
+          )
+          .subscribe();
+    };
 
+    const unsubscribeFromRealtimeChanges = () => {
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
+    };
     const openFolderListDialog = () => {
       folderListDialog.value = true;
     };
@@ -301,6 +360,11 @@ export default {
 
     onMounted(() => {
       fetchFolders();
+      subscribeToRealtimeChanges();
+    });
+
+    onUnmounted(() => {
+      unsubscribeFromRealtimeChanges();
     });
 
     return {
