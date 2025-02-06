@@ -5,8 +5,8 @@
       <div class="app-bar-container">
         <!-- Желтый модуль -->
         <div v-if="columnSize <= 4" class="yellow-box">
-          <div v-if="userId" class="user-info">
-            User ID: {{ userId }}
+          <div v-if="userId && account?.data?.session?.user?.email" class="user-info">
+            Account: {{ account.data.session.user.email }}
           </div>
         </div>
         <!-- Синий модуль с фильтром и сортировкой -->
@@ -109,6 +109,7 @@ const SORT_ASC_ICON = '↑';
 const SORT_DESC_ICON = '↓';
 const SORT_DEFAULT_ICON = '⇅';
 
+
 export default {
   components: {
     VList,
@@ -126,6 +127,7 @@ export default {
   setup(props) {
     const store = useStore();
     const userId = computed(() => store.state.userId);
+    const userEmail = computed(() => store.state.user.email);
     const dialog = ref(false);
     const folderListDialog = ref(false);
     const newFolderName = ref('');
@@ -133,6 +135,8 @@ export default {
     const errorMessage = ref('');
     const successMessage = ref('');
     let realtimeChannel = null;
+
+    const account = ref();
 
     const filter = ref('');
     const currentSortOrder = ref(0);
@@ -357,10 +361,16 @@ export default {
         selectedFolderId.value = folderId; // Установить выбор
       }
     };
+    async function getSession() {
+      account.value = await supabase.auth.getSession();
+      console.log(account.value);
+    }
+
 
     onMounted(() => {
       fetchFolders();
       subscribeToRealtimeChanges();
+      getSession(); // Вызываем при монтировании компонента
     });
 
     onUnmounted(() => {
@@ -389,6 +399,8 @@ export default {
       deleteSelectedFolder,
       setSelectedFolder,
       toggleFolder,
+      userEmail,
+      account, // Возвращаем account, чтобы он был доступен в шаблоне
     };
   }
 };
