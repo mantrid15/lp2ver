@@ -41,7 +41,7 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="link in sortedLinks"
+        <tr v-for="link in filteredLinks"
             :key="link.id"
             :class="{ 'strike-through': link.id === activeLinkId }"
             draggable="true"
@@ -116,31 +116,37 @@ export default {
       type: Object,
       default: null,
     },
-
   },
   emits: ['handle-url-click', 'sort', 'update-dragged-link'],
   setup(props, { emit }) {
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const sortedLinks = ref([]);
-    const rowCount = computed(() => props.links.length);
     const currentSortKey = ref(props.sortKey);
     const currentSortOrder = ref(props.sortOrder);
     const deleteIconTimer = ref(null);
     const activeLinkId = ref(null);
-
     const draggedLink = ref(null); // Объявляем draggedLink здесь
+
     const onDragStart = (link) => {
       draggedLink.value = link;
       emit('update-dragged-link', link); // Добавляем emit для обновления draggedLink в LinzerTwo
     };
+
     const onDragEnd = () => {
       draggedLink.value = null;
     };
+
     // Вычисляемое свойство для фильтрации ссылок
     const filteredLinks = computed(() => {
-      return sortedLinks.filter(link => !link.dir_hash || link.dir_hash === '');
+      return sortedLinks.value.filter(link => {
+        console.log(link); // Отладочное сообщение для проверки структуры link
+        const dirHash = link.dir_hash;
+        return dirHash === null || dirHash === undefined || dirHash === '';
+      });
     });
+
+    const rowCount = computed(() => filteredLinks.value.length); // Обновлено для использования filteredLinks
 
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
@@ -212,15 +218,12 @@ export default {
         }
         return;
       }
-
       // Устанавливаем новую активную ссылку
       activeLinkId.value = link.id;
-
       // Очистка предыдущего таймера, если он существует
       if (deleteIconTimer.value) {
         clearTimeout(deleteIconTimer.value);
       }
-
       // Установка нового таймера для скрытия иконки удаления через 3 секунды
       deleteIconTimer.value = setTimeout(() => {
         activeLinkId.value = null;
@@ -338,7 +341,6 @@ th:nth-child(2) {
   width: fit-content; /* Заливка по содержимому */
   min-width: 40px; /* Минимальная ширина для удобства нажатия */
 }
-
 .table-container {
   max-height: calc(100vh - 100px);
   overflow-y: auto;
@@ -351,15 +353,9 @@ th:nth-child(2) {
   border-radius: 5px;
   padding: 5px 10px;
   color: white;
-  /*
-  display: inline-block;
-  */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /*
-  min-width: 120px; !* Фиксированная минимальная ширина *!
-  */
   min-width: fit-content;
   max-width: 100%;
 }
@@ -371,12 +367,6 @@ th:nth-child(2) {
 }
 .sort-icon {
   margin-left: 5px;
-  /*
-  margin-right: 5px;
-  */
-  /*
-  flex-shrink: 0;
-  */
   min-width: 15px; /* Установите минимальную ширину для иконки сортировки */
 }
 td {
@@ -434,12 +424,10 @@ tbody tr {
   text-decoration-color: red;
   text-decoration-thickness: 3px;
 }
-
 /* Удаление сдвоенной границы между ячейками */
 table {
   border-collapse: collapse;
 }
-
 th, td {
   border: 1px solid gray;
 }
