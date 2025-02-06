@@ -6,7 +6,7 @@
         <!-- Желтый модуль -->
         <div v-if="columnSize <= 4" class="yellow-box">
           <div v-if="userId && account?.data?.session?.user?.email" class="user-info">
-            Account: {{ account.data.session.user.email }}
+            Account: {{ maskedEmail }}
           </div>
         </div>
         <!-- Синий модуль с фильтром и сортировкой -->
@@ -153,6 +153,18 @@ export default {
       } else {
         return 12;
       }
+    });
+
+    const maskedEmail = computed(() => {
+      const email = account.value?.data?.session?.user?.email;
+      if (!email) return '';
+
+      const [localPart, domainPart] = email.split('@');
+      const firstTwoChars = localPart.slice(0, 2);
+      const lastCharBeforeAt = localPart.slice(-1);
+      const lastTwoCharsOfDomain = domainPart.slice(-2);
+
+      return `${firstTwoChars}***${lastCharBeforeAt}@***${lastTwoCharsOfDomain}`;
     });
 
     const hasFilter = computed(() => {
@@ -400,6 +412,7 @@ export default {
       setSelectedFolder,
       toggleFolder,
       userEmail,
+      maskedEmail, // Возвращаем вычисляемое свойство
       account, // Возвращаем account, чтобы он был доступен в шаблоне
     };
   }
@@ -496,7 +509,7 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 130px;
+  height: 150px;
   transition: all 0.3s ease;
 }
 .folder-title {
