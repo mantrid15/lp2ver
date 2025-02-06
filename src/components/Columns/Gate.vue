@@ -43,7 +43,7 @@
         <tbody>
         <tr v-for="link in filteredLinks"
             :key="link.id"
-            :class="{ 'strike-through': link.id === activeLinkId }"
+            :class="{ 'strike-through': link.id === activeLinkId, 'dragging': draggedLink && link.id === draggedLink.id }"
             draggable="true"
             @dragstart="onDragStart(link)"
             @dragend="onDragEnd"
@@ -129,18 +129,18 @@ export default {
     const draggedLink = ref(null); // Объявляем draggedLink здесь
 
     const onDragStart = (link) => {
-      draggedLink.value = link;
-      emit('update-dragged-link', link); // Добавляем emit для обновления draggedLink в LinzerTwo
+      draggedLink.value = link; // Устанавливаем перетаскиваемую ссылку
+      emit('update-dragged-link', link);
     };
-
     const onDragEnd = () => {
-      draggedLink.value = null;
+      draggedLink.value = null; // Сбрасываем перетаскиваемую ссылку
     };
-
     // Вычисляемое свойство для фильтрации ссылок
     const filteredLinks = computed(() => {
       return sortedLinks.value.filter(link => {
+/*
         console.log(link); // Отладочное сообщение для проверки структуры link
+*/
         const dirHash = link.dir_hash;
         return dirHash === null || dirHash === undefined || dirHash === '';
       });
@@ -288,12 +288,16 @@ export default {
       SORT_DEFAULT_ICON,
       DELETE_ICON,
       activeLinkId,
+      // isDragging, // Возвращаем состояние перетаскивания
     };
   },
 };
 </script>
 
 <style scoped>
+.dragging {
+  background-color: red; /* Цвет фона для перетаскиваемой строки */
+}
 th:nth-child(1),
 td:nth-child(1) {
   width: 24px; /* FAV column */
