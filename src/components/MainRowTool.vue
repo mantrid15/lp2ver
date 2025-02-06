@@ -165,7 +165,7 @@ export default {
           url: info.url || '',
           title: info.title || '',
           description: info.description || '',
-          keywords: info.keywords || '',
+          keywords: Array.isArray(info.keywords) && info.keywords.length > 0 ? info.keywords : [], // Проверка на null, пустую строку и отсутствие данных
           favicon: '/lpicon.png' || null,
         };
       } catch (error) {
@@ -273,6 +273,8 @@ export default {
         }
 
         try {
+          showSnackbar('Url is sending to Supabase!!!');
+          snackbar.value = true;
           const urlHash = await hashString(linkInfoParsed.value.url); // Рассчитываем url_hash
           console.log('Calculated url_hash:', urlHash);
 

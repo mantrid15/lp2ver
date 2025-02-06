@@ -338,23 +338,64 @@ export default {
       }
     };
 
-    const deleteFolderById = async (folderId) => {
+/*
+    const clearLinksByDirHash = async (dirHash) => {
       try {
-        const { data, error } = await supabase
-            .from('dir')
-            .delete()
-            .eq('id', folderId); // Удаляем по уникальному ID
+        // Обновляем записи в таблице links, устанавливая dir_hash в NULL
+        const { error } = await supabase
+            .from('links')
+            .update({ dir_hash: null }) // Или укажите другое значение, если нужно
+            .eq('dir_hash', dirHash); // Удаляем по dir_hash
+
         if (error) {
           throw error;
         }
-        await fetchFolders();
-        successMessage.value = 'Папка успешно удалена!';
+
+        successMessage.value = 'Ссылки, связанные с папкой, успешно обновлены!';
         setTimeout(() => {
           successMessage.value = '';
         }, 2000);
       } catch (error) {
-        console.error('Ошибка при удалении папки:', error);
-        errorMessage.value = 'Ошибка при удалении папки!';
+        console.error('Ошибка при обновлении ссылок:', error);
+        errorMessage.value = 'Ошибка при обновлении ссылок!';
+        setTimeout(() => {
+          errorMessage.value = '';
+        }, 2000);
+      }
+    };
+*/
+
+    const deleteFolderByDirHash = async (dirHash) => {
+      try {
+        // Сначала обновляем ссылки в таблице links, устанавливая dir_hash в NULL
+        const { error: updateLinksError } = await supabase
+            .from('links')
+            .update({ dir_hash: null }) // Устанавливаем dir_hash в NULL
+            .eq('dir_hash', dirHash); // Удаляем по dir_hash
+
+        if (updateLinksError) {
+          throw updateLinksError;
+        }
+
+        // Затем удаляем папку из таблицы dir по dir_hash
+        const { error: deleteFolderError } = await supabase
+            .from('dir')
+            .delete()
+            .eq('dir_hash', dirHash); // Удаляем по dir_hash
+
+        if (deleteFolderError) {
+          throw deleteFolderError;
+        }
+
+        // Обновляем список папок после удаления
+        await fetchFolders();
+        successMessage.value = 'Папка и связанные ссылки успешно обновлены!';
+        setTimeout(() => {
+          successMessage.value = '';
+        }, 2000);
+      } catch (error) {
+        console.error('Ошибка при обновлении ссылок или удалении папки:', error);
+        errorMessage.value = 'Ошибка при обновлении ссылок или удалении папки!';
         setTimeout(() => {
           errorMessage.value = '';
         }, 2000);
@@ -363,8 +404,12 @@ export default {
 
     const deleteSelectedFolder = async () => {
       if (selectedFolderId.value) {
-        await deleteFolderById(selectedFolderId.value); // Удаляем по ID
-        selectedFolderId.value = null;
+        // Находим dir_hash выбранной папки
+        const folderToDelete = folders.value.find(folder => folder.id === selectedFolderId.value);
+        if (folderToDelete) {
+          await deleteFolderByDirHash(folderToDelete.dir_hash); // Обновляем ссылки и удаляем папку
+          selectedFolderId.value = null;
+        }
       }
     };
 
