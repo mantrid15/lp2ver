@@ -11,12 +11,14 @@
         :sort-order="sortOrder"
         @handle-url-click="handleUrlClick"
         @sort="sort"
+        :draggedLink="draggedLink"
+        @update-dragged-link="updateDraggedLink"
     />
     <div
         class="resizer"
         @mousedown="(e) => startResize(e, 2)"
     ></div>
-    <Right :width="rightColumnWidth" />
+    <Right :width="rightColumnWidth" :draggedLink="draggedLink" :links="links"  />
   </div>
   <div v-else class="auth-message">
     Пожалуйста, войдите в систему
@@ -42,7 +44,7 @@ export default {
   setup() {
     // Управление сессией
     const account = ref(null);
-
+    const draggedLink = ref(null); // Объявляем draggedLink
     async function getSession() {
       account.value = await supabase.auth.getSession();
       console.log('Current session:', account.value);
@@ -173,6 +175,11 @@ export default {
       rightColumnWidth.value = '30%';
     };
 
+    // Обновление draggedLink
+    const updateDraggedLink = (link) => {
+      draggedLink.value = link;
+    };
+
     // Realtime subscription
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
@@ -218,7 +225,6 @@ export default {
     // Lifecycle hooks
     onMounted(async () => {
       await getSession();
-
       // Подписка на изменения авторизации
       supabase.auth.onAuthStateChange((event, session) => {
         account.value = { data: { session } };
@@ -247,7 +253,9 @@ export default {
       sortOrder,
       startResize,
       handleUrlClick,
-      sort
+      sort,
+      draggedLink,
+      updateDraggedLink // Возвращаем метод для обновления draggedLink
     };
   }
 };
@@ -267,7 +275,6 @@ export default {
   z-index: 3;
   position: relative; /* Добавьте позиционирование */
 }
-
 .auth-message {
   display: flex;
   justify-content: center;

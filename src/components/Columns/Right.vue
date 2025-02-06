@@ -55,7 +55,10 @@
           <v-col
               v-for="(folder, index) in filteredFolders"
               :key="index"
-              :cols="columnSize" class="folder-column"
+              :cols="columnSize"
+              class="folder-column"
+              @dragover.prevent
+              @drop="onDrop(folder.dir_hash)"
           >
             <v-card class="folder-card">
               <v-card-title class="folder-title">
@@ -135,9 +138,19 @@ export default {
     width: {
       type: String,
       required: true
-    }
+    },
+    draggedLink: { // Принимаем draggedLink как пропс
+      type: Object,
+      default: null
+    },
+    links: {
+      type: Array,
+      required: true
+    },
   },
   setup(props) {
+    const sortedLinks = ref([...props.links]); // Создаем реактивное состояние на основе переданных ссылок
+
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const userEmail = computed(() => store.state.user.email);
@@ -156,6 +169,26 @@ export default {
     const sortOrderIcons = [SORT_DEFAULT_ICON, SORT_ASC_ICON, SORT_DESC_ICON];
     const sortOrderValues = ['default', 'asc', 'desc'];
     const selectedFolderId = ref(null);
+
+    // const draggedLink = ref(null); // Объявляем draggedLink здесь
+    const onDrop = async (dirHash) => {
+      if (props.draggedLink) {
+        const linkToUpdate = props.draggedLink;
+
+        try {
+          const { error } = await supabase
+              .from('links')
+              .update({ dir_hash: dirHash })
+              .eq('id', linkToUpdate.id);
+          if (error) throw error;
+
+          // Удалите ссылку из sortedLinks
+          sortedLinks.value = sortedLinks.value.filter(link => link.id !== linkToUpdate.id);
+        } catch (error) {
+          console.error('Ошибка при обновлении ссылки:', error);
+        }
+      }
+    };
 
     const handleKeydown = (event) => {
       if (event.key === 'Escape' && filter.value.trim() !== '') {
@@ -396,21 +429,20 @@ export default {
       account.value = await supabase.auth.getSession();
       console.log(account.value);
     }
-
-
     onMounted(() => {
       fetchFolders();
       subscribeToRealtimeChanges();
       getSession(); // Вызываем при монтировании компонента
       window.addEventListener('keydown', handleKeydown); // Добавляем обработчик события
     });
-
     onUnmounted(() => {
       unsubscribeFromRealtimeChanges();
       window.removeEventListener('keydown', handleKeydown); // Удаляем обработчик события
     });
 
     return {
+      sortedLinks, // Возвращаем sortedLinks
+      onDrop,
       userId,
       dialog,
       folderListDialog,
@@ -473,8 +505,8 @@ export default {
 
 
 .filter-input:focus {
-  border-color: #ff8c00;
-  background-color: #ffe5b4;
+  border-color: black;
+  background-color: #ffae00;
   outline: none;
 }
 .user-info {

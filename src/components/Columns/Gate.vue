@@ -41,7 +41,13 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="link in sortedLinks" :key="link.id" :class="{ 'strike-through': link.id === activeLinkId }">
+        <tr v-for="link in sortedLinks"
+            :key="link.id"
+            :class="{ 'strike-through': link.id === activeLinkId }"
+            draggable="true"
+            @dragstart="onDragStart(link)"
+            @dragend="onDragEnd"
+        >
           <td class="content-padding fav-column" @click="handleFavClick(link)">
             <img
                 v-if="link.favicon_name"
@@ -106,8 +112,13 @@ export default {
       required: true,
       default: 'desc',
     },
+    draggedLink: {
+      type: Object,
+      default: null,
+    },
+
   },
-  emits: ['handle-url-click', 'sort'],
+  emits: ['handle-url-click', 'sort', 'update-dragged-link'],
   setup(props, { emit }) {
     const store = useStore();
     const userId = computed(() => store.state.userId);
@@ -117,6 +128,19 @@ export default {
     const currentSortOrder = ref(props.sortOrder);
     const deleteIconTimer = ref(null);
     const activeLinkId = ref(null);
+
+    const draggedLink = ref(null); // Объявляем draggedLink здесь
+    const onDragStart = (link) => {
+      draggedLink.value = link;
+      emit('update-dragged-link', link); // Добавляем emit для обновления draggedLink в LinzerTwo
+    };
+    const onDragEnd = () => {
+      draggedLink.value = null;
+    };
+    // Вычисляемое свойство для фильтрации ссылок
+    const filteredLinks = computed(() => {
+      return sortedLinks.filter(link => !link.dir_hash || link.dir_hash === '');
+    });
 
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
@@ -233,6 +257,10 @@ export default {
     };
 
     return {
+      filteredLinks,
+      onDragStart,
+      onDragEnd,
+      draggedLink,
       userId,
       sortedLinks,
       rowCount,
