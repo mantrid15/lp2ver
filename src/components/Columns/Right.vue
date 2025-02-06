@@ -12,12 +12,25 @@
         <!-- Синий модуль с фильтром и сортировкой -->
         <div :class="['blue-box', { 'blue-box-small': columnSize === 1, 'blue-box-margin': columnSize === 6 }]">
           <div class="blue-content">
-            <input
-                v-model="filter"
-                placeholder="Фильтр"
-                class="filter-input"
-                :style="{ width: '80%', height: '30px', padding: '0', borderRadius: '5px', border: '1px solid #ccc' }"
-            />
+            <div style="position: relative; width: '80%';">
+              <v-icon
+                  v-if="filter"
+                  @click="filter = ''"
+                  class="clear-icon"
+                  style="position: absolute; right: 0; cursor: pointer; color: black; top: 3px"
+              >
+                mdi-close-circle
+              </v-icon>
+              <input
+                  v-model="filter"
+                  placeholder="Фильтр"
+                  class="filter-input"
+                  :class="{ 'thick-cursor': isFocused }"
+                  @focus="isFocused = true"
+                  @blur="isFocused = false"
+                  :style="{ width: '100%', height: '30px', padding: '1px', borderRadius: '5px', border: '1px solid #ccc' }"
+              />
+            </div>
             <div class="sort-icons" style="width: 20%;">
               <v-btn @click="cycleSort" icon>
                 <v-icon color="white">{{ currentSortIcon }}</v-icon>
@@ -143,6 +156,12 @@ export default {
     const sortOrderIcons = [SORT_DEFAULT_ICON, SORT_ASC_ICON, SORT_DESC_ICON];
     const sortOrderValues = ['default', 'asc', 'desc'];
     const selectedFolderId = ref(null);
+
+    const handleKeydown = (event) => {
+      if (event.key === 'Escape' && filter.value.trim() !== '') {
+        filter.value = ''; // Очищаем поле ввода
+      }
+    };
 
     const columnSize = computed(() => {
       const widthValue = parseFloat(props.width);
@@ -383,10 +402,12 @@ export default {
       fetchFolders();
       subscribeToRealtimeChanges();
       getSession(); // Вызываем при монтировании компонента
+      window.addEventListener('keydown', handleKeydown); // Добавляем обработчик события
     });
 
     onUnmounted(() => {
       unsubscribeFromRealtimeChanges();
+      window.removeEventListener('keydown', handleKeydown); // Удаляем обработчик события
     });
 
     return {
@@ -414,6 +435,7 @@ export default {
       userEmail,
       maskedEmail, // Возвращаем вычисляемое свойство
       account, // Возвращаем account, чтобы он был доступен в шаблоне
+      isFocused: false, // Переменная для отслеживания состояния фокуса
     };
   }
 };
@@ -425,7 +447,31 @@ export default {
   padding: 0;
   border: 1px solid #ccc;
   border-radius: 5px;
+  transition: border-color 0.3s;
 }
+/* Стиль для увеличенного курсора */
+.thick-caret {
+  position: absolute;
+  width: 4px; /* Ширина курсора */
+  height: 1em; /* Высота курсора */
+  background-color: black; /* Цвет курсора */
+  left: 10px; /* Позиция курсора */
+  top: 50%; /* Центрируем по вертикали */
+  transform: translateY(-50%); /* Центрируем по вертикали */
+  animation: blink 1s step-end infinite; /* Мигающий эффект */
+}
+@keyframes blink {
+  50% {
+    opacity: 0; /* Прозрачность в 50% для мигания */
+  }
+}
+
+/*.thick-cursor::selection {
+  background: transparent; !* Убираем выделение текста *!
+}*/
+
+
+
 .filter-input:focus {
   border-color: #ff8c00;
   background-color: #ffe5b4;
