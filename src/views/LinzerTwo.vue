@@ -46,8 +46,13 @@ export default {
     const account = ref(null);
     const draggedLink = ref(null); // Объявляем draggedLink
     async function getSession() {
-      account.value = await supabase.auth.getSession();
-      console.log('Current session:', account.value);
+      try {
+        account.value = await supabase.auth.getSession();
+        console.log('Current session:', account.value);
+      } catch (error) {
+        console.error('Ошибка при получении сессии:', error);
+        account.value = null; // Убедитесь, что account сбрасывается в случае ошибки
+      }
     }
 
     // Column widths с localStorage
@@ -83,8 +88,8 @@ export default {
         if (error) {
           console.error("Error fetching links:", error);
         } else {
-          links.value = data;
-          console.log("Fetched links:", links.value); // Отладка
+          links.value = data || []; // Убедитесь, что links всегда инициализируется
+          console.log("Fetched links:", links.value);
         }
       } catch (err) {
         console.error("Unexpected error in fetchLinks:", err);
@@ -225,6 +230,7 @@ export default {
     // Lifecycle hooks
     onMounted(async () => {
       await getSession();
+      console.log('Account after session fetch:', account.value);
       // Подписка на изменения авторизации
       supabase.auth.onAuthStateChange((event, session) => {
         account.value = { data: { session } };

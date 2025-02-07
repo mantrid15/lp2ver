@@ -44,7 +44,7 @@
             <v-icon style="font-size: 36px;">mdi-folder-plus</v-icon>
           </v-btn>
           <v-btn icon color="white" @click="openFolderListDialog" style="position: relative; margin-left: auto;">
-            <v-icon class="delete-icon" style="font-size: 18px; color: black; position: absolute; bottom: 0; right: 0; left:30px; top: 25px;cursor: pointer;">mdi-delete</v-icon>
+            <v-icon class="delete-icon" style="font-size: 18px; color: black; cursor: pointer;">mdi-delete</v-icon>
           </v-btn>
         </div>
       </div>
@@ -64,6 +64,9 @@
               <v-card-title class="folder-title">
                 <v-icon class="folder-icon">mdi-folder</v-icon>
                 <span class="folder-name">{{ folder.dir_name }}</span>
+                <span class="link-counter">
+                  {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : '*' }}
+</span>
               </v-card-title>
             </v-card>
           </v-col>
@@ -90,6 +93,12 @@
     <v-dialog v-model="folderListDialog" max-width="300px">
       <v-card>
         <v-card-title class="headline">Список папок</v-card-title>
+        <v-btn
+            icon
+            @click="clearDirHash"
+            style="position: absolute; top: 0px; right: 0px; cursor: pointer; color: red;">
+          <v-icon style="font-size: 18px;">mdi-delete</v-icon>
+        </v-btn>
         <v-card-text>
           <v-list>
             <v-list-item v-for="(folder, index) in folders" :key="index" style="display: flex; align-items: center; margin: 3px 0;">
@@ -116,7 +125,7 @@
   </v-app>
 </template>
 <script>
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch, watchEffect } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
 import { VList, VListItem,VListItemTitle, VRadio } from 'vuetify/components';
@@ -169,19 +178,24 @@ export default {
     const sortOrderIcons = [SORT_DEFAULT_ICON, SORT_ASC_ICON, SORT_DESC_ICON];
     const sortOrderValues = ['default', 'asc', 'desc'];
     const selectedFolderId = ref(null);
-
+    // const linkCounts = ref({}); // Хранит количество ссылок для каждой папки
+    const linkCounts = ref({}); // Инициализация
     // const draggedLink = ref(null); // Объявляем draggedLink здесь
     const onDrop = async (dirHash) => {
       if (props.draggedLink) {
         const linkToUpdate = props.draggedLink;
-
         try {
           const { error } = await supabase
               .from('links')
               .update({ dir_hash: dirHash })
               .eq('id', linkToUpdate.id);
           if (error) throw error;
-
+          // Обновляем количество ссылок для целевой папки
+          await getLinkCount(dirHash);
+// Также обновляем количество ссылок для исходной папки
+          if (linkToUpdate.dir_hash) {
+            await getLinkCount(linkToUpdate.dir_hash);
+          }
           // Удалите ссылку из sortedLinks
           sortedLinks.value = sortedLinks.value.filter(link => link.id !== linkToUpdate.id);
         } catch (error) {
@@ -227,12 +241,12 @@ export default {
       return sortOrderIcons[currentSortOrder.value];
     });
 
-    watch(
-        () => props.width,
-        (newWidth) => {
-          console.log('Новое значение width:', newWidth);
-        }
-    );
+    watch(folders, (newFolders) => {
+      newFolders.forEach(folder => {
+        getLinkCount(folder.dir_hash); // Вызываем getLinkCount для каждой новой папки
+      });
+    }, { immediate: true }); // immediate: true вызывает коллбэк сразу при монтировании
+
 
     const hashString = async (inputString) => {
       try {
@@ -338,33 +352,6 @@ export default {
       }
     };
 
-/*
-    const clearLinksByDirHash = async (dirHash) => {
-      try {
-        // Обновляем записи в таблице links, устанавливая dir_hash в NULL
-        const { error } = await supabase
-            .from('links')
-            .update({ dir_hash: null }) // Или укажите другое значение, если нужно
-            .eq('dir_hash', dirHash); // Удаляем по dir_hash
-
-        if (error) {
-          throw error;
-        }
-
-        successMessage.value = 'Ссылки, связанные с папкой, успешно обновлены!';
-        setTimeout(() => {
-          successMessage.value = '';
-        }, 2000);
-      } catch (error) {
-        console.error('Ошибка при обновлении ссылок:', error);
-        errorMessage.value = 'Ошибка при обновлении ссылок!';
-        setTimeout(() => {
-          errorMessage.value = '';
-        }, 2000);
-      }
-    };
-*/
-
     const deleteFolderByDirHash = async (dirHash) => {
       try {
         // Сначала обновляем ссылки в таблице links, устанавливая dir_hash в NULL
@@ -428,7 +415,22 @@ export default {
     };
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
-          .channel('realtime-dirs')
+          .channel('realtime-changes')
+          .on(
+              'postgres_changes',
+              { event: '*', schema: 'public', table: 'links' },
+              (payload) => {
+                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                  if (payload.new.dir_hash) {
+                    getLinkCount(payload.new.dir_hash);
+                  }
+                } else if (payload.eventType === 'DELETE') {
+                  if (payload.old.dir_hash) {
+                    getLinkCount(payload.old.dir_hash);
+                  }
+                }
+              }
+          )
           .on(
               'postgres_changes',
               { event: '*', schema: 'public', table: 'dir' },
@@ -474,17 +476,66 @@ export default {
       account.value = await supabase.auth.getSession();
       console.log(account.value);
     }
+
+    const clearDirHash = async () => {
+      try {
+        const { error } = await supabase
+            .from('links')
+            .update({ dir_hash: null }) // Устанавливаем dir_hash в NULL
+            .neq('dir_hash', null); // Условие, чтобы обновить только те записи, где dir_hash не равен null
+        if (error) throw error;
+
+        // Обновляем количество ссылок для всех папок
+        for (const folder of folders.value) {
+          await getLinkCount(folder.dir_hash); // Обновляем количество ссылок для каждой папки
+        }
+      } catch (error) {
+        console.error('Ошибка при очистке dir_hash:', error);
+      }
+    };
+
+    const getLinkCount = async (dirHash) => {
+      try {
+        if (!dirHash) {
+          console.warn('dirHash не указан');
+          linkCounts.value[dirHash] = 0; // Устанавливаем количество ссылок в 0, если dirHash не указан
+          return 0;
+        }
+        const { data, error, count } = await supabase
+            .from('links')
+            .select('*', { count: 'exact' })
+            .eq('dir_hash', dirHash);
+        if (error) {
+          console.error('Ошибка при выполнении запроса:', error);
+          return 0;
+        }
+        const linkCount = count || (data ? data.length : 0);
+        linkCounts.value[dirHash] = linkCount; // Обновляем количество ссылок в linkCounts
+        return linkCount;
+      } catch (error) {
+        console.error('Ошибка при получении количества ссылок:', error);
+        return 0;
+      }
+    };
+
     onMounted(() => {
       fetchFolders();
       subscribeToRealtimeChanges();
       getSession(); // Вызываем при монтировании компонента
       window.addEventListener('keydown', handleKeydown); // Добавляем обработчик события
+      folders.value.forEach(folder => {
+        getLinkCount(folder.dir_hash);
+      });
     });
     onUnmounted(() => {
       unsubscribeFromRealtimeChanges();
       window.removeEventListener('keydown', handleKeydown); // Удаляем обработчик события
     });
-
+    watchEffect(() => {
+      folders.value.forEach(folder => {
+        getLinkCount(folder.dir_hash);
+      });
+    });
     return {
       sortedLinks, // Возвращаем sortedLinks
       onDrop,
@@ -509,10 +560,13 @@ export default {
       deleteSelectedFolder,
       setSelectedFolder,
       toggleFolder,
+      clearDirHash,
       userEmail,
       maskedEmail, // Возвращаем вычисляемое свойство
       account, // Возвращаем account, чтобы он был доступен в шаблоне
       isFocused: false, // Переменная для отслеживания состояния фокуса
+      linkCounts, // Возвращаем linkCounts
+      getLinkCount // Возвращаем функцию getLinkCount
     };
   }
 };
@@ -655,6 +709,15 @@ export default {
   -webkit-text-fill-color: transparent;
   transition: font-size 0.3s ease;
 }
+
+.link-counter {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 12px;
+  color: black;
+}
+
 @media (max-width: 768px) {
   .folder-card {
     height: 150px;
