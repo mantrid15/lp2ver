@@ -498,15 +498,29 @@ export default {
 
     const clearDirHash = async () => {
       try {
-        const { error } = await supabase
-            .from('links')
-            .update({ dir_hash: null }) // Устанавливаем dir_hash в NULL
-            .neq('dir_hash', null); // Условие, чтобы обновить только те записи, где dir_hash не равен null
-        if (error) throw error;
-
-        // Обновляем количество ссылок для всех папок
-        for (const folder of folders.value) {
-          await getLinkCount(folder.dir_hash); // Обновляем количество ссылок для каждой папки
+        if (selectedFolderId.value) {
+          const folderToClear = folders.value.find(folder => folder.id === selectedFolderId.value);
+          if (folderToClear) {
+            const { error: updateLinksError } = await supabase
+                .from('links')
+                .update({ dir_hash: null })
+                .eq('dir_hash', folderToClear.dir_hash);
+            if (updateLinksError) {
+              throw updateLinksError;
+            }
+            // Обновляем количество ссылок для всех папок
+            for (const folder of folders.value) {
+              await getLinkCount(folder.dir_hash);
+            }
+            // Сбрасываем выбранную папку
+            selectedFolderId.value = null; // Это должно снять выделение
+          }
+        } else {
+          const { error } = await supabase
+              .from('links')
+              .update({ dir_hash: null })
+              .neq('dir_hash', null);
+          if (error) throw error;
         }
       } catch (error) {
         console.error('Ошибка при очистке dir_hash:', error);
@@ -613,7 +627,6 @@ export default {
   cursor: pointer; /* Делаем элемент кликабельным */
   transition: background-color 0.3s ease; /* Плавное изменение цвета */
 }
-
 .yellow-box:hover {
   background-color: #d8bfd8; /* Светло-фиолетовый цвет при наведении */
 }
