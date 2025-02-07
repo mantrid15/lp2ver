@@ -594,6 +594,29 @@ export default {
 };
 </script>
 <style scoped>
+.user-info {
+  padding: 2px;
+  color: black;
+  font-size: 0.7rem;
+  margin-top: 0;
+  pointer-events: none; /* Отключаем события мыши для user-info */
+}
+.yellow-box {
+  flex: 1;
+  height: 40px;
+  background-color: yellow; /* Основной цвет */
+  margin-right: 5px;
+  margin-left: 5px;
+  display: flex;
+  align-items: flex-start;
+  border-radius: 5px;
+  cursor: pointer; /* Делаем элемент кликабельным */
+  transition: background-color 0.3s ease; /* Плавное изменение цвета */
+}
+
+.yellow-box:hover {
+  background-color: #d8bfd8; /* Светло-фиолетовый цвет при наведении */
+}
 .filter-input {
   margin-left: 5px;
   background-color: white;
@@ -641,16 +664,7 @@ export default {
   align-items: center;
   width: 100%;
 }
-.yellow-box {
-  flex: 1;
-  height: 40px;
-  background-color: yellow;
-  margin-right: 5px;
-  margin-left: 5px;
-  display: flex;
-  align-items: flex-start;
-  border-radius: 5px;
-}
+
 .blue-box {
   flex: 1;
   height: 40px;
