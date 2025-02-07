@@ -4,7 +4,11 @@
     <v-app-bar app color="red" dark>
       <div class="app-bar-container">
         <!-- Желтый модуль -->
-        <div v-if="columnSize <= 4" class="yellow-box">
+        <div
+            v-if="columnSize <= 4"
+             class="yellow-box"
+             @click="handleYellowBoxClick"
+        >
           <div v-if="userId && account?.data?.session?.user?.email" class="user-info">
             Account: {{ maskedEmail }}
           </div>
@@ -60,7 +64,10 @@
               @dragover.prevent
               @drop="onDrop(folder.dir_hash)"
           >
-            <v-card class="folder-card">
+            <v-card
+                class="folder-card"
+                @click="handleFolderClick(folder)"
+            >
               <v-card-title class="folder-title">
                 <v-icon class="folder-icon">mdi-folder</v-icon>
                 <span class="folder-name">{{ folder.dir_name }}</span>
@@ -157,7 +164,12 @@ export default {
       required: true
     },
   },
-  setup(props) {
+  setup(props, { emit }) {
+
+    const handleYellowBoxClick = () => {
+      console.log('Yellow box clicked'); // Добавьте лог для проверки
+      emit('reset-folder-selection'); // Эмитим событие для сброса выбранной папки
+    };
     const sortedLinks = ref([...props.links]); // Создаем реактивное состояние на основе переданных ссылок
 
     const store = useStore();
@@ -180,6 +192,13 @@ export default {
     const selectedFolderId = ref(null);
     // const linkCounts = ref({}); // Хранит количество ссылок для каждой папки
     const linkCounts = ref({}); // Инициализация
+
+    const selectedFolder = ref(null); // Добавляем состояние для выбранной папки
+
+    const handleFolderClick = (folder) => {
+      selectedFolder.value = folder;
+      emit('folder-selected', folder.dir_hash); // Эмитим событие с dir_hash выбранной папки
+    };
     // const draggedLink = ref(null); // Объявляем draggedLink здесь
     const onDrop = async (dirHash) => {
       if (props.draggedLink) {
@@ -537,6 +556,8 @@ export default {
       });
     });
     return {
+      selectedFolder,
+      handleFolderClick,
       sortedLinks, // Возвращаем sortedLinks
       onDrop,
       userId,
@@ -566,6 +587,7 @@ export default {
       account, // Возвращаем account, чтобы он был доступен в шаблоне
       isFocused: false, // Переменная для отслеживания состояния фокуса
       linkCounts, // Возвращаем linkCounts
+      handleYellowBoxClick,
       getLinkCount // Возвращаем функцию getLinkCount
     };
   }

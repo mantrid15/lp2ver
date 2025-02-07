@@ -9,6 +9,7 @@
         :links="links"
         :sort-key="sortKey"
         :sort-order="sortOrder"
+        :selected-folder-hash="selectedFolderHash"
         @handle-url-click="handleUrlClick"
         @sort="sort"
         :draggedLink="draggedLink"
@@ -18,7 +19,13 @@
         class="resizer"
         @mousedown="(e) => startResize(e, 2)"
     ></div>
-    <Right :width="rightColumnWidth" :draggedLink="draggedLink" :links="links"  />
+    <Right
+        :width="rightColumnWidth"
+        :draggedLink="draggedLink"
+        :links="links"
+        @folder-selected="handleFolderSelected"
+        @reset-folder-selection="handleResetFolderSelection"
+    />
   </div>
   <div v-else class="auth-message">
     Пожалуйста, войдите в систему
@@ -42,6 +49,15 @@ export default {
   },
 
   setup() {
+    const selectedFolderHash = ref(null); // Состояние для хранения dir_hash выбранной папки
+
+    const handleFolderSelected = (dirHash) => {
+      selectedFolderHash.value = dirHash;
+    };
+
+    const handleResetFolderSelection = () => {
+      selectedFolderHash.value = null; // Сбрасываем состояние выбранной папки
+    };
     // Управление сессией
     const account = ref(null);
     const draggedLink = ref(null); // Объявляем draggedLink
@@ -250,6 +266,9 @@ export default {
     });
 
     return {
+      selectedFolderHash,
+      handleFolderSelected,
+      handleResetFolderSelection,
       account,
       leftColumnWidth,
       middleColumnWidth,

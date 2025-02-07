@@ -94,6 +94,10 @@ const DELETE_ICON_TIMEOUT = 3000; // 3 секунды
 export default {
   name: 'Gate',
   props: {
+    selectedFolderHash: {
+      type: String,
+      default: null,
+    },
     width: {
       type: String,
       required: true,
@@ -137,13 +141,12 @@ export default {
     };
     // Вычисляемое свойство для фильтрации ссылок
     const filteredLinks = computed(() => {
-      return sortedLinks.value.filter(link => {
-/*
-        console.log(link); // Отладочное сообщение для проверки структуры link
-*/
-        const dirHash = link.dir_hash;
-        return dirHash === null || dirHash === undefined || dirHash === '';
-      });
+      if (props.selectedFolderHash) {
+        // Если выбрана папка, показываем только ссылки с соответствующим dir_hash
+        return sortedLinks.value.filter(link => link.dir_hash === props.selectedFolderHash);
+      }
+      // Если папка не выбрана, показываем ссылки без dir_hash
+      return sortedLinks.value.filter(link => !link.dir_hash);
     });
 
     const rowCount = computed(() => filteredLinks.value.length); // Обновлено для использования filteredLinks
@@ -258,6 +261,7 @@ export default {
       }
       return ''; // Возвращаем пустую строку, если keywords не массив
     };
+
 
     return {
       filteredLinks,
