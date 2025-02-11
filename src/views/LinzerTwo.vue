@@ -25,6 +25,7 @@
         :links="links"
         @folder-selected="handleFolderSelected"
         @reset-folder-selection="handleResetFolderSelection"
+        @update-dragged-link="updateDraggedLink"
     />
   </div>
   <div v-else class="auth-message">

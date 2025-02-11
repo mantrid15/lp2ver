@@ -8,6 +8,8 @@
             v-if="columnSize <= 4"
              class="yellow-box"
              @click="handleYellowBoxClick"
+            @dragover.prevent
+            @drop="handleDropOnYellowBox"
         >
           <div v-if="userId && account?.data?.session?.user?.email" class="user-info">
             Account: {{ maskedEmail }}
@@ -549,6 +551,34 @@ export default {
       }
     };
 
+    const handleDropOnYellowBox = async (event) => {
+      if (props.draggedLink) {
+        const linkToUpdate = props.draggedLink;
+        try {
+          // Обновляем ссылку, устанавливая dir_hash в null
+          const { error } = await supabase
+              .from('links')
+              .update({ dir_hash: null })
+              .eq('id', linkToUpdate.id);
+
+          if (error) throw error;
+
+          // Обновляем количество ссылок для исходной папки (если она была)
+          if (linkToUpdate.dir_hash) {
+            await getLinkCount(linkToUpdate.dir_hash);
+          }
+
+          // Удаляем ссылку из sortedLinks
+          sortedLinks.value = sortedLinks.value.filter(link => link.id !== linkToUpdate.id);
+
+          // Эмитим событие для обновления draggedLink
+          emit('update-dragged-link', null);
+        } catch (error) {
+          console.error('Ошибка при обновлении ссылки:', error);
+        }
+      }
+    };
+
     onMounted(() => {
       fetchFolders();
       subscribeToRealtimeChanges();
@@ -570,6 +600,8 @@ export default {
     return {
       selectedFolder,
       handleFolderClick,
+      handleDropOnYellowBox,
+
       sortedLinks, // Возвращаем sortedLinks
       onDrop,
       userId,
