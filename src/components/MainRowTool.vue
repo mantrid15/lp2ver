@@ -280,7 +280,6 @@ export default {
         linkInfo.value = 'Некорректный URL.';
         return;
       }
-
       const finalData = {
         url: url.value,
         title: '',
@@ -290,76 +289,95 @@ export default {
       };
 
       // Функция для обновления финальных данных
-      const updateFinalData = (data) => {
-        // Проверяем, что data определено и является объектом
-        if (data && typeof data === 'object') {
-          if (data.title !== undefined && data.title !== null && data.title !== "") {
-            finalData.title = data.title;
-          }
-          if (data.description !== undefined && data.description !== null && data.description !== "") {
-            finalData.description = data.description;
-          }
-          if (data.keywords !== undefined && data.keywords !== null && data.keywords !== "") {
-            finalData.keywords = data.keywords;
-          }
-          if (data.error) {
-            finalData.error = data.error;  // Ошибка заменяется всегда, если есть
-          }
-        } else {
-          console.warn('Передан некорректный объект данных:', data);
-        }
-      };
-      try {
-        // 1. Получение данных из getPageInfo
-        try {
-          const pageInfo = await getPageInfo(url.value);
-          console.log('Данные от getPageInfo:', pageInfo);
-          updateFinalData(pageInfo);
-        } catch (pageError) {
-          console.error('Ошибка при получении данных от getPageInfo:', pageError);
-          finalData.error = pageError.message;
-        }
+          const getInfo = async () => {
+            if (!isValidURL(url.value)) {
+              linkInfo.value = 'Некорректный URL.';
+              return;
+            }
+            const finalData = {
+              url: url.value,
+              title: '',
+              description: '',
+              keywords: '',
+              error: null
+            };
 
+            // Функция для обновления финальных данных
+            const updateFinalData = (data) => {
+              if (data && typeof data === 'object') {
+                if (data.title !== undefined && data.title !== null && data.title !== "") {
+                  finalData.title = data.title;
+                }
+                if (data.description !== undefined && data.description !== null && data.description !== "") {
+                  finalData.description = data.description;
+                }
+                if (data.keywords !== undefined && data.keywords !== null && data.keywords !== "") {
+                  finalData.keywords = data.keywords;
+                }
+                if (data.error) {
+                  finalData.error = data.error;
+                }
+              } else {
+                console.warn('Передан некорректный объект данных:', data);
+              }
+            };
 
+            try {
+              // 1. Получение данных из getPageInfo
+              try {
+                const pageInfo = await getPageInfo(url.value);
+                console.log('Данные от getPageInfo:', pageInfo);
+                updateFinalData(pageInfo);
 
-        // 3. Получение метаданных
-        try {
-          const metaData = await fetchMetaData(url.value);
-          console.log('Данные от fetchMetaData:', metaData);
-          updateFinalData(metaData);
-        } catch (metaDataError) {
-          console.error('Ошибка при получении метаданных:', metaDataError);
-          finalData.error = metaDataError.message;
-        }
+                // Проверяем, получены ли title и description
+                if (finalData.title && finalData.description) {
+                  console.log('Финальная информация:', finalData);
+                  linkInfo.value = JSON.stringify(finalData, null, 2);
+                  return; // Прекращаем выполнение функции
+                }
+              } catch (pageError) {
+                console.error('Ошибка при получении данных от getPageInfo:', pageError);
+                finalData.error = pageError.message;
+              }
 
-        // 4. Получение данных через MetaSerp
-        try {
-          const metaSerpData = await fetchMetaSerp(url.value);
-          console.log('Данные от fetchMetaSerp:', metaSerpData);
-          updateFinalData(metaSerpData);
-        } catch (metaSerpError) {
-          console.error('Ошибка при получении данных через MetaSerp:', metaSerpError);
-          finalData.error = metaSerpError.message;
-        }
-        // 2. Получение данных через Puppeteer
-        try {
-          const puppeteerInfo = await getPuppeteerData(url.value);
-          console.log('Данные от getPuppeteerData:', puppeteerInfo);
-          updateFinalData(puppeteerInfo);
-        } catch (puppeteerError) {
-          console.error('Ошибка при получении данных через Puppeteer:', puppeteerError);
-          finalData.error = puppeteerError.message;
-        }
+              // 3. Получение метаданных
+              try {
+                const metaData = await fetchMetaData(url.value);
+                console.log('Данные от fetchMetaData:', metaData);
+                updateFinalData(metaData);
+              } catch (metaDataError) {
+                console.error('Ошибка при получении метаданных:', metaDataError);
+                finalData.error = metaDataError.message;
+              }
 
-        // Логирование финальной информации
-        console.log('Финальная информация:', finalData);
-        linkInfo.value = JSON.stringify(finalData, null, 2);
-      } catch (error) {
-        linkInfo.value = 'Ошибка при получении информации о странице: ' + error.message;
-        console.error('Ошибка при получении информации о странице:', error);
-      }
-    };
+              // 4. Получение данных через MetaSerp
+              try {
+                const metaSerpData = await fetchMetaSerp(url.value);
+                console.log('Данные от fetchMetaSerp:', metaSerpData);
+                updateFinalData(metaSerpData);
+              } catch (metaSerpError) {
+                console.error('Ошибка при получении данных через MetaSerp:', metaSerpError);
+                finalData.error = metaSerpError.message;
+              }
 
+              // 2. Получение данных через Puppeteer
+              try {
+                const puppeteerInfo = await getPuppeteerData(url.value);
+                console.log('Данные от getPuppeteerData:', puppeteerInfo);
+                updateFinalData(puppeteerInfo);
+              } catch (puppeteerError) {
+                console.error('Ошибка при получении данных через Puppeteer:', puppeteerError);
+                finalData.error = puppeteerError.message;
+              }
+
+              // Логирование финальной информации
+              console.log('Финальная информация:', finalData);
+              linkInfo.value = JSON.stringify(finalData, null, 2);
+            } catch (error) {
+              linkInfo.value = 'Ошибка при получении информации о странице: ' + error.message;
+              console.error('Ошибка при получении информации о странице:', error);
+            }
+          };
 
 
 
