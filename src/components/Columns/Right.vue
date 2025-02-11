@@ -192,9 +192,7 @@ export default {
     const selectedFolderId = ref(null);
     // const linkCounts = ref({}); // Хранит количество ссылок для каждой папки
     const linkCounts = ref({}); // Инициализация
-
     const selectedFolder = ref(null); // Добавляем состояние для выбранной папки
-
     const handleFolderClick = (folder) => {
       selectedFolder.value = folder;
       emit('folder-selected', folder.dir_hash); // Эмитим событие с dir_hash выбранной папки

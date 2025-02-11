@@ -123,6 +123,7 @@ import * as cheerio from 'cheerio';
 import { supabase } from "@/clients/supabase";
 import { useStore } from 'vuex';
 
+
 export default {
   name: 'MainRowTool',
   props: {
@@ -145,7 +146,7 @@ export default {
     const buttonLabel = ref('URL');
     const buttonLabelOk = ref('LinZer');
     const linkInfoParsed = ref(null);
-
+    // const puppeteer = require('puppeteer-core');
     const showSnackbar = (message) => {
       snackbarMessage.value = message;
       snackbar.value = true;
@@ -174,14 +175,26 @@ export default {
       }
     };
 
+
     const getPageInfo = async (url) => {
       try {
         const response = await axios.get(`http://localhost:3000/proxy?url=${encodeURIComponent(url)}`);
         const $ = cheerio.load(response.data);
+
+        // Получаем заголовок из тега <title> в любом месте документа
+        const documentTitle = $('title').text();
+
+        // Получаем заголовок строго по пути /html/head/title
+        const headTitle = $('html head title').text();
+
+        // Используем заголовок по пути /html/head/title, если он есть, иначе используем заголовок из документа
+        const title = headTitle || documentTitle || '';
+
         const keywords = $('meta[name="keywords"]').attr('content') || ''; // Получаем ключевые слова
+        console.log('Standard request:');
         return {
           url,
-          title: $('title').text(),
+          title: title, // Возвращаем заголовок
           description: $('meta[name="description"]').attr('content') || '',
           keywords: keywords.length > 0 ? keywords.split(',') : null, // Возвращаем null, если список пустой
         };
@@ -190,6 +203,25 @@ export default {
         return { error: 'Ошибка при получении информации' };
       }
     };
+
+    /*const getPageInfo = async (url) => {
+      try {
+        const response = await axios.get(`http://localhost:3000/proxy?url=${encodeURIComponent(url)}`);
+        const $ = cheerio.load(response.data);
+        const keywords = $('meta[name="keywords"]').attr('content') || ''; // Получаем ключевые слова
+        console.log('Standard request:')
+        return {
+          url,
+          title: $('title').text(),
+          description: $('meta[name="description"]').attr('content') || '',
+          keywords: keywords.length > 0 ? keywords.split(',') : null, // Возвращаем null, если список пустой
+
+        };
+      } catch (error) {
+        console.error('Ошибка при получении информации о странице:', error);
+        return { error: 'Ошибка при получении информации' };
+      }
+    };*/
 
     const fetchMetaData = async (url) => {
       try {
@@ -205,6 +237,16 @@ export default {
           console.error('Ошибка настройки запроса:', error.message);
         }
         return { error: 'Ошибка при получении информации' };
+      }
+    };
+
+    const getPuppeteerData = async (url) => {
+      try {
+        const response = await axios.get(`http://localhost:3000/fetch-metadata?url=${encodeURIComponent(url)}`);
+        console.log('Полученные мета-данные:', response.data);
+        return  response.data;
+      } catch (error) {
+        console.error('Ошибка при получении мета-данных:', error);
       }
     };
 
@@ -234,31 +276,122 @@ export default {
     };
 
     const getInfo = async () => {
-      if (isValidURL(url.value)) {
-        try {
-          let info = await getPageInfo(url.value);
-          if (info.error) {
-            statusMessage.value = '2';
-            info = await fetchMetaData(url.value);
-          } else {
-            statusMessage.value = '1';
+      if (!isValidURL(url.value)) {
+        linkInfo.value = 'Некорректный URL.';
+        return;
+      }
+
+      const finalData = {
+        url: url.value,
+        title: '',
+        description: '',
+        keywords: '',
+        error: null
+      };
+
+      // Функция для обновления финальных данных
+      const updateFinalData = (data) => {
+        // Проверяем, что data определено и является объектом
+        if (data && typeof data === 'object') {
+          if (data.title !== undefined && data.title !== null && data.title !== "") {
+            finalData.title = data.title;
           }
-          if (info.error) {
-            statusMessage.value = '3';
-            info = await fetchMetaSerp(url.value);
+          if (data.description !== undefined && data.description !== null && data.description !== "") {
+            finalData.description = data.description;
           }
-          if (info.error) {
-            info = { url: url.value, title: '', description: '', keywords: '' };
+          if (data.keywords !== undefined && data.keywords !== null && data.keywords !== "") {
+            finalData.keywords = data.keywords;
           }
-          linkInfo.value = JSON.stringify(info, null, 2);
-        } catch (error) {
-          linkInfo.value = error;
-          console.error('Ошибка при получении информации о странице:', error);
+          if (data.error) {
+            finalData.error = data.error;  // Ошибка заменяется всегда, если есть
+          }
+        } else {
+          console.warn('Передан некорректный объект данных:', data);
         }
-      } else {
-        linkInfo.value = 'Сначала получите информацию о странице.';
+      };
+      try {
+        // 1. Получение данных из getPageInfo
+        try {
+          const pageInfo = await getPageInfo(url.value);
+          console.log('Данные от getPageInfo:', pageInfo);
+          updateFinalData(pageInfo);
+        } catch (pageError) {
+          console.error('Ошибка при получении данных от getPageInfo:', pageError);
+          finalData.error = pageError.message;
+        }
+
+
+
+        // 3. Получение метаданных
+        try {
+          const metaData = await fetchMetaData(url.value);
+          console.log('Данные от fetchMetaData:', metaData);
+          updateFinalData(metaData);
+        } catch (metaDataError) {
+          console.error('Ошибка при получении метаданных:', metaDataError);
+          finalData.error = metaDataError.message;
+        }
+
+        // 4. Получение данных через MetaSerp
+        try {
+          const metaSerpData = await fetchMetaSerp(url.value);
+          console.log('Данные от fetchMetaSerp:', metaSerpData);
+          updateFinalData(metaSerpData);
+        } catch (metaSerpError) {
+          console.error('Ошибка при получении данных через MetaSerp:', metaSerpError);
+          finalData.error = metaSerpError.message;
+        }
+        // 2. Получение данных через Puppeteer
+        try {
+          const puppeteerInfo = await getPuppeteerData(url.value);
+          console.log('Данные от getPuppeteerData:', puppeteerInfo);
+          updateFinalData(puppeteerInfo);
+        } catch (puppeteerError) {
+          console.error('Ошибка при получении данных через Puppeteer:', puppeteerError);
+          finalData.error = puppeteerError.message;
+        }
+
+        // Логирование финальной информации
+        console.log('Финальная информация:', finalData);
+        linkInfo.value = JSON.stringify(finalData, null, 2);
+      } catch (error) {
+        linkInfo.value = 'Ошибка при получении информации о странице: ' + error.message;
+        console.error('Ошибка при получении информации о странице:', error);
       }
     };
+
+
+
+
+
+
+
+    /* const getInfo = async () => {
+       if (isValidURL(url.value)) {
+         try {
+           let info = await getPageInfo(url.value);
+           if (info.error) {
+             statusMessage.value = '2';
+             info = await fetchMetaData(url.value);
+           } else {
+             statusMessage.value = '1';
+           }
+           if (info.error) {
+             statusMessage.value = '3';
+             info = await fetchMetaSerp(url.value);
+           }
+           if (info.error) {
+             info = { url: url.value, title: '', description: '', keywords: '' };
+           }
+           linkInfo.value = JSON.stringify(info, null, 2);
+         } catch (error) {
+           linkInfo.value = error;
+           console.error('Ошибка при получении информации о странице:', error);
+         }
+       } else {
+         linkInfo.value = 'Сначала получите информацию о странице.';
+       }
+     };*/
 
     const handleButtonClick = async () => {
       if (buttonLabel.value === buttonLabelOk.value) {
@@ -456,6 +589,7 @@ export default {
         return v.toString(16);
       });
     }
+
 
     async function hashString(inputString) {
       // Преобразуем строку в массив байтов

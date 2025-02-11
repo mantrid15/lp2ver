@@ -1,7 +1,7 @@
 //  эксперементальная функция парсинга страницы.
 import fetch from 'node-fetch';
 import { JSDOM } from 'jsdom';
-const url= 'https://dzen.ru/a/ZnmCaiCDLT5M-3BQ'
+const url= 'https://lemanapro.ru/product/betonkontakt-cerezit-ct19-15-kg-13434318/'
 
 const getPageInfo = async (url) => {
     try {
