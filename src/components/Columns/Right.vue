@@ -6,8 +6,8 @@
         <!-- Желтый модуль -->
         <div
             v-if="columnSize <= 4"
-             class="yellow-box"
-             @click="handleYellowBoxClick"
+            class="yellow-box"
+            @click="handleYellowBoxClick"
             @dragover.prevent
             @drop="handleDropOnYellowBox"
         >
@@ -71,10 +71,15 @@
                 @click="handleFolderClick(folder)"
             >
               <v-card-title class="folder-title">
-                <v-icon class="folder-icon">mdi-folder</v-icon>
+                <v-icon
+                    class="folder-icon"
+                    :style="{ background: getFolderColor(folder), WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }"
+                >
+                  mdi-folder
+                </v-icon>
                 <span class="folder-name">{{ folder.dir_name }}</span>
                 <span class="link-counter">
-                  {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : '*' }}
+                  {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
 </span>
               </v-card-title>
             </v-card>
@@ -170,8 +175,10 @@ export default {
 
     const handleYellowBoxClick = () => {
       console.log('Yellow box clicked'); // Добавьте лог для проверки
+      selectedFolderHash.value = null; // Сбрасываем выбранную папку
       emit('reset-folder-selection'); // Эмитим событие для сброса выбранной папки
     };
+
     const sortedLinks = ref([...props.links]); // Создаем реактивное состояние на основе переданных ссылок
 
     const store = useStore();
@@ -195,8 +202,27 @@ export default {
     // const linkCounts = ref({}); // Хранит количество ссылок для каждой папки
     const linkCounts = ref({}); // Инициализация
     const selectedFolder = ref(null); // Добавляем состояние для выбранной папки
+    const selectedFolderHash = ref(null); // Храним dir_hash выбранной папки
+
+    const getFolderColor = (folder) => {
+      const count = linkCounts.value[folder.dir_hash] || 0; // Получаем количество ссылок для папки
+      if (selectedFolderHash.value === folder.dir_hash) {
+        return count > 0
+            ? 'linear-gradient(to bottom, #76c7c0, #4caf50)' // Зеленый градиент
+            : 'linear-gradient(to bottom, #ff7f7f, #ff4c4c)'; // Красный градиент
+      } else {
+        return 'linear-gradient(to bottom, #f0e68c, #d2b48c)'; // Исходный градиент
+      }
+    };
+
     const handleFolderClick = (folder) => {
-      selectedFolder.value = folder;
+      if (selectedFolderHash.value === folder.dir_hash) {
+        // Если папка уже выбрана, сбрасываем выбор
+        selectedFolderHash.value = null;
+      } else {
+        // Иначе выбираем новую папку
+        selectedFolderHash.value = folder.dir_hash;
+      }
       emit('folder-selected', folder.dir_hash); // Эмитим событие с dir_hash выбранной папки
     };
     // const draggedLink = ref(null); // Объявляем draggedLink здесь
@@ -266,7 +292,6 @@ export default {
       });
     }, { immediate: true }); // immediate: true вызывает коллбэк сразу при монтировании
 
-
     const hashString = async (inputString) => {
       try {
         const encoder = new TextEncoder();
@@ -310,6 +335,7 @@ export default {
         return false;
       }
     };
+
     const filteredFolders = computed(() => {
       let result = folders.value.filter(folder =>
           folder.dir_name.toLowerCase().includes(filter.value.toLowerCase())
@@ -432,6 +458,7 @@ export default {
       errorMessage.value = '';
       successMessage.value = '';
     };
+
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
           .channel('realtime-changes')
@@ -476,6 +503,7 @@ export default {
         supabase.removeChannel(realtimeChannel);
       }
     };
+
     const openFolderListDialog = () => {
       folderListDialog.value = true;
     };
@@ -491,6 +519,7 @@ export default {
         selectedFolderId.value = folderId; // Установить выбор
       }
     };
+
     async function getSession() {
       account.value = await supabase.auth.getSession();
       console.log(account.value);
@@ -598,10 +627,10 @@ export default {
       });
     });
     return {
+      getFolderColor,
       selectedFolder,
       handleFolderClick,
       handleDropOnYellowBox,
-
       sortedLinks, // Возвращаем sortedLinks
       onDrop,
       userId,
