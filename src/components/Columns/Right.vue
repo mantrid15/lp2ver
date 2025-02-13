@@ -672,6 +672,11 @@ export default {
               .update({ dir_hash: null })
               .neq('dir_hash', null);
           if (error) throw error;
+
+          // Обновляем количество ссылок для всех папок после очистки
+          for (const folder of folders.value) {
+            await getLinkCount(folder.dir_hash); // Обновляем количество ссылок
+          }
         }
       } catch (error) {
         console.error('Ошибка при очистке dir_hash:', error);
@@ -694,7 +699,8 @@ export default {
           return 0;
         }
         const linkCount = count || (data ? data.length : 0);
-        linkCounts.value[dirHash] = linkCount; // Обновляем количество ссылок в linkCounts
+        linkCounts.value = { ...linkCounts.value, [dirHash]: linkCount };
+        // linkCounts.value[dirHash] = linkCount; // Обновляем количество ссылок в linkCounts
         return linkCount;
       } catch (error) {
         console.error('Ошибка при получении количества ссылок:', error);
