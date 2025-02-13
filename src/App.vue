@@ -104,7 +104,7 @@ const handleLoginStateChange = (isLoggedIn) => {
   width: 120px;
   height: 20px;
   min-width: 120px;
-  min-height: 20px;
+  min-height: 40px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

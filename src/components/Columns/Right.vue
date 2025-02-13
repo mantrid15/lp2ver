@@ -69,6 +69,11 @@
             <v-card
                 class="folder-card"
                 @click="handleFolderClick(folder)"
+                draggable="true"
+                @dragstart="handleDragStart($event, folder)"
+                @dragover.prevent="handleDragOver($event, folder)"
+                @drop="handleDrop($event, folder)"
+                @dragleave="handleDragLeave"
             >
               <v-card-title class="folder-title">
                 <v-icon
@@ -172,6 +177,95 @@ export default {
     },
   },
   setup(props, { emit }) {
+    const draggedFolder = ref(null); // Переменная для хранения перетаскиваемой папки
+
+    const handleDragStart = (event, folder) => {
+      draggedFolder.value = folder; // Сохраняем перетаскиваемую папку
+      event.dataTransfer.setData('text/plain', folder.dir_hash); // Устанавливаем данные для перетаскивания
+    };
+    const handleDragLeave = (event) => {
+      event.currentTarget.style.opacity = '1'; // Восстанавливаем прозрачность при выходе курсора
+    };
+
+    const handleDragOver = (event, folder) => {
+      event.preventDefault(); // Разрешаем перетаскивание
+      if (draggedFolder.value && draggedFolder.value.dir_hash !== folder.dir_hash) {
+        // Подсветка или другие визуальные эффекты при наведении
+        event.currentTarget.style.opacity = '0.5';
+      }
+    };
+
+    const handleDrop = async (event, targetFolder) => {
+      event.preventDefault();
+
+      // Сбрасываем стили (возвращаем opacity к исходному значению)
+      event.currentTarget.style.opacity = '1';
+      // Проверяем, удерживается ли клавиша Ctrl
+      if (!event.ctrlKey) {
+        console.log('Перетаскивание отменено, удерживайте Ctrl для выполнения операции.');
+        return; // Отменяем действие, если Ctrl не нажата
+      }
+
+      if (draggedFolder.value && draggedFolder.value.dir_hash !== targetFolder.dir_hash) {
+        const updatedFolders = [...folders.value];
+
+        // Находим индексы перетаскиваемой и целевой папок
+        const draggedIndex = updatedFolders.findIndex(f => f.dir_hash === draggedFolder.value.dir_hash);
+        const targetIndex = updatedFolders.findIndex(f => f.dir_hash === targetFolder.dir_hash);
+
+        if (draggedIndex === -1 || targetIndex === -1) return; // Проверка на ошибки
+
+        // Сохраняем старый диапазон
+        const draggedFolderRange = updatedFolders[draggedIndex].range;
+        const targetFolderRange = updatedFolders[targetIndex].range;
+
+        // Обновляем диапазоны
+        updatedFolders[draggedIndex].range = targetFolderRange;
+        updatedFolders[targetIndex].range = draggedFolderRange;
+
+        console.log('Обновленные диапазоны перед отправкой в Supabase:', {
+          dragged: {
+            dir_hash: updatedFolders[draggedIndex].dir_hash,
+            new_range: updatedFolders[draggedIndex].range
+          },
+          target: {
+            dir_hash: updatedFolders[targetIndex].dir_hash,
+            new_range: updatedFolders[targetIndex].range
+          }
+        });
+
+        // Обновляем только измененные диапазоны в базе данных
+        await updateFolderRanges([
+          { dir_hash: updatedFolders[draggedIndex].dir_hash, range: updatedFolders[draggedIndex].range },
+          { dir_hash: updatedFolders[targetIndex].dir_hash, range: updatedFolders[targetIndex].range }
+        ]);
+
+        // Обновляем локальное состояние
+        folders.value = updatedFolders;
+      }
+    };
+
+// Метод для обновления только целевых диапазонов
+    const updateFolderRanges = async (updates) => {
+      try {
+        for (const update of updates) {
+          console.log(`Отправка обновления на Supabase для dir_hash: ${update.dir_hash}, range: ${update.range}`);
+          const { error } = await supabase
+              .from('dir')
+              .update({ range: update.range })
+              .eq('dir_hash', update.dir_hash);
+
+          if (error) {
+            console.error('Ошибка при обновлении папки:', update.dir_hash, error);
+          } else {
+            console.log('Обновлена папка:', update.dir_hash, 'с новым range:', update.range);
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка при обновлении папок:', error);
+      }
+    };
+
 
     const handleYellowBoxClick = () => {
       console.log('Yellow box clicked'); // Добавьте лог для проверки
@@ -340,11 +434,16 @@ export default {
       let result = folders.value.filter(folder =>
           folder.dir_name.toLowerCase().includes(filter.value.toLowerCase())
       );
+
+      // Сортировка по умолчанию по полю range в порядке asc
+      result.sort((a, b) => a.range - b.range);
+
       if (sortOrderValues[currentSortOrder.value] === 'asc') {
         result.sort((a, b) => a.id - b.id);
       } else if (sortOrderValues[currentSortOrder.value] === 'desc') {
         result.sort((a, b) => b.id - a.id);
       }
+
       return result;
     });
 
@@ -627,6 +726,12 @@ export default {
       });
     });
     return {
+      draggedFolder,
+      handleDragLeave,
+      handleDragStart,
+      handleDragOver,
+      handleDrop,
+      updateFolderRanges,
       getFolderColor,
       selectedFolder,
       handleFolderClick,
@@ -795,6 +900,9 @@ export default {
   align-items: center;
   justify-content: center;
   height: 150px;
+  /*
+  transition: opacity 0.3s ease;
+  */
   transition: all 0.3s ease;
 }
 .folder-title {
