@@ -109,55 +109,52 @@
       </v-card>
     </v-dialog>
     <!-- Диалоговое окно для отображения списка папок -->
-    <v-dialog v-model="folderListDialog" max-width="300px">
-      <v-card>
-        <v-card-title class="headline">Список папок</v-card-title>
-        <v-btn
-            icon
-            @click="clearDirHash"
-            style="position: absolute; top: 0px; right: 0px; cursor: pointer; color: red;">
-          <v-icon style="font-size: 18px;">mdi-delete</v-icon>
-        </v-btn>
-        <v-card-text>
-          <v-list>
-            <v-list-item v-for="(folder, index) in folders" :key="index"
-                         style="margin: 0; min-height: 20px;  align-items: center;">
-              <v-list-item-title
-                  :style="{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      backgroundColor: linkCounts[folder.dir_hash] > 0 ? 'green' : 'red',
-      width: '100%',
-      padding: '1px'
-    }"
-              >
-                <div style="flex-grow: 1; display: flex; align-items: center; max-width: calc(100% - 50px);">
-                  <v-radio
-                      :value="folder.id"
-                      v-model="selectedFolderId"
-                      color="primary"
-                      @change="setSelectedFolder(folder.id)"
-                      @click.stop="toggleFolder(folder.id)"
-                  ></v-radio>
-                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ folder.dir_name }}</span>
-                </div>
-
-                <!-- Прижимаем количество ссылок к правому краю -->
-                <span style="color: white;">
-      {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
-    </span>
-              </v-list-item-title>
-            </v-list-item>
-          </v-list>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="green darken-1" text @click="folderListDialog = false">Закрыть</v-btn>
-          <v-btn color="red darken-1" text @click="deleteSelectedFolder" :disabled="!selectedFolderId">Удалить</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <v-dialog v-model="folderListDialog" max-width="300px" @close="resetRadio">
+        <v-card>
+          <v-card-title class="headline">Список папок</v-card-title>
+          <v-btn
+              icon
+              @click="clearDirHash"
+              style="position: absolute; top: 0px; right: 0px; cursor: pointer; color: red;">
+            <v-icon style="font-size: 18px;">mdi-delete</v-icon>
+          </v-btn>
+          <v-card-text>
+            <v-list>
+              <v-list-item v-for="(folder, index) in folders" :key="index"
+                           style="margin: 0; min-height: 30px; align-items: center;">
+                <v-list-item-title
+                    :style="{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: linkCounts[folder.dir_hash] > 0 ? 'green' : 'red',
+                  width: '100%',
+                }"
+                >
+                  <div style="flex-grow: 1; display: flex; align-items: center; max-width: calc(100% - 50px);">
+                    <v-radio
+                        :value="folder.id"
+                        v-model="selectedFolderId"
+                        color="primary"
+                        @change="setSelectedFolder(folder.id)"
+                        @click.stop="toggleFolder(folder.id)"
+                    ></v-radio>
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ folder.dir_name }}</span>
+                  </div>
+                  <span style="color: white;">
+                {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
+              </span>
+                </v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn color="green darken-1" text @click="folderListDialog = false">Закрыть</v-btn>
+            <v-btn color="red darken-1" text @click="deleteSelectedFolder" :disabled="!selectedFolderId">Удалить</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
   </v-app>
 </template>
 <script>
@@ -282,14 +279,11 @@ export default {
         console.error('Ошибка при обновлении папок:', error);
       }
     };
-
-
     const handleYellowBoxClick = () => {
       console.log('Yellow box clicked'); // Добавьте лог для проверки
       selectedFolderHash.value = null; // Сбрасываем выбранную папку
       emit('reset-folder-selection'); // Эмитим событие для сброса выбранной папки
     };
-
     const sortedLinks = ref([...props.links]); // Создаем реактивное состояние на основе переданных ссылок
 
     const store = useStore();
@@ -302,7 +296,6 @@ export default {
     const errorMessage = ref('');
     const successMessage = ref('');
     let realtimeChannel = null;
-
     const account = ref();
 
     const filter = ref('');
@@ -359,8 +352,14 @@ export default {
         }
       }
     };
-
+    const resetRadio = () => {
+      selectedFolderId.value = null; // Сброс состояния радио-кнопки
+    };
     const handleKeydown = (event) => {
+      if (event.key === 'Escape') {
+        folderListDialog.value = false; // Закрытие диалога
+        resetRadio(); // Сброс состояния радио-кнопки
+      }
       if (event.key === 'Escape' && filter.value.trim() !== '') {
         filter.value = ''; // Очищаем поле ввода
       }
@@ -552,11 +551,11 @@ export default {
 
     const deleteSelectedFolder = async () => {
       if (selectedFolderId.value) {
-        // Находим dir_hash выбранной папки
         const folderToDelete = folders.value.find(folder => folder.id === selectedFolderId.value);
         if (folderToDelete) {
-          await deleteFolderByDirHash(folderToDelete.dir_hash); // Обновляем ссылки и удаляем папку
-          selectedFolderId.value = null;
+          await deleteFolderByDirHash(folderToDelete.dir_hash);
+          selectedFolderId.value = null; // Сброс выбранной папки после удаления
+          resetRadio(); // Сброс состояния радио-кнопки
         }
       }
     };
@@ -573,6 +572,11 @@ export default {
       newFolderName.value = '';
       errorMessage.value = '';
       successMessage.value = '';
+    };
+    // Добавьте сброс selectedFolderId в closeDialog
+    const closeFolderListDialog = () => {
+      folderListDialog.value = false;
+      resetRadio(); // Сброс состояния радио-кнопки
     };
 
     const subscribeToRealtimeChanges = () => {
@@ -659,6 +663,7 @@ export default {
             }
             // Сбрасываем выбранную папку
             selectedFolderId.value = null; // Это должно снять выделение
+            resetRadio(); // Сброс состояния радио-кнопки
           }
         } else {
           const { error } = await supabase
@@ -729,6 +734,7 @@ export default {
       subscribeToRealtimeChanges();
       getSession(); // Вызываем при монтировании компонента
       window.addEventListener('keydown', handleKeydown); // Добавляем обработчик события
+
       folders.value.forEach(folder => {
         getLinkCount(folder.dir_hash);
       });
@@ -736,6 +742,7 @@ export default {
     onUnmounted(() => {
       unsubscribeFromRealtimeChanges();
       window.removeEventListener('keydown', handleKeydown); // Удаляем обработчик события
+
     });
     watchEffect(() => {
       folders.value.forEach(folder => {
@@ -743,6 +750,7 @@ export default {
       });
     });
     return {
+      resetRadio,
       draggedFolder,
       handleDragLeave,
       handleDragStart,
@@ -767,6 +775,7 @@ export default {
       successMessage,
       openDialog,
       closeDialog,
+      closeFolderListDialog,
       columnSize,
       hasFilter,
       currentSortIcon,
