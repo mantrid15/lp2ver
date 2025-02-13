@@ -625,6 +625,7 @@ export default {
     };
 
     const openFolderListDialog = () => {
+      resetRadio(); // Сбрасываем состояние радио-кнопки при открытии диалога
       folderListDialog.value = true;
     };
 
@@ -728,13 +729,12 @@ export default {
         }
       }
     };
-
     onMounted(() => {
       fetchFolders();
       subscribeToRealtimeChanges();
       getSession(); // Вызываем при монтировании компонента
       window.addEventListener('keydown', handleKeydown); // Добавляем обработчик события
-
+// Добавляем обработчик клика вне диалогового окна
       folders.value.forEach(folder => {
         getLinkCount(folder.dir_hash);
       });
