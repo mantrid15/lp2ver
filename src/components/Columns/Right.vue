@@ -110,14 +110,15 @@
     </v-dialog>
     <!-- Диалоговое окно для отображения списка папок -->
     <v-dialog v-model="folderListDialog" max-width="300px" @close="resetRadio">
-        <v-card>
-          <v-card-title class="headline">Список папок</v-card-title>
-          <v-btn
-              icon
-              @click="clearDirHash"
-              style="position: absolute; top: 0px; right: 0px; cursor: pointer; color: red;">
-            <v-icon style="font-size: 18px;">mdi-delete</v-icon>
-          </v-btn>
+      <v-card>
+        <v-card-title class="headline">Список папок</v-card-title>
+        <v-btn
+            icon
+            @click="clearDirHash"
+            style="position: absolute; top: 0px; right: 0px; cursor: pointer; color: red;">
+          <v-icon style="font-size: 18px;">mdi-delete</v-icon>
+        </v-btn>
+        <div class="scrollable-content">
           <v-card-text>
             <v-list>
               <v-list-item v-for="(folder, index) in folders" :key="index"
@@ -125,6 +126,8 @@
                 <v-list-item-title
                     :style="{
                   display: 'flex',
+                  height: '22px',
+                  padding: '0 8px',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   backgroundColor: linkCounts[folder.dir_hash] > 0 ? 'green' : 'red',
@@ -139,7 +142,7 @@
                         @change="setSelectedFolder(folder.id)"
                         @click.stop="toggleFolder(folder.id)"
                     ></v-radio>
-                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ folder.dir_name }}</span>
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8em;">{{ folder.dir_name }}</span>
                   </div>
                   <span style="color: white;">
                 {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
@@ -148,13 +151,14 @@
               </v-list-item>
             </v-list>
           </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn color="green darken-1" text @click="folderListDialog = false">Закрыть</v-btn>
-            <v-btn color="red darken-1" text @click="deleteSelectedFolder" :disabled="!selectedFolderId">Удалить</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
+        </div>
+        <v-card-actions class="fixed-actions">
+          <v-spacer></v-spacer>
+          <v-btn color="green darken-1" text @click="folderListDialog = false">Закрыть</v-btn>
+          <v-btn color="red darken-1" text @click="deleteSelectedFolder" :disabled="!selectedFolderId">Удалить</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-app>
 </template>
 <script>
@@ -804,6 +808,18 @@ export default {
 };
 </script>
 <style scoped>
+
+.scrollable-content {
+  max-height: 400px; /* Высота контента */
+  overflow-y: auto;
+}
+
+.fixed-actions {
+  position: sticky;
+  bottom: 0;
+  background-color: white; /* Цвет фона должен соответствовать фону карточки */
+  z-index: 1;
+}
 .user-info {
   padding: 2px;
   color: black;
