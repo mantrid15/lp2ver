@@ -120,16 +120,33 @@
         </v-btn>
         <v-card-text>
           <v-list>
-            <v-list-item v-for="(folder, index) in folders" :key="index" style="display: flex; align-items: center; margin: 3px 0;">
-              <v-list-item-title style="display: flex; align-items: center;">
-                <v-radio
-                    :value="folder.id"
-                    v-model="selectedFolderId"
-                    color="primary"
-                    @change="setSelectedFolder(folder.id)"
-                    @click.stop="toggleFolder(folder.id)"
-                ></v-radio>
-                <span>{{ folder.dir_name }}</span>
+            <v-list-item v-for="(folder, index) in folders" :key="index"
+                         style="margin: 0; min-height: 20px;  align-items: center;">
+              <v-list-item-title
+                  :style="{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: linkCounts[folder.dir_hash] > 0 ? 'green' : 'red',
+      width: '100%',
+      padding: '1px'
+    }"
+              >
+                <div style="flex-grow: 1; display: flex; align-items: center; max-width: calc(100% - 50px);">
+                  <v-radio
+                      :value="folder.id"
+                      v-model="selectedFolderId"
+                      color="primary"
+                      @change="setSelectedFolder(folder.id)"
+                      @click.stop="toggleFolder(folder.id)"
+                  ></v-radio>
+                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ folder.dir_name }}</span>
+                </div>
+
+                <!-- Прижимаем количество ссылок к правому краю -->
+                <span style="color: white;">
+      {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
+    </span>
               </v-list-item-title>
             </v-list-item>
           </v-list>
