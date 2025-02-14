@@ -572,7 +572,35 @@ export default {
           throw deleteFolderError;
         }
 
-        // Обновляем список папок после удаления
+        // Получаем все оставшиеся папки, отсортированные по range
+        const { data: remainingFolders, error: fetchFoldersError } = await supabase
+            .from('dir')
+            .select('*')
+            .order('range', { ascending: true });
+
+        if (fetchFoldersError) {
+          throw fetchFoldersError;
+        }
+
+        // Пересчитываем значения range для каждой папки
+        const updates = remainingFolders.map((folder, index) => ({
+          dir_hash: folder.dir_hash,
+          range: index + 1 // Новое значение range
+        }));
+
+        // Обновляем range для всех папок в базе данных
+        for (const update of updates) {
+          const { error: updateRangeError } = await supabase
+              .from('dir')
+              .update({ range: update.range })
+              .eq('dir_hash', update.dir_hash);
+
+          if (updateRangeError) {
+            throw updateRangeError;
+          }
+        }
+
+        // Обновляем список папок после удаления и пересчета range
         await fetchFolders();
         successMessage.value = 'Папка и связанные ссылки успешно обновлены!';
         setTimeout(() => {
