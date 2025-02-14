@@ -349,7 +349,6 @@ export default {
       }
       emit('folder-selected', folder.dir_hash); // Эмитим событие с dir_hash выбранной папки
     };
-    // const draggedLink = ref(null); // Объявляем draggedLink здесь
     const onDrop = async (dirHash) => {
       if (props.draggedLink) {
         const linkToUpdate = props.draggedLink;
