@@ -78,7 +78,8 @@
               <v-card-title class="folder-title">
                 <v-icon
                     class="folder-icon"
-                    :style="{ background: getFolderColor(folder), WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }"
+                    :style="{ background: getFolderColor(folder),
+                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }"
                 >
                   mdi-folder
                 </v-icon>
@@ -122,7 +123,7 @@
           <v-card-text>
             <v-list>
               <v-list-item v-for="(folder, index) in folders" :key="index"
-                           style="margin: 0; min-height: 30px; align-items: center;">
+                           style="margin: 0; min-height: 30%; align-items: center;">
                 <v-list-item-title
                     :style="{
                   display: 'flex',
@@ -200,6 +201,8 @@ export default {
     const handleDragStart = (event, folder) => {
       draggedFolder.value = folder; // Сохраняем перетаскиваемую папку
       event.dataTransfer.setData('text/plain', folder.dir_hash); // Устанавливаем данные для перетаскивания
+      // Обновляем состояние папки перед началом перетаскивания
+      fetchFolders(); // Перезагружаем папки из базы данных
     };
     const handleDragLeave = (event) => {
       event.currentTarget.style.opacity = '1'; // Восстанавливаем прозрачность при выходе курсора
@@ -209,7 +212,7 @@ export default {
       event.preventDefault(); // Разрешаем перетаскивание
       if (draggedFolder.value && draggedFolder.value.dir_hash !== folder.dir_hash) {
         // Подсветка или другие визуальные эффекты при наведении
-        event.currentTarget.style.opacity = '0.5';
+        event.currentTarget.style.opacity = '0.3';
       }
     };
 
@@ -260,6 +263,17 @@ export default {
 
         // Обновляем локальное состояние
         folders.value = updatedFolders;
+        // Обновляем количество ссылок для целевой папки
+        await getLinkCount(targetFolder.dir_hash);
+        // Также обновляем количество ссылок для исходной папки
+        // if (draggedFolder.value.dir_hash) {
+        //   await getLinkCount(draggedFolder.value.dir_hash);
+        // }
+
+        // Сбрасываем выделение папки
+        selectedFolderHash.value = null;
+        // Обновляем локальные данные
+        await fetchFolders(); // Или другой метод для обновления состояния
       }
     };
 
@@ -279,6 +293,8 @@ export default {
             console.log('Обновлена папка:', update.dir_hash, 'с новым range:', update.range);
           }
         }
+        // Обновляем локальное состояние
+        await fetchFolders(); // Перезагружаем папки из базы данных
       } catch (error) {
         console.error('Ошибка при обновлении папок:', error);
       }
@@ -351,6 +367,8 @@ export default {
           }
           // Удалите ссылку из sortedLinks
           sortedLinks.value = sortedLinks.value.filter(link => link.id !== linkToUpdate.id);
+          // Сбрасываем состояние draggedLink
+          emit('update-dragged-link', null); // Эмитим событие для сброса draggedLink
         } catch (error) {
           console.error('Ошибка при обновлении ссылки:', error);
         }
@@ -846,7 +864,7 @@ export default {
   margin-left: 5px;
   background-color: white;
   padding: 0;
-  border: 1px solid #ccc;
+  border: 1px solid #883030;
   border-radius: 5px;
   transition: border-color 0.3s;
 }
@@ -866,13 +884,6 @@ export default {
     opacity: 0; /* Прозрачность в 50% для мигания */
   }
 }
-
-/*.thick-cursor::selection {
-  background: transparent; !* Убираем выделение текста *!
-}*/
-
-
-
 .filter-input:focus {
   border-color: black;
   background-color: #ffae00;
@@ -938,7 +949,7 @@ export default {
 }
 .folder-card {
   background-color: #fff;
-  border: 1px solid #d9d9d9;
+  border: 2px solid #000000;
   border-radius: 4px;
   padding: 24px;
   text-align: center;
@@ -951,7 +962,9 @@ export default {
   /*
   transition: opacity 0.3s ease;
   */
+  /*
   transition: all 0.3s ease;
+  */
 }
 .folder-title {
   display: flex;
@@ -994,7 +1007,7 @@ export default {
   }
 }
 .brown-background::-webkit-scrollbar {
-  width: 12px;
+  width: 15px;
 }
 .brown-background::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.1);

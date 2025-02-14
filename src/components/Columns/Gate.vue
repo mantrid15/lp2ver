@@ -300,7 +300,7 @@ export default {
 
 <style scoped>
 .dragging {
-  background-color: red; /* Цвет фона для перетаскиваемой строки */
+  background-color: violet; /* Цвет фона для перетаскиваемой строки */
 }
 th:nth-child(1),
 td:nth-child(1) {
