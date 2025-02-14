@@ -3,14 +3,14 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import vueDevTools from 'vite-plugin-vue-devtools';
 import vuetify from 'vite-plugin-vuetify'; // Импортируем плагин Vuetify
-import path from 'path'; // Не забудьте импортировать path
+import path from 'path'; // Импортируем path
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
     vuetify({ autoImport: true }), // Добавляем плагин Vuetify с автоимпортом
-    // vueDevTools(),
+    // vueDevTools(), // Раскомментируйте, если хотите использовать Vue DevTools
   ],
   resolve: {
     alias: {
@@ -27,10 +27,10 @@ export default defineConfig({
       },
     },
     hmr: {
-      overlay: false
+      overlay: false // Отключает оверлей ошибок Hot Module Replacement
     }
   },
   build: {
-    sourcemap: true // Включение source maps
+    sourcemap: true // Включение source maps для отладки
   },
 });

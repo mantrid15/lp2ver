@@ -146,6 +146,11 @@ export default {
     const buttonLabel = ref('URL');
     const buttonLabelOk = ref('LinZer');
     const linkInfoParsed = ref(null);
+
+    const receiveUrlFromExtension = async (receivedUrl) => {
+      url.value = receivedUrl;
+      await handleButtonClick(); // Обрабатываем URL и отправляем в Supabase
+    };
     // const puppeteer = require('puppeteer-core');
     const showSnackbar = (message) => {
       snackbarMessage.value = message;
@@ -565,6 +570,26 @@ export default {
     });
 
     onMounted(() => {
+      const ws = new WebSocket('ws://localhost:3000');
+      ws.onopen = () => {
+        console.log('WebSocket соединение установлено');
+      };
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.url) {
+          url.value = data.url; // Обновляем значение URL
+          console.log('Получен URL от сервера:', data.url);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket соединение закрыто');
+      };
+
+      ws.onerror = (error) => {
+        console.error('Ошибка WebSocket:', error);
+      };
+
       window.addEventListener('changeButtonColor', (event) => changeButtonColor(event.detail));
       if (urlInput.value) {
         urlInput.value.focus(); // Устанавливаем фокус на поле ввода

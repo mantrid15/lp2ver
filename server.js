@@ -3,12 +3,62 @@ import cors from 'cors';
 import axios from 'axios'; // Импортируйте axios вместо request
 // import puppeteer from 'puppeteer-extra';
 import puppeteer from 'puppeteer';
+import { WebSocketServer } from 'ws'; // Импортируем WebSocketServer
 
 const app = express();
 
 // Используйте CORS для разрешения всех источников
 app.use(cors());
+app.use(express.json());
 
+// Создаем HTTP-сервер
+const server = app.listen(3000, () => {
+  console.log('Сервер запущен на порту 3000');
+});
+
+// Создаем WebSocket-сервер
+const wss = new WebSocketServer({ server });
+
+// Хранилище для WebSocket-клиентов
+const clients = new Set();
+
+wss.on('connection', (ws) => {
+  console.log('Новое подключение WebSocket');
+  clients.add(ws);
+
+    ws.on('close', () => {
+        console.log('WebSocket соединение закрыто');
+        clients.delete(ws);
+    });
+
+    ws.on('error', (error) => {
+        console.error('Ошибка WebSocket:', error);
+    });
+});
+
+// Функция для отправки URL всем подключенным клиентам
+const broadcastUrl = (url) => {
+  clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify({ url }));
+    }
+  });
+};
+
+// Маршрут для приема URL от расширения Chrome
+app.post('/api/send-url', async (req, res) => {
+    const { url } = req.body;
+    if (!url) {
+        return res.status(400).json({ error: 'URL не предоставлен' });
+    }
+
+  console.log('Received URL from extension:', url);
+  // Отправляем URL всем подключенным клиентам через WebSocket
+  broadcastUrl(url);
+  res.json({ status: 'URL received', url });
+});
+
+// Остальные маршруты (прокси, Puppeteer и т.д.)
 app.get('/proxy', async (req, res) => {
     const url = req.query.url;
     if (!url) {
@@ -24,33 +74,27 @@ app.get('/proxy', async (req, res) => {
     }
 });
 
+// Маршрут для извлечения метаданных с помощью Puppeteer
+app.get('/fetch-metadata', async (req, res) => {
+  const url = req.query.url;
+  if (!url) {
+    return res.status(400).json({ error: 'URL не предоставлен' });
+  }
 
-async function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// const puppeteer = require('puppeteer-extra');
-// const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-//
-// // Добавляем плагин stealth
-// puppeteer.use(StealthPlugin());
-// Функция для извлечения метаданных
+  const metaData = await puppeteerMetaData(url);
+  if (metaData) {
+    res.json(metaData);
+  } else {
+    res.status(500).json({ error: 'Ошибка при получении мета-данных' });
+  }
+});
 
 async function puppeteerMetaData(url) {
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
 
     try {
-        // Добавляем скрипт для выполнения на новой странице
-/*        await page.evaluateOnNewDocument(() => {
-            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
-            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
-            delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
-        });*/
-
         console.log(`Открываем страницу: ${url}`);
-        console.log(`Открываем страницу: ${url}`);
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
         await page.goto(url, { waitUntil: 'networkidle2' });
 // Ожидание 10 секунд
 //         await delay(5000); // Ожидание 10 секунд
@@ -76,30 +120,3 @@ async function puppeteerMetaData(url) {
         await browser.close();
     }
 }
-
-// Новый маршрут для извлечения метаданных с помощью Puppeteer
-app.get('/fetch-metadata', async (req, res) => {
-    const url = req.query.url;
-    if (!url) {
-        return res.status(400).json({ error: 'URL не предоставлен' });
-    }
-
-    const metaData = await puppeteerMetaData(url);
-    if (metaData) {
-        res.json(metaData);
-    } else {
-        res.status(500).json({ error: 'Ошибка при получении мета-данных' });
-    }
-});
-
-// Ваши маршруты и другая логика сервера
-app.get('/metaDataService', (req, res) => {
-    // Ваша логика обработки запроса
-    res.json({ message: 'Данные успешно получены!' });
-});
-
-// Запуск сервера
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
-});
