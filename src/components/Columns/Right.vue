@@ -196,8 +196,9 @@ export default {
     },
   },
   setup(props, { emit }) {
-    const draggedFolder = ref(null); // Переменная для хранения перетаскиваемой папки
+    let realtimeChannel = null;
 
+    const draggedFolder = ref(null); // Переменная для хранения перетаскиваемой папки
     const handleDragStart = (event, folder) => {
       draggedFolder.value = folder; // Сохраняем перетаскиваемую папку
       event.dataTransfer.setData('text/plain', folder.dir_hash); // Устанавливаем данные для перетаскивания
@@ -207,7 +208,6 @@ export default {
     const handleDragLeave = (event) => {
       event.currentTarget.style.opacity = '1'; // Восстанавливаем прозрачность при выходе курсора
     };
-
     const handleDragOver = (event, folder) => {
       event.preventDefault(); // Разрешаем перетаскивание
       if (draggedFolder.value && draggedFolder.value.dir_hash !== folder.dir_hash) {
@@ -315,7 +315,6 @@ export default {
     const folders = ref([]);
     const errorMessage = ref('');
     const successMessage = ref('');
-    let realtimeChannel = null;
     const account = ref();
 
     const filter = ref('');
@@ -501,15 +500,32 @@ export default {
             }, 2000);
             return;
           }
+          // Находим максимальное значение в столбце range
+          const { data: maxRangeData, error: maxRangeError } = await supabase
+              .from('dir')
+              .select('range')
+              .order('range', { ascending: false })
+              .limit(1);
+
+          if (maxRangeError) {
+            throw maxRangeError;
+          }
+
+          // Вычисляем новое значение range
+          const newRange = maxRangeData.length > 0 ? maxRangeData[0].range + 1 : 1;
+
+          // Создаем новую папку с новым значением range
           const { data, error } = await supabase
               .from('dir')
               .insert([
                 {
                   dir_name: upperCaseFolderName,
                   dir_hash: dirHash,
-                  user_id: userId.value
+                  user_id: userId.value,
+                  range: newRange // Добавляем новое значение range
                 }
               ]);
+
           if (error) {
             errorMessage.value = 'Ошибка при создании директории!';
             setTimeout(() => {
@@ -518,6 +534,7 @@ export default {
             console.error('Ошибка при создании директории:', error);
             return;
           }
+
           console.log('Ответ от Supabase:', data);
           successMessage.value = 'Директория создана!';
           setTimeout(() => {
