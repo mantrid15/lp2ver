@@ -1,48 +1,56 @@
 import express from 'express';
 import cors from 'cors';
-import axios from 'axios'; // Импортируйте axios вместо request
-// import puppeteer from 'puppeteer-extra';
+import axios from 'axios';
 import puppeteer from 'puppeteer';
-import { WebSocketServer } from 'ws'; // Импортируем WebSocketServer
+import { WebSocketServer } from 'ws'; // Импортируем только WebSocketServer
 
 const app = express();
-
-// Используйте CORS для разрешения всех источников
 app.use(cors());
 app.use(express.json());
 
 // Создаем HTTP-сервер
 const server = app.listen(3000, () => {
-  console.log('Сервер запущен на порту 3000');
+    console.log('Сервер запущен на порту 3000');
 });
 
 // Создаем WebSocket-сервер
 const wss = new WebSocketServer({ server });
 
-// Хранилище для WebSocket-клиентов
+// Хранилище для WebSocket-клиентов и их последней отправленной ссылки
 const clients = new Set();
+const clientLastUrls = new Map();
 
 wss.on('connection', (ws) => {
-  console.log('Новое подключение WebSocket');
-  clients.add(ws);
+    console.log('Новое подключение WebSocket');
+    clients.add(ws);
 
     ws.on('close', () => {
         console.log('WebSocket соединение закрыто');
         clients.delete(ws);
+        clientLastUrls.delete(ws);
     });
-
     ws.on('error', (error) => {
         console.error('Ошибка WebSocket:', error);
     });
 });
 
-// Функция для отправки URL всем подключенным клиентам
+// Функция для отправки URL всем подключенным клиентам.
+// Если у клиента уже есть предыдущая ссылка, сначала отправляем команду удаления.
 const broadcastUrl = (url) => {
-  clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({ url }));
-    }
-  });
+    clients.forEach((client) => {
+        // Проверяем, что соединение открыто (числовое значение 1 соответствует OPEN)
+        if (client.readyState === 1) {
+            if (clientLastUrls.has(client)) {
+                const previousUrl = clientLastUrls.get(client);
+                // Отправляем клиенту команду удаления старой ссылки
+                client.send(JSON.stringify({ remove: previousUrl }));
+            }
+            // Сохраняем новую ссылку для клиента
+            clientLastUrls.set(client, url);
+            // Отправляем новую ссылку
+            client.send(JSON.stringify({ url }));
+        }
+    });
 };
 
 // Маршрут для приема URL от расширения Chrome
@@ -51,11 +59,10 @@ app.post('/api/send-url', async (req, res) => {
     if (!url) {
         return res.status(400).json({ error: 'URL не предоставлен' });
     }
-
-  console.log('Received URL from extension:', url);
-  // Отправляем URL всем подключенным клиентам через WebSocket
-  broadcastUrl(url);
-  res.json({ status: 'URL received', url });
+    console.log('Received URL from extension:', url);
+    // Отправляем URL всем подключенным клиентам через WebSocket:
+    broadcastUrl(url);
+    res.json({ status: 'URL received', url });
 });
 
 // Остальные маршруты (прокси, Puppeteer и т.д.)
@@ -64,9 +71,8 @@ app.get('/proxy', async (req, res) => {
     if (!url) {
         return res.status(400).json({ error: 'URL не указан' });
     }
-
     try {
-        const response = await axios.get(url); // Используйте axios для выполнения запроса
+        const response = await axios.get(url);
         res.set('Content-Type', response.headers['content-type']);
         res.send(response.data);
     } catch (error) {
@@ -76,30 +82,25 @@ app.get('/proxy', async (req, res) => {
 
 // Маршрут для извлечения метаданных с помощью Puppeteer
 app.get('/fetch-metadata', async (req, res) => {
-  const url = req.query.url;
-  if (!url) {
-    return res.status(400).json({ error: 'URL не предоставлен' });
-  }
-
-  const metaData = await puppeteerMetaData(url);
-  if (metaData) {
-    res.json(metaData);
-  } else {
-    res.status(500).json({ error: 'Ошибка при получении мета-данных' });
-  }
+    const url = req.query.url;
+    if (!url) {
+        return res.status(400).json({ error: 'URL не предоставлен' });
+    }
+    const metaData = await puppeteerMetaData(url);
+    if (metaData) {
+        res.json(metaData);
+    } else {
+        res.status(500).json({ error: 'Ошибка при получении мета-данных' });
+    }
 });
 
 async function puppeteerMetaData(url) {
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
-
     try {
         console.log(`Открываем страницу: ${url}`);
         await page.goto(url, { waitUntil: 'networkidle2' });
-// Ожидание 10 секунд
-//         await delay(5000); // Ожидание 10 секунд
         console.log('Страница загружена. Извлекаем мета-данные...');
-
         // Извлекаем заголовок и мета-данные
         const metaData = await page.evaluate(() => {
             const headTitle = document.querySelector('html head title')?.textContent || '';
@@ -107,10 +108,8 @@ async function puppeteerMetaData(url) {
             const title = headTitle || documentTitle || '';
             const description = document.querySelector('meta[name="description"]')?.content || '';
             const keywords = document.querySelector('meta[name="keywords"]')?.content || '';
-
             return { title, description, keywords };
         });
-
         console.log('Мета-данные извлечены:', metaData);
         return metaData;
     } catch (error) {
