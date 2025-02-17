@@ -1,4 +1,5 @@
 
+
 <template>
   <v-container>
     <div style="display: flex; align-items: center; overflow: hidden;">
@@ -12,23 +13,13 @@
       <v-btn @click="handleButtonClick"
              :class="['fixed-size-button', buttonColorClass]"
              style="margin-right: 5px; padding: 5px;">
-        <span v-if="statusMessage">
-          {{ buttonLabelOk }}
-          <span style="background-color: blue;
-          color: white; border-radius: 9px;
-          padding: 5px; margin-left: 5px;
-          border: 1px solid white; font-size: 9px;
-          padding-bottom: 3px">
-            {{ statusMessage }}
-          </span>
-        </span>
-        <span v-else style="display: flex; justify-content: center; align-items: center; margin-right: 10px">
-          {{ buttonLabel }}
-          <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
-                 alt="URL Icon"
-                 width="20" height="20"
-                 style="margin-left: 10px" />
-        </span>
+  <span>
+    {{ buttonLabelOk }}
+  </span>
+        <v-img :src="statusMessage ? '/path/to/your/icon.png' : '/lpicon.png'"
+               alt="URL Icon"
+               width="20" height="20"
+               style="margin-left: 10px" />
       </v-btn>
 
       <v-table style="width: 1000px;
@@ -209,24 +200,6 @@ export default {
       }
     };
 
-    /*const getPageInfo = async (url) => {
-      try {
-        const response = await axios.get(`http://localhost:3000/proxy?url=${encodeURIComponent(url)}`);
-        const $ = cheerio.load(response.data);
-        const keywords = $('meta[name="keywords"]').attr('content') || ''; // Получаем ключевые слова
-        console.log('Standard request:')
-        return {
-          url,
-          title: $('title').text(),
-          description: $('meta[name="description"]').attr('content') || '',
-          keywords: keywords.length > 0 ? keywords.split(',') : null, // Возвращаем null, если список пустой
-
-        };
-      } catch (error) {
-        console.error('Ошибка при получении информации о странице:', error);
-        return { error: 'Ошибка при получении информации' };
-      }
-    };*/
 
     const fetchMetaData = async (url) => {
       try {
@@ -370,143 +343,111 @@ export default {
       }
     };
 
-    /* const getInfo = async () => {
-       if (isValidURL(url.value)) {
-         try {
-           let info = await getPageInfo(url.value);
-           if (info.error) {
-             statusMessage.value = '2';
-             info = await fetchMetaData(url.value);
-           } else {
-             statusMessage.value = '1';
-           }
-           if (info.error) {
-             statusMessage.value = '3';
-             info = await fetchMetaSerp(url.value);
-           }
-           if (info.error) {
-             info = { url: url.value, title: '', description: '', keywords: '' };
-           }
-           linkInfo.value = JSON.stringify(info, null, 2);
-         } catch (error) {
-           linkInfo.value = error;
-           console.error('Ошибка при получении информации о странице:', error);
-         }
-       } else {
-         linkInfo.value = 'Сначала получите информацию о странице.';
-       }
-     };*/
-
     const handleButtonClick = async () => {
-      if (buttonLabel.value === buttonLabelOk.value) {
-        await getInfo();
-        parseLinkInfo();
-        const userIdValue = userId.value;
-        console.log('User ID:', userIdValue);
-
-        if (!userIdValue) {
-          showSnackbar('Незарегистрированный пользователь. Демо-режим.');
-          return; // Завершаем выполнение, если пользователь не зарегистрирован
-        }
-
-        try {
-          showSnackbar('Url is sending to Supabase!!!');
-          snackbar.value = true;
-          const urlHash = await hashString(linkInfoParsed.value.url); // Рассчитываем url_hash
-          console.log('Calculated url_hash:', urlHash);
-
-          // Проверка существования url_hash в таблице links
-          const { data: existingLinks, error: checkError } = await supabase
-              .from('links')
-              .select('url_hash')
-              .eq('url_hash', urlHash);
-
-          if (checkError) {
-            console.error('Ошибка при проверке url_hash:', checkError);
-            snackbarMessage.value = 'Не удалось проверить существование ссылки. Попробуйте снова.';
-            snackbar.value = true;
-            return; // Завершаем выполнение, если произошла ошибка
-          }
-
-          if (existingLinks.length > 0) {
-            console.log('Такая ссылка в базе уже есть!!!');
-            snackbarMessage.value = 'Такая ссылка в базе уже есть!!!';
-            snackbar.value = true;
-            clearFields();
-            return; // Завершаем выполнение, если ссылка уже существует
-          }
-
-          // Здесь уведомляем пользователя о том, что данные отправляются в Supabase
-          showSnackbar('Url is sending to Supabase!!!');
-          snackbar.value = true;
-
-          const randomId = generateUid();
-          const faviconHash = await hashString(randomId); // Хеш для favicon_hash
-
-          // Данные для таблицы favicons
-          const faviconData = {
-            favicon_hash: faviconHash,
-            favicon_name: randomId,
-            storage_path: '', // Укажите путь, если необходимо
-            user_id: userIdValue,
-          };
-          console.log('Favicon Data:', faviconData);
-
-          // Отправляем данные в таблицу favicons
-          const { data: faviconDataResponse, error: faviconError } = await supabase.from('favicons').insert([faviconData]);
-          if (faviconError) {
-            console.error('Ошибка при отправке данных в таблицу favicons:', faviconError);
-            snackbarMessage.value = 'Не удалось отправить данные favicon. Попробуйте снова.';
-            snackbar.value = true;
-            return; // Завершаем выполнение, если произошла ошибка
-          }
-
-          // Данные для таблицы links
-          const linkData = {
-            date: new Date().toISOString(), // Используем ISO формат
-            url_hash: urlHash, // Используем рассчитанный url_hash
-            favicon_name: randomId,
-            url: linkInfoParsed.value.url,
-            title: linkInfoParsed.value.title,
-            description: linkInfoParsed.value.description.trim(),
-            title_translation: '',
-            keywords: Array.isArray(linkInfoParsed.value.keywords) && linkInfoParsed.value.keywords.length > 0
-                ? linkInfoParsed.value.keywords
-                : null, // Возвращаем null, если список пустой
-            ai_tag: '',
-            favicon_hash: faviconHash, // Используем хеш для favicon_hash
-            user_id: userIdValue, // Используем извлеченное значение
-            dir_hash: '', // Укажите dir_hash, если необходимо
-            subdir_hash: '', // Укажите subdir_hash, если необходимо
-          };
-          console.log('Link Data:', linkData);
-
-          // Отправляем данные в таблицу links
-          const { data: linkDataResponse, error: linkError } = await supabase
-              .from('links')
-              .insert([linkData])
-              .select(); // Запрос на возврат вставленных данных
-
-          if (linkError) {
-            console.error('Ошибка при отправке данных в Supabase:', linkError);
-            showSnackbar('Не удалось отправить данные. Попробуйте снова.');
-          } else {
-            console.log('Данные успешно отправлены:', linkDataResponse);
-            showSnackbar('Данные успешно отправлены!');
-            clearFields();
-          }
-        } catch (error) {
-          console.error('Произошла ошибка:', error);
-          showSnackbar('Произошла ошибка. Попробуйте снова.');
-        }
-      } else {
-        await fetchPageInfo();
+      // Проверяем URL через fetchPageInfo
+      await fetchPageInfo();
+      if (!isValidURL(url.value)) {
+        showSnackbar('Ссылка не ссылка!!!');
+        return;
       }
 
-      // Устанавливаем фокус на поле ввода после обработки
-      await nextTick(); // Ждем, пока обновится DOM
+      // Если URL валиден, продолжаем выполнение основной логики
+      await getInfo();
+      parseLinkInfo();
+
+      if (!linkInfoParsed.value || !linkInfoParsed.value.url) {
+        showSnackbar('Не удалось получить информацию о странице');
+        return;
+      }
+
+      const userIdValue = userId.value;
+      if (!userIdValue) {
+        showSnackbar('Незарегистрированный пользователь. Демо-режим.');
+        return;
+      }
+
+      try {
+        showSnackbar('Отправка URL в Supabase...');
+        const urlHash = await hashString(linkInfoParsed.value.url);
+        console.log('Calculated url_hash:', urlHash);
+
+        // Проверка существования url_hash в таблице links
+        const { data: existingLinks, error: checkError } = await supabase
+            .from('links')
+            .select('url_hash')
+            .eq('url_hash', urlHash);
+        if (checkError) {
+          console.error('Ошибка при проверке url_hash:', checkError);
+          showSnackbar('Не удалось проверить существование ссылки. Попробуйте снова.');
+          return;
+        }
+        if (existingLinks.length > 0) {
+          console.log('Такая ссылка в базе уже есть!');
+          showSnackbar('Такая ссылка в базе уже есть!');
+          clearFields();
+          return;
+        }
+
+        // Подготовка данных для таблицы favicons
+        const randomId = generateUid();
+        const faviconHash = await hashString(randomId);
+        const faviconData = {
+          favicon_hash: faviconHash,
+          favicon_name: randomId,
+          storage_path: '',
+          user_id: userIdValue,
+        };
+        console.log('Favicon Data:', faviconData);
+
+        const { error: faviconError } = await supabase
+            .from('favicons')
+            .insert([faviconData]);
+        if (faviconError) {
+          console.error('Ошибка при отправке данных в таблицу favicons:', faviconError);
+          showSnackbar('Не удалось отправить данные favicon. Попробуйте снова.');
+          return;
+        }
+
+        // Подготовка данных для таблицы links
+        const linkData = {
+          date: new Date().toISOString(),
+          url_hash: urlHash,
+          favicon_name: randomId,
+          url: linkInfoParsed.value.url,
+          title: linkInfoParsed.value.title,
+          description: linkInfoParsed.value.description.trim(),
+          title_translation: '',
+          keywords: (Array.isArray(linkInfoParsed.value.keywords) && linkInfoParsed.value.keywords.length > 0)
+              ? linkInfoParsed.value.keywords
+              : null,
+          ai_tag: '',
+          favicon_hash: faviconHash,
+          user_id: userIdValue,
+          dir_hash: '',
+          subdir_hash: '',
+        };
+        console.log('Link Data:', linkData);
+
+        const { error: linkError } = await supabase
+            .from('links')
+            .insert([linkData]);
+        if (linkError) {
+          console.error('Ошибка при отправке данных в Supabase:', linkError);
+          showSnackbar('Не удалось отправить данные. Попробуйте снова.');
+        } else {
+          console.log('Данные успешно отправлены!');
+          showSnackbar('Данные успешно отправлены!');
+          clearFields();
+        }
+      } catch (error) {
+        console.error('Произошла ошибка:', error);
+        showSnackbar('Произошла ошибка. Попробуйте снова.');
+      }
+
+      // Возвращаем фокус на поле ввода
+      await nextTick();
       if (urlInput.value) {
-        urlInput.value.focus(); // Устанавливаем фокус, если элемент доступен
+        urlInput.value.focus();
       } else {
         console.error('urlInput не найден или не смонтирован');
       }
@@ -632,6 +573,7 @@ export default {
     }
 
     return {
+      receiveUrlFromExtension,
       snackbar,
       snackbarMessage,
       buttonColorClass,
@@ -655,7 +597,6 @@ export default {
   },
 };
 </script>
-
 <style scoped>
 .v-table {
   background-color: transparent; /* Прозрачный фон для таблицы */
