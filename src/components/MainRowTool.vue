@@ -1,5 +1,3 @@
-
-
 <template>
   <v-container>
     <div style="display: flex; align-items: center; overflow: hidden;">
@@ -106,7 +104,6 @@
     </v-snackbar>
   </v-container>
 </template>
-
 <script>
 import {ref, onMounted, computed, nextTick} from 'vue';
 import axios from 'axios';
@@ -474,14 +471,27 @@ export default {
       statusMessage.value = '';
       buttonLabel.value = 'URL';
       linkInfoParsed.value = null;
+
+      // Очищаем буфер обмена, устанавливая пустую строку (если API доступно)
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText('');
+          console.info('Буфер обмена успешно очищен');
+        } else {
+          console.warn('Clipboard API не доступен в этом браузере');
+        }
+      } catch (error) {
+        console.error('Не удалось очистить буфер обмена:', error);
+      }
+
       // Ждем, пока обновится DOM
       await nextTick();
+
       if (urlInput.value) {
         urlInput.value.focus(); // Устанавливаем фокус, если элемент доступен
       } else {
         console.error('urlInput не найден или не смонтирован');
       }
-
     };
 
     const handleContextMenu = (event) => {
