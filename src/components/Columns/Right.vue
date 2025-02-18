@@ -1,4 +1,3 @@
-
 <template>
   <v-app :style="{ width: width, margin: '0 auto' }">
     <v-app-bar app color="red" dark>
@@ -34,7 +33,13 @@
                   :class="{ 'thick-cursor': isFocused }"
                   @focus="isFocused = true"
                   @blur="isFocused = false"
-                  :style="{ width: '100%', height: '30px', padding: '1px', borderRadius: '5px', border: '1px solid #ccc' }"
+                  :style="{
+                  width: '100%',
+                  height: '30px',
+                  padding: '1px',
+                  borderRadius: '5px',
+                  border: '1px solid #ccc'
+                }"
               />
             </div>
             <div class="sort-icons" style="width: 20%;">
@@ -78,125 +83,77 @@
               <v-card-title class="folder-title">
                 <v-icon
                     class="folder-icon"
-                    :style="{ background: getFolderColor(folder),
-                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }"
+                    :style="{
+                    background: getFolderColor(folder),
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }"
                 >
                   mdi-folder
                 </v-icon>
                 <span class="folder-name">{{ folder.dir_name }}</span>
                 <span class="link-counter">
                   {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
-</span>
+                </span>
               </v-card-title>
             </v-card>
           </v-col>
         </v-row>
       </v-container>
     </v-main>
-    <!-- Диалоговое окно для создания новой директории -->
-    <v-dialog v-model="dialog" max-width="400px">
-      <v-card>
-        <v-card-title class="headline">Создание новой директории</v-card-title>
-        <v-card-text>
-          <v-text-field v-model="newFolderName" label="Название директории" required></v-text-field>
-          <v-alert v-if="errorMessage" type="error" class="mt-4">{{ errorMessage }}</v-alert>
-          <v-alert v-if="successMessage" type="success" class="mt-4">{{ successMessage }}</v-alert>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="green darken-1" text @click="closeDialog">Отмена</v-btn>
-          <v-btn color="green darken-1" text @click="createDirectory">Создать директорию</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-    <!-- Диалоговое окно для отображения списка папок -->
-    <v-dialog v-model="folderListDialog" max-width="300px" @close="resetRadio">
-      <v-card>
-        <!-- Верхняя панель с кнопками и заголовком в один ряд -->
-        <v-card-title
-            class="headline"
-            style="display: flex; align-items: center; justify-content: space-between;">
 
-          <!-- Кнопка редактирования слева -->
-          <v-btn icon @click="editDirHash" style="color: orange;">
-            <v-icon style="font-size: 18px;">mdi-pencil</v-icon>
-          </v-btn>
+    <!-- Вставляем диалог создания директории -->
+    <CreateDirView
+        :visible="dialog"
+        @update:visible="dialog = $event"
+        :newFolderName="newFolderName"
+        :errorMessage="errorMessage"
+        :successMessage="successMessage"
+        @close="closeDialog"
+        @create="createDirectory"
+        @update:newFolderName="newFolderName = $event"
+    />
 
-          <!-- Заголовок по центру -->
-          <span style="flex-grow: 1; text-align: center;">Список папок</span>
-
-          <!-- Кнопка удаления справа -->
-          <v-btn icon @click="clearDirHash" style="color: red;">
-            <v-icon style="font-size: 18px;">mdi-delete</v-icon>
-          </v-btn>
-        </v-card-title>
-
-        <div class="scrollable-content">
-          <v-card-text>
-            <v-list>
-              <v-list-item v-for="(folder, index) in folders" :key="index"
-                           style="margin: 0; min-height: 30%; align-items: center;">
-                <v-list-item-title
-                    :style="{
-                display: 'flex',
-                height: '22px',
-                padding: '0 8px',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                backgroundColor: linkCounts[folder.dir_hash] > 0 ? 'green' : 'red',
-                width: '100%',
-              }"
-                >
-                  <div style="flex-grow: 1; display: flex; align-items: center; max-width: calc(100% - 50px);">
-                    <v-radio
-                        :value="folder.id"
-                        v-model="selectedFolderId"
-                        color="primary"
-                        @change="setSelectedFolder(folder.id)"
-                        @click.stop="toggleFolder(folder.id)"
-                    ></v-radio>
-                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8em;">
-                  {{ folder.dir_name }}
-                </span>
-                  </div>
-                  <span style="color: white;">
-                {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
-              </span>
-                </v-list-item-title>
-              </v-list-item>
-            </v-list>
-          </v-card-text>
-        </div>
-        <v-card-actions class="fixed-actions">
-          <v-spacer></v-spacer>
-          <v-btn color="green darken-1" text @click="folderListDialog = false">Закрыть</v-btn>
-          <v-btn color="red darken-1" text @click="deleteSelectedFolder" :disabled="!selectedFolderId">
-            Удалить
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Вставляем диалог списка папок -->
+    <EditDirView
+        :visible="folderListDialog"
+        :folders="folders"
+        :linkCounts="linkCounts"
+        :selectedFolderId="selectedFolderId"
+        @close="folderListDialog = false"
+        @editDirHash="editDirHash"
+        @clearDirHash="clearDirHash"
+        @update:selectedFolderId="selectedFolderId = $event"
+        @deleteFolder="deleteSelectedFolder"
+        @toggleFolder="toggleFolder"
+        @resetRadio="resetRadio"
+        @update:visible="folderListDialog = $event"
+    />
   </v-app>
 </template>
+
 <script>
 import { computed, ref, onMounted, onUnmounted, watch, watchEffect } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
-import { VList, VListItem,VListItemTitle, VRadio } from 'vuetify/components';
+import { VList, VListItem, VListItemTitle, VRadio } from 'vuetify/components';
+import CreateDirView from '@/components/Dialogs/CreateDirView.vue';
+import EditDirView from '@/components/Dialogs/EditDirView.vue';
 
 const SORT_ASC_ICON = '↑';
 const SORT_DESC_ICON = '↓';
 const SORT_DEFAULT_ICON = '⇅';
 
-
 export default {
+  name: 'Right',
   components: {
+    CreateDirView,
+    EditDirView,
     VList,
     VListItem,
     VListItemTitle,
     VRadio
   },
-  name: 'Right',
   props: {
     width: {
       type: String,
@@ -213,53 +170,37 @@ export default {
   },
   setup(props, { emit }) {
     let realtimeChannel = null;
-
-    const draggedFolder = ref(null); // Переменная для хранения перетаскиваемой папки
+    const draggedFolder = ref(null);
     const handleDragStart = (event, folder) => {
-      draggedFolder.value = folder; // Сохраняем перетаскиваемую папку
-      event.dataTransfer.setData('text/plain', folder.dir_hash); // Устанавливаем данные для перетаскивания
-      // Обновляем состояние папки перед началом перетаскивания
-      fetchFolders(); // Перезагружаем папки из базы данных
+      draggedFolder.value = folder;
+      event.dataTransfer.setData('text/plain', folder.dir_hash);
+      fetchFolders();
     };
     const handleDragLeave = (event) => {
-      event.currentTarget.style.opacity = '1'; // Восстанавливаем прозрачность при выходе курсора
+      event.currentTarget.style.opacity = '1';
     };
     const handleDragOver = (event, folder) => {
-      event.preventDefault(); // Разрешаем перетаскивание
+      event.preventDefault();
       if (draggedFolder.value && draggedFolder.value.dir_hash !== folder.dir_hash) {
-        // Подсветка или другие визуальные эффекты при наведении
         event.currentTarget.style.opacity = '0.3';
       }
     };
-
     const handleDrop = async (event, targetFolder) => {
       event.preventDefault();
-
-      // Сбрасываем стили (возвращаем opacity к исходному значению)
       event.currentTarget.style.opacity = '1';
-      // Проверяем, удерживается ли клавиша Ctrl
       if (!event.ctrlKey) {
         console.log('Перетаскивание отменено, удерживайте Ctrl для выполнения операции.');
-        return; // Отменяем действие, если Ctrl не нажата
+        return;
       }
-
       if (draggedFolder.value && draggedFolder.value.dir_hash !== targetFolder.dir_hash) {
         const updatedFolders = [...folders.value];
-
-        // Находим индексы перетаскиваемой и целевой папок
         const draggedIndex = updatedFolders.findIndex(f => f.dir_hash === draggedFolder.value.dir_hash);
         const targetIndex = updatedFolders.findIndex(f => f.dir_hash === targetFolder.dir_hash);
-
-        if (draggedIndex === -1 || targetIndex === -1) return; // Проверка на ошибки
-
-        // Сохраняем старый диапазон
+        if (draggedIndex === -1 || targetIndex === -1) return;
         const draggedFolderRange = updatedFolders[draggedIndex].range;
         const targetFolderRange = updatedFolders[targetIndex].range;
-
-        // Обновляем диапазоны
         updatedFolders[draggedIndex].range = targetFolderRange;
         updatedFolders[targetIndex].range = draggedFolderRange;
-
         console.log('Обновленные диапазоны перед отправкой в Supabase:', {
           dragged: {
             dir_hash: updatedFolders[draggedIndex].dir_hash,
@@ -270,30 +211,16 @@ export default {
             new_range: updatedFolders[targetIndex].range
           }
         });
-
-        // Обновляем только измененные диапазоны в базе данных
         await updateFolderRanges([
           { dir_hash: updatedFolders[draggedIndex].dir_hash, range: updatedFolders[draggedIndex].range },
           { dir_hash: updatedFolders[targetIndex].dir_hash, range: updatedFolders[targetIndex].range }
         ]);
-
-        // Обновляем локальное состояние
         folders.value = updatedFolders;
-        // Обновляем количество ссылок для целевой папки
         await getLinkCount(targetFolder.dir_hash);
-        // Также обновляем количество ссылок для исходной папки
-        // if (draggedFolder.value.dir_hash) {
-        //   await getLinkCount(draggedFolder.value.dir_hash);
-        // }
-
-        // Сбрасываем выделение папки
         selectedFolderHash.value = null;
-        // Обновляем локальные данные
-        await fetchFolders(); // Или другой метод для обновления состояния
+        await fetchFolders();
       }
     };
-
-// Метод для обновления только целевых диапазонов
     const updateFolderRanges = async (updates) => {
       try {
         for (const update of updates) {
@@ -302,26 +229,24 @@ export default {
               .from('dir')
               .update({ range: update.range })
               .eq('dir_hash', update.dir_hash);
-
           if (error) {
             console.error('Ошибка при обновлении папки:', update.dir_hash, error);
           } else {
             console.log('Обновлена папка:', update.dir_hash, 'с новым range:', update.range);
           }
         }
-        // Обновляем локальное состояние
-        await fetchFolders(); // Перезагружаем папки из базы данных
+        await fetchFolders();
       } catch (error) {
         console.error('Ошибка при обновлении папок:', error);
       }
     };
     const handleYellowBoxClick = () => {
-      console.log('Yellow box clicked'); // Добавьте лог для проверки
-      selectedFolderHash.value = null; // Сбрасываем выбранную папку
-      emit('reset-folder-selection'); // Эмитим событие для сброса выбранной папки
+      console.log('Yellow box clicked');
+      selectedFolderHash.value = null;
+      emit('reset-folder-selection');
     };
-    const sortedLinks = ref([...props.links]); // Создаем реактивное состояние на основе переданных ссылок
 
+    const sortedLinks = ref([...props.links]);
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const userEmail = computed(() => store.state.user.email);
@@ -332,37 +257,32 @@ export default {
     const errorMessage = ref('');
     const successMessage = ref('');
     const account = ref();
-
     const filter = ref('');
     const currentSortOrder = ref(0);
     const sortOrderIcons = [SORT_DEFAULT_ICON, SORT_ASC_ICON, SORT_DESC_ICON];
     const sortOrderValues = ['default', 'asc', 'desc'];
     const selectedFolderId = ref(null);
-    // const linkCounts = ref({}); // Хранит количество ссылок для каждой папки
-    const linkCounts = ref({}); // Инициализация
-    const selectedFolder = ref(null); // Добавляем состояние для выбранной папки
-    const selectedFolderHash = ref(null); // Храним dir_hash выбранной папки
+    const linkCounts = ref({});
+    const selectedFolder = ref(null);
+    const selectedFolderHash = ref(null);
 
     const getFolderColor = (folder) => {
-      const count = linkCounts.value[folder.dir_hash] || 0; // Получаем количество ссылок для папки
+      const count = linkCounts.value[folder.dir_hash] || 0;
       if (selectedFolderHash.value === folder.dir_hash) {
         return count > 0
-            ? 'linear-gradient(to bottom, #76c7c0, #4caf50)' // Зеленый градиент
-            : 'linear-gradient(to bottom, #ff7f7f, #ff4c4c)'; // Красный градиент
+            ? 'linear-gradient(to bottom, #76c7c0, #4caf50)'
+            : 'linear-gradient(to bottom, #ff7f7f, #ff4c4c)';
       } else {
-        return 'linear-gradient(to bottom, #f0e68c, #d2b48c)'; // Исходный градиент
+        return 'linear-gradient(to bottom, #f0e68c, #d2b48c)';
       }
     };
-
     const handleFolderClick = (folder) => {
       if (selectedFolderHash.value === folder.dir_hash) {
-        // Если папка уже выбрана, сбрасываем выбор
         selectedFolderHash.value = null;
       } else {
-        // Иначе выбираем новую папку
         selectedFolderHash.value = folder.dir_hash;
       }
-      emit('folder-selected', folder.dir_hash); // Эмитим событие с dir_hash выбранной папки
+      emit('folder-selected', folder.dir_hash);
     };
     const onDrop = async (dirHash) => {
       if (props.draggedLink) {
@@ -373,34 +293,29 @@ export default {
               .update({ dir_hash: dirHash })
               .eq('id', linkToUpdate.id);
           if (error) throw error;
-          // Обновляем количество ссылок для целевой папки
           await getLinkCount(dirHash);
-// Также обновляем количество ссылок для исходной папки
           if (linkToUpdate.dir_hash) {
             await getLinkCount(linkToUpdate.dir_hash);
           }
-          // Удалите ссылку из sortedLinks
           sortedLinks.value = sortedLinks.value.filter(link => link.id !== linkToUpdate.id);
-          // Сбрасываем состояние draggedLink
-          emit('update-dragged-link', null); // Эмитим событие для сброса draggedLink
+          emit('update-dragged-link', null);
         } catch (error) {
           console.error('Ошибка при обновлении ссылки:', error);
         }
       }
     };
     const resetRadio = () => {
-      selectedFolderId.value = null; // Сброс состояния радио-кнопки
+      selectedFolderId.value = null;
     };
     const handleKeydown = (event) => {
       if (event.key === 'Escape') {
-        folderListDialog.value = false; // Закрытие диалога
-        resetRadio(); // Сброс состояния радио-кнопки
+        folderListDialog.value = false;
+        resetRadio();
       }
       if (event.key === 'Escape' && filter.value.trim() !== '') {
-        filter.value = ''; // Очищаем поле ввода
+        filter.value = '';
       }
     };
-
     const columnSize = computed(() => {
       const widthValue = parseFloat(props.width);
       if (widthValue > 22) {
@@ -411,33 +326,26 @@ export default {
         return 12;
       }
     });
-
     const maskedEmail = computed(() => {
       const email = account.value?.data?.session?.user?.email;
       if (!email) return '';
-
       const [localPart, domainPart] = email.split('@');
       const firstTwoChars = localPart.slice(0, 2);
       const lastCharBeforeAt = localPart.slice(-1);
       const lastTwoCharsOfDomain = domainPart.slice(-2);
-
       return `${firstTwoChars}***${lastCharBeforeAt}@***${lastTwoCharsOfDomain}`;
     });
-
     const hasFilter = computed(() => {
       return filter.value.trim() !== '';
     });
-
     const currentSortIcon = computed(() => {
       return sortOrderIcons[currentSortOrder.value];
     });
-
     watch(folders, (newFolders) => {
       newFolders.forEach(folder => {
-        getLinkCount(folder.dir_hash); // Вызываем getLinkCount для каждой новой папки
+        getLinkCount(folder.dir_hash);
       });
-    }, { immediate: true }); // immediate: true вызывает коллбэк сразу при монтировании
-
+    }, { immediate: true });
     const hashString = async (inputString) => {
       try {
         const encoder = new TextEncoder();
@@ -451,7 +359,6 @@ export default {
         throw error;
       }
     };
-
     const fetchFolders = async () => {
       try {
         const { data, error } = await supabase
@@ -465,7 +372,6 @@ export default {
         console.error('Ошибка при получении директорий:', error);
       }
     };
-
     const checkHashUniqueness = async (dirHash) => {
       try {
         const { data, error } = await supabase
@@ -481,28 +387,21 @@ export default {
         return false;
       }
     };
-
     const filteredFolders = computed(() => {
       let result = folders.value.filter(folder =>
           folder.dir_name.toLowerCase().includes(filter.value.toLowerCase())
       );
-
-      // Сортировка по умолчанию по полю range в порядке asc
       result.sort((a, b) => a.range - b.range);
-
       if (sortOrderValues[currentSortOrder.value] === 'asc') {
         result.sort((a, b) => a.id - b.id);
       } else if (sortOrderValues[currentSortOrder.value] === 'desc') {
         result.sort((a, b) => b.id - a.id);
       }
-
       return result;
     });
-
     const cycleSort = () => {
       currentSortOrder.value = (currentSortOrder.value + 1) % sortOrderIcons.length;
     };
-
     const createDirectory = async () => {
       try {
         if (newFolderName.value.trim()) {
@@ -516,21 +415,15 @@ export default {
             }, 2000);
             return;
           }
-          // Находим максимальное значение в столбце range
           const { data: maxRangeData, error: maxRangeError } = await supabase
               .from('dir')
               .select('range')
               .order('range', { ascending: false })
               .limit(1);
-
           if (maxRangeError) {
             throw maxRangeError;
           }
-
-          // Вычисляем новое значение range
           const newRange = maxRangeData.length > 0 ? maxRangeData[0].range + 1 : 1;
-
-          // Создаем новую папку с новым значением range
           const { data, error } = await supabase
               .from('dir')
               .insert([
@@ -538,10 +431,9 @@ export default {
                   dir_name: upperCaseFolderName,
                   dir_hash: dirHash,
                   user_id: userId.value,
-                  range: newRange // Добавляем новое значение range
+                  range: newRange
                 }
               ]);
-
           if (error) {
             errorMessage.value = 'Ошибка при создании директории!';
             setTimeout(() => {
@@ -550,7 +442,6 @@ export default {
             console.error('Ошибка при создании директории:', error);
             return;
           }
-
           console.log('Ответ от Supabase:', data);
           successMessage.value = 'Директория создана!';
           setTimeout(() => {
@@ -565,58 +456,42 @@ export default {
         }, 2000);
       }
     };
-
     const deleteFolderByDirHash = async (dirHash) => {
       try {
-        // Сначала обновляем ссылки в таблице links, устанавливая dir_hash в NULL
         const { error: updateLinksError } = await supabase
             .from('links')
-            .update({ dir_hash: null }) // Устанавливаем dir_hash в NULL
-            .eq('dir_hash', dirHash); // Удаляем по dir_hash
-
+            .update({ dir_hash: null })
+            .eq('dir_hash', dirHash);
         if (updateLinksError) {
           throw updateLinksError;
         }
-
-        // Затем удаляем папку из таблицы dir по dir_hash
         const { error: deleteFolderError } = await supabase
             .from('dir')
             .delete()
-            .eq('dir_hash', dirHash); // Удаляем по dir_hash
-
+            .eq('dir_hash', dirHash);
         if (deleteFolderError) {
           throw deleteFolderError;
         }
-
-        // Получаем все оставшиеся папки, отсортированные по range
         const { data: remainingFolders, error: fetchFoldersError } = await supabase
             .from('dir')
             .select('*')
             .order('range', { ascending: true });
-
         if (fetchFoldersError) {
           throw fetchFoldersError;
         }
-
-        // Пересчитываем значения range для каждой папки
         const updates = remainingFolders.map((folder, index) => ({
           dir_hash: folder.dir_hash,
-          range: index + 1 // Новое значение range
+          range: index + 1
         }));
-
-        // Обновляем range для всех папок в базе данных
         for (const update of updates) {
           const { error: updateRangeError } = await supabase
               .from('dir')
               .update({ range: update.range })
               .eq('dir_hash', update.dir_hash);
-
           if (updateRangeError) {
             throw updateRangeError;
           }
         }
-
-        // Обновляем список папок после удаления и пересчета range
         await fetchFolders();
         successMessage.value = 'Папка и связанные ссылки успешно обновлены!';
         setTimeout(() => {
@@ -630,37 +505,145 @@ export default {
         }, 2000);
       }
     };
-
     const deleteSelectedFolder = async () => {
       if (selectedFolderId.value) {
         const folderToDelete = folders.value.find(folder => folder.id === selectedFolderId.value);
         if (folderToDelete) {
           await deleteFolderByDirHash(folderToDelete.dir_hash);
-          selectedFolderId.value = null; // Сброс выбранной папки после удаления
-          resetRadio(); // Сброс состояния радио-кнопки
+          selectedFolderId.value = null;
+          resetRadio();
         }
       }
     };
-
     const openDialog = () => {
       console.log('Открываем диалоговое окно');
       dialog.value = true;
       errorMessage.value = '';
+
       successMessage.value = '';
     };
-
     const closeDialog = () => {
       dialog.value = false;
       newFolderName.value = '';
       errorMessage.value = '';
       successMessage.value = '';
     };
-    // Добавьте сброс selectedFolderId в closeDialog
-    const closeFolderListDialog = () => {
-      folderListDialog.value = false;
-      resetRadio(); // Сброс состояния радио-кнопки
+    const openFolderListDialog = () => {
+      resetRadio();
+      folderListDialog.value = true;
+    };
+    const setSelectedFolder = (folderId) => {
+      selectedFolderId.value = folderId;
+    };
+    const toggleFolder = (folderId) => {
+      if (selectedFolderId.value === folderId) {
+        selectedFolderId.value = null;
+      } else {
+        selectedFolderId.value = folderId;
+      }
+    };
+    async function getSession() {
+      account.value = await supabase.auth.getSession();
+      console.log(account.value);
+    }
+    const clearDirHash = async () => {
+      try {
+        if (selectedFolderId.value) {
+          const folderToClear = folders.value.find(folder => folder.id === selectedFolderId.value);
+          if (folderToClear) {
+            const { error: updateLinksError } = await supabase
+                .from('links')
+                .update({ dir_hash: null })
+                .eq('dir_hash', folderToClear.dir_hash);
+            if (updateLinksError) throw updateLinksError;
+            for (const folder of folders.value) {
+              await getLinkCount(folder.dir_hash);
+            }
+            selectedFolderId.value = null;
+            resetRadio();
+          }
+        } else {
+          const { error } = await supabase
+              .from('links')
+              .update({ dir_hash: null })
+              .neq('dir_hash', null);
+          if (error) throw error;
+          for (const folder of folders.value) {
+            await getLinkCount(folder.dir_hash);
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка при очистке dir_hash:', error);
+      }
+    };
+    const getLinkCount = async (dirHash) => {
+      try {
+        if (!dirHash) {
+          console.warn('dirHash не указан');
+          linkCounts.value[dirHash] = 0;
+          return 0;
+        }
+        const { data, error, count } = await supabase
+            .from('links')
+            .select('*', { count: 'exact' })
+            .eq('dir_hash', dirHash);
+        if (error) {
+          console.error('Ошибка при выполнении запроса:', error);
+          return 0;
+        }
+        const linkCount = count || (data ? data.length : 0);
+        linkCounts.value = { ...linkCounts.value, [dirHash]: linkCount };
+        return linkCount;
+      } catch (error) {
+        console.error('Ошибка при получении количества ссылок:', error);
+        return 0;
+      }
+    };
+    const handleDropOnYellowBox = async (event) => {
+      if (props.draggedLink) {
+        const linkToUpdate = props.draggedLink;
+        try {
+          const { error } = await supabase
+              .from('links')
+              .update({ dir_hash: null })
+              .eq('id', linkToUpdate.id);
+          if (error) throw error;
+          if (linkToUpdate.dir_hash) {
+            await getLinkCount(linkToUpdate.dir_hash);
+          }
+          sortedLinks.value = sortedLinks.value.filter(link => link.id !== linkToUpdate.id);
+          emit('update-dragged-link', null);
+        } catch (error) {
+          console.error('Ошибка при обновлении ссылки:', error);
+        }
+      }
+    };
+    const editDirHash = () => {
+      // Если требуется дополнительная логика для редактирования, реализуйте здесь
+      console.log('editDirHash triggered');
     };
 
+    onMounted(() => {
+      fetchFolders();
+      subscribeToRealtimeChanges();
+      getSession();
+      window.addEventListener('keydown', handleKeydown);
+      folders.value.forEach(folder => {
+        getLinkCount(folder.dir_hash);
+      });
+    });
+    onUnmounted(() => {
+      unsubscribeFromRealtimeChanges();
+      window.removeEventListener('keydown', handleKeydown);
+    });
+    watchEffect(() => {
+      folders.value.forEach(folder => {
+        getLinkCount(folder.dir_hash);
+      });
+    });
+    watch(dialog, (newVal) => {
+      console.log('dialog changed:', newVal);
+    });
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
           .channel('realtime-changes')
@@ -699,147 +682,15 @@ export default {
           )
           .subscribe();
     };
-
     const unsubscribeFromRealtimeChanges = () => {
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }
     };
 
-    const openFolderListDialog = () => {
-      resetRadio(); // Сбрасываем состояние радио-кнопки при открытии диалога
-      folderListDialog.value = true;
-    };
-
-    const setSelectedFolder = (folderId) => {
-      selectedFolderId.value = folderId;
-    };
-
-    const toggleFolder = (folderId) => {
-      if (selectedFolderId.value === folderId) {
-        selectedFolderId.value = null; // Снять выбор, если уже выбран
-      } else {
-        selectedFolderId.value = folderId; // Установить выбор
-      }
-    };
-
-    async function getSession() {
-      account.value = await supabase.auth.getSession();
-      console.log(account.value);
-    }
-
-    const clearDirHash = async () => {
-      try {
-        if (selectedFolderId.value) {
-          const folderToClear = folders.value.find(folder => folder.id === selectedFolderId.value);
-          if (folderToClear) {
-            const { error: updateLinksError } = await supabase
-                .from('links')
-                .update({ dir_hash: null })
-                .eq('dir_hash', folderToClear.dir_hash);
-            if (updateLinksError) {
-              throw updateLinksError;
-            }
-            // Обновляем количество ссылок для всех папок
-            for (const folder of folders.value) {
-              await getLinkCount(folder.dir_hash);
-            }
-            // Сбрасываем выбранную папку
-            selectedFolderId.value = null; // Это должно снять выделение
-            resetRadio(); // Сброс состояния радио-кнопки
-          }
-        } else {
-          const { error } = await supabase
-              .from('links')
-              .update({ dir_hash: null })
-              .neq('dir_hash', null);
-          if (error) throw error;
-
-          // Обновляем количество ссылок для всех папок после очистки
-          for (const folder of folders.value) {
-            await getLinkCount(folder.dir_hash); // Обновляем количество ссылок
-          }
-        }
-      } catch (error) {
-        console.error('Ошибка при очистке dir_hash:', error);
-      }
-    };
-
-    const getLinkCount = async (dirHash) => {
-      try {
-        if (!dirHash) {
-          console.warn('dirHash не указан');
-          linkCounts.value[dirHash] = 0; // Устанавливаем количество ссылок в 0, если dirHash не указан
-          return 0;
-        }
-        const { data, error, count } = await supabase
-            .from('links')
-            .select('*', { count: 'exact' })
-            .eq('dir_hash', dirHash);
-        if (error) {
-          console.error('Ошибка при выполнении запроса:', error);
-          return 0;
-        }
-        const linkCount = count || (data ? data.length : 0);
-        linkCounts.value = { ...linkCounts.value, [dirHash]: linkCount };
-        // linkCounts.value[dirHash] = linkCount; // Обновляем количество ссылок в linkCounts
-        return linkCount;
-      } catch (error) {
-        console.error('Ошибка при получении количества ссылок:', error);
-        return 0;
-      }
-    };
-
-    const handleDropOnYellowBox = async (event) => {
-      if (props.draggedLink) {
-        const linkToUpdate = props.draggedLink;
-        try {
-          // Обновляем ссылку, устанавливая dir_hash в null
-          const { error } = await supabase
-              .from('links')
-              .update({ dir_hash: null })
-              .eq('id', linkToUpdate.id);
-
-          if (error) throw error;
-
-          // Обновляем количество ссылок для исходной папки (если она была)
-          if (linkToUpdate.dir_hash) {
-            await getLinkCount(linkToUpdate.dir_hash);
-          }
-
-          // Удаляем ссылку из sortedLinks
-          sortedLinks.value = sortedLinks.value.filter(link => link.id !== linkToUpdate.id);
-
-          // Эмитим событие для обновления draggedLink
-          emit('update-dragged-link', null);
-        } catch (error) {
-          console.error('Ошибка при обновлении ссылки:', error);
-        }
-      }
-    };
-    onMounted(() => {
-      fetchFolders();
-      subscribeToRealtimeChanges();
-      getSession(); // Вызываем при монтировании компонента
-      window.addEventListener('keydown', handleKeydown); // Добавляем обработчик события
-// Добавляем обработчик клика вне диалогового окна
-      folders.value.forEach(folder => {
-        getLinkCount(folder.dir_hash);
-      });
-    });
-    onUnmounted(() => {
-      unsubscribeFromRealtimeChanges();
-      window.removeEventListener('keydown', handleKeydown); // Удаляем обработчик события
-
-    });
-    watchEffect(() => {
-      folders.value.forEach(folder => {
-        getLinkCount(folder.dir_hash);
-      });
-    });
     return {
-      resetRadio,
       draggedFolder,
+      openDialog,
       handleDragLeave,
       handleDragStart,
       handleDragOver,
@@ -849,53 +700,54 @@ export default {
       selectedFolder,
       handleFolderClick,
       handleDropOnYellowBox,
-      sortedLinks, // Возвращаем sortedLinks
+      sortedLinks,
       onDrop,
       userId,
       dialog,
       folderListDialog,
       newFolderName,
       folders,
+      errorMessage,
+      successMessage,
       filter,
       filteredFolders,
       createDirectory,
-      errorMessage,
-      successMessage,
-      openDialog,
       closeDialog,
-      closeFolderListDialog,
+      openFolderListDialog,
       columnSize,
       hasFilter,
       currentSortIcon,
       cycleSort,
-      openFolderListDialog,
       selectedFolderId,
       deleteSelectedFolder,
       setSelectedFolder,
       toggleFolder,
       clearDirHash,
       userEmail,
-      maskedEmail, // Возвращаем вычисляемое свойство
-      account, // Возвращаем account, чтобы он был доступен в шаблоне
-      isFocused: false, // Переменная для отслеживания состояния фокуса
-      linkCounts, // Возвращаем linkCounts
+      maskedEmail,
+      account,
+      isFocused: false,
+      linkCounts,
       handleYellowBoxClick,
-      getLinkCount // Возвращаем функцию getLinkCount
+      getLinkCount,
+      editDirHash,
+      resetRadio,
+      subscribeToRealtimeChanges,
+      unsubscribeFromRealtimeChanges
     };
   }
 };
 </script>
-<style scoped>
 
+<style scoped>
 .scrollable-content {
-  max-height: 400px; /* Высота контента */
+  max-height: 400px;
   overflow-y: auto;
 }
-
 .fixed-actions {
   position: sticky;
   bottom: 0;
-  background-color: white; /* Цвет фона должен соответствовать фону карточки */
+  background-color: white;
   z-index: 1;
 }
 .user-info {
@@ -903,22 +755,22 @@ export default {
   color: black;
   font-size: 0.7rem;
   margin-top: 0;
-  pointer-events: none; /* Отключаем события мыши для user-info */
+  pointer-events: none;
 }
 .yellow-box {
   flex: 1;
   height: 40px;
-  background-color: yellow; /* Основной цвет */
+  background-color: yellow;
   margin-right: 5px;
   margin-left: 5px;
   display: flex;
   align-items: flex-start;
   border-radius: 5px;
-  cursor: pointer; /* Делаем элемент кликабельным */
-  transition: background-color 0.3s ease; /* Плавное изменение цвета */
+  cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 .yellow-box:hover {
-  background-color: #d8bfd8; /* Светло-фиолетовый цвет при наведении */
+  background-color: #d8bfd8;
 }
 .filter-input {
   margin-left: 5px;
@@ -928,20 +780,19 @@ export default {
   border-radius: 5px;
   transition: border-color 0.3s;
 }
-/* Стиль для увеличенного курсора */
 .thick-caret {
   position: absolute;
-  width: 4px; /* Ширина курсора */
-  height: 1em; /* Высота курсора */
-  background-color: black; /* Цвет курсора */
-  left: 10px; /* Позиция курсора */
-  top: 50%; /* Центрируем по вертикали */
-  transform: translateY(-50%); /* Центрируем по вертикали */
-  animation: blink 1s step-end infinite; /* Мигающий эффект */
+  width: 4px;
+  height: 1em;
+  background-color: black;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: blink 1s step-end infinite;
 }
 @keyframes blink {
   50% {
-    opacity: 0; /* Прозрачность в 50% для мигания */
+    opacity: 0;
   }
 }
 .filter-input:focus {
@@ -949,18 +800,11 @@ export default {
   background-color: #ffae00;
   outline: none;
 }
-.user-info {
-  padding: 2px;
-  color: black;
-  font-size: 0.7rem;
-  margin-top: 0;
-}
 .app-bar-container {
   display: flex;
   align-items: center;
   width: 100%;
 }
-
 .blue-box {
   flex: 1;
   height: 40px;
@@ -1019,12 +863,6 @@ export default {
   align-items: center;
   justify-content: center;
   height: 150px;
-  /*
-  transition: opacity 0.3s ease;
-  */
-  /*
-  transition: all 0.3s ease;
-  */
 }
 .folder-title {
   display: flex;
@@ -1046,7 +884,6 @@ export default {
   -webkit-text-fill-color: transparent;
   transition: font-size 0.3s ease;
 }
-
 .link-counter {
   position: absolute;
   top: 5px;
@@ -1054,7 +891,6 @@ export default {
   font-size: 12px;
   color: black;
 }
-
 @media (max-width: 768px) {
   .folder-card {
     height: 150px;
