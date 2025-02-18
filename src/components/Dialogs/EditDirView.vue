@@ -1,5 +1,6 @@
+md
 <template>
-  <v-dialog :value="visible" max-width="300px" @input="$emit('update:visible', $event)" @close="handleResetRadio">
+  <v-dialog v-model="internalVisible" max-width="300px">
     <v-card>
       <v-card-title class="headline" style="display: flex; align-items: center; justify-content: space-between;">
         <v-btn icon @click="handleEditDirHash" style="color: orange;">
@@ -88,7 +89,16 @@ export default {
       default: null
     }
   },
-  emits: ['update:selectedFolderId', 'close', 'editDirHash', 'clearDirHash', 'deleteFolder', 'toggleFolder', 'resetRadio', 'update:visible'],
+  emits: [
+    'update:selectedFolderId',
+    'close',
+    'editDirHash',
+    'clearDirHash',
+    'deleteFolder',
+    'toggleFolder',
+    'resetRadio',
+    'update:visible'
+  ],
   computed: {
     localSelectedFolderId: {
       get() {
@@ -96,6 +106,17 @@ export default {
       },
       set(value) {
         this.$emit('update:selectedFolderId', value);
+      }
+    },
+    internalVisible: {
+      get() {
+        return this.visible;
+      },
+      set(value) {
+        this.$emit('update:visible', value);
+        if (!value) {
+          this.handleResetRadio();
+        }
       }
     }
   },
