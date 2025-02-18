@@ -2,22 +2,21 @@ console.log("Фоновый скрипт активирован.");
 
 chrome.action.onClicked.addListener(() => {
   console.log("Иконка расширения нажата.");
-
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (!tabs.length) {
+    if (!tabs || tabs.length === 0) {
       console.error("Активная вкладка не найдена.");
       return;
     }
-
     const tab = tabs[0];
     const url = tab.url;
     console.log("URL активной вкладки:", url);
 
-    // Отправляем сообщение в content script для копирования ссылки
-    chrome.tabs.sendMessage(tab.id, { action: "copyLink", url: url }, (response) => {
-      console.log("Ответ от content script на копирование:", response);
+    // Отправляем сообщение в content script для отображения уведомления об активации расширения
+    chrome.tabs.sendMessage(tab.id, {
+      action: "showPopup",
+      status: "info",
+      text: "Расширение активировано на данной странице"
     });
-
     // Отправка URL на сервер
     console.log("Отправляем URL на сервер...");
     fetch("http://localhost:3000/api/send-url", {
@@ -31,7 +30,7 @@ chrome.action.onClicked.addListener(() => {
       })
       .then((data) => {
         console.log("Успешно отправлено на сервер, данные:", data);
-        // Отправляем сообщение в content script для отображения всплывающего окна (успех)
+        // Уведомление об успешной отправке URL
         chrome.tabs.sendMessage(tab.id, {
           action: "showPopup",
           status: "success",

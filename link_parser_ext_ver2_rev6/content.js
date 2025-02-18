@@ -1,62 +1,60 @@
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "copyLink") {
-    copyLink(message.url);
-    sendResponse({ status: "copied" });
-  } else if (message.action === "showPopup") {
-    showPopup(message.text, message.status);
+console.log("Content script загружен и активен!");
+
+// Прослушивание входящих сообщений от background.js
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "showPopup") {
+    showPopupMessage(request.status, request.text);
   }
+  // Можно вернуть ответ, если это необходимо
+  sendResponse({ received: true });
 });
 
-function copyLink(url) {
-  const textarea = document.createElement("textarea");
-  textarea.style.position = "fixed";
-  textarea.style.top = "0";
-  textarea.style.left = "0";
-  textarea.style.width = "2em";
-  textarea.style.height = "2em";
-  textarea.style.padding = "0";
-  textarea.style.border = "none";
-  textarea.style.outline = "none";
-  textarea.style.boxShadow = "none";
-  textarea.style.background = "transparent";
-  textarea.value = url;
-  document.body.appendChild(textarea);
-  textarea.select();
-  try {
-    document.execCommand("copy");
-    console.log("URL успешно скопирован в буфер обмена.");
-  } catch (err) {
-    console.error("Ошибка при копировании:", err);
+// Функция для отображения всплывающего окна
+function showPopupMessage(status, message) {
+  // Создаём контейнер для popup, если его ещё нет
+  let popup = document.getElementById("extension-popup");
+  if (!popup) {
+    popup = document.createElement('div');
+    popup.id = 'extension-popup';
+    popup.style.position = 'fixed';
+    popup.style.bottom = '20px';
+    popup.style.right = '20px';
+    popup.style.padding = '10px 20px';
+    popup.style.borderRadius = '5px';
+    popup.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+    popup.style.zIndex = 9999;
+    popup.style.fontSize = '16px';
+    document.body.appendChild(popup);
   }
-  document.body.removeChild(textarea);
-}
 
-function showPopup(text, status) {
-  const popup = document.createElement("div");
-  popup.textContent = text;
-
-  popup.style.position = "fixed";
-  popup.style.top = "20px";
-  popup.style.left = "50%";
-  popup.style.transform = "translateX(-50%)";
-  popup.style.padding = "10px 20px";
-  popup.style.borderRadius = "5px";
-  popup.style.zIndex = "10000";
-  popup.style.boxShadow = "0 2px 6px rgba(0,0,0,0.3)";
-  popup.style.fontFamily = "Arial, sans-serif";
-
-  // Определяем цвет фона в зависимости от статуса
-  if (status === "error") {
+  // Настраиваем стили в зависимости от типа уведомления
+  if (status === "success") {
+    popup.style.backgroundColor = "#4caf50"; // зелёный для успеха
+    popup.style.color = "#fff";
+  } else if (status === "error") {
     popup.style.backgroundColor = "#f44336"; // красный для ошибки
+    popup.style.color = "#fff";
+  } else if (status === "info") {
+    popup.style.backgroundColor = "#2196F3"; // синий для информационных сообщений
+    popup.style.color = "#fff";
   } else {
-    popup.style.backgroundColor = "#4CAF50"; // зеленый для успеха
+    popup.style.backgroundColor = "#333";
+    popup.style.color = "#fff";
   }
-  popup.style.color = "#fff";
 
-  document.body.appendChild(popup);
+  // Устанавливаем текст
+  popup.textContent = message;
+  popup.style.display = 'block';
 
-  // Убираем всплывающее окно через 2 секунды
+  // Удаляем popup через 3 секунды (или делаем fade-out)
   setTimeout(() => {
-    popup.remove();
-  }, 2000);
+    popup.style.display = 'none';
+  }, 3000);
+
+  // Дополнительно можно генерировать CustomEvent для интеграции с Vue (если необходимо)
+  const event = new CustomEvent('extensionPopup', { detail: { status, message } });
+  window.dispatchEvent(event);
 }
+
+// Пример существующего кода – если он предусмотрен (например, позиционирование textarea)
+textarea.style.left = "0";

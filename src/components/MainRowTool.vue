@@ -515,25 +515,30 @@ export default {
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.url) {
-          url.value = data.url; // Обновляем значение URL
+          url.value = data.url; // обновляем значение URL
           console.log('Получен URL от сервера:', data.url);
           // Если данные получены через WebSocket, автоматически вызываем handleButtonClick через 0.5 секунды
           setTimeout(() => {
             handleButtonClick();
           }, 500);
-
         }
       };
-
       ws.onclose = () => {
         console.log('WebSocket соединение закрыто');
       };
       ws.onerror = (error) => {
         console.error('Ошибка WebSocket:', error);
       };
+
+      // Прослушивание события, диспатченного в content.js, для отображения уведомления через showSnackbar
+      window.addEventListener("extensionPopup", (event) => {
+        const { status, message } = event.detail;
+        showSnackbar(message);
+      });
+
       window.addEventListener('changeButtonColor', (event) => changeButtonColor(event.detail));
       if (urlInput.value) {
-        urlInput.value.focus(); // Устанавливаем фокус на поле ввода
+        urlInput.value.focus(); // установка фокуса на поле ввода
       }
       urlInput.value.addEventListener('contextmenu', handleContextMenu);
     });
