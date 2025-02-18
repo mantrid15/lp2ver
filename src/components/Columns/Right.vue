@@ -112,13 +112,25 @@
     <!-- Диалоговое окно для отображения списка папок -->
     <v-dialog v-model="folderListDialog" max-width="300px" @close="resetRadio">
       <v-card>
-        <v-card-title class="headline">Список папок</v-card-title>
-        <v-btn
-            icon
-            @click="clearDirHash"
-            style="position: absolute; top: 0px; right: 0px; cursor: pointer; color: red;">
-          <v-icon style="font-size: 18px;">mdi-delete</v-icon>
-        </v-btn>
+        <!-- Верхняя панель с кнопками и заголовком в один ряд -->
+        <v-card-title
+            class="headline"
+            style="display: flex; align-items: center; justify-content: space-between;">
+
+          <!-- Кнопка редактирования слева -->
+          <v-btn icon @click="editDirHash" style="color: orange;">
+            <v-icon style="font-size: 18px;">mdi-pencil</v-icon>
+          </v-btn>
+
+          <!-- Заголовок по центру -->
+          <span style="flex-grow: 1; text-align: center;">Список папок</span>
+
+          <!-- Кнопка удаления справа -->
+          <v-btn icon @click="clearDirHash" style="color: red;">
+            <v-icon style="font-size: 18px;">mdi-delete</v-icon>
+          </v-btn>
+        </v-card-title>
+
         <div class="scrollable-content">
           <v-card-text>
             <v-list>
@@ -126,14 +138,14 @@
                            style="margin: 0; min-height: 30%; align-items: center;">
                 <v-list-item-title
                     :style="{
-                  display: 'flex',
-                  height: '22px',
-                  padding: '0 8px',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  backgroundColor: linkCounts[folder.dir_hash] > 0 ? 'green' : 'red',
-                  width: '100%',
-                }"
+                display: 'flex',
+                height: '22px',
+                padding: '0 8px',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: linkCounts[folder.dir_hash] > 0 ? 'green' : 'red',
+                width: '100%',
+              }"
                 >
                   <div style="flex-grow: 1; display: flex; align-items: center; max-width: calc(100% - 50px);">
                     <v-radio
@@ -143,7 +155,9 @@
                         @change="setSelectedFolder(folder.id)"
                         @click.stop="toggleFolder(folder.id)"
                     ></v-radio>
-                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8em;">{{ folder.dir_name }}</span>
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8em;">
+                  {{ folder.dir_name }}
+                </span>
                   </div>
                   <span style="color: white;">
                 {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
@@ -156,7 +170,9 @@
         <v-card-actions class="fixed-actions">
           <v-spacer></v-spacer>
           <v-btn color="green darken-1" text @click="folderListDialog = false">Закрыть</v-btn>
-          <v-btn color="red darken-1" text @click="deleteSelectedFolder" :disabled="!selectedFolderId">Удалить</v-btn>
+          <v-btn color="red darken-1" text @click="deleteSelectedFolder" :disabled="!selectedFolderId">
+            Удалить
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
