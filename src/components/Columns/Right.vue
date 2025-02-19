@@ -63,32 +63,21 @@
     <v-main>
       <v-container class="brown-background folders-container">
         <v-row>
-          <v-col
-              v-for="(folder, index) in filteredFolders"
-              :key="index"
-              :cols="columnSize"
-              class="folder-column"
-              @dragover.prevent
-              @drop="onDrop(folder.dir_hash)"
-          >
-            <v-card
-                class="folder-card"
-                @click="handleFolderClick(folder)"
-                draggable="true"
-                @dragstart="handleDragStart($event, folder)"
-                @dragover.prevent="handleDragOver($event, folder)"
-                @drop="handleDrop($event, folder)"
-                @dragleave="handleDragLeave"
-            >
+          <v-col v-for="(folder, index) in filteredFolders"
+                 :key="index"
+                 :cols="columnSize"
+                 class="folder-column"
+                 @dragover.prevent @drop="onDrop(folder.dir_hash)">
+            <v-card class="folder-card"
+                    @click="handleFolderClick(folder)"
+                    draggable="true"
+                    @dragstart="handleDragStart($event, folder)"
+                    @dragover.prevent="handleDragOver($event, folder)"
+                    @drop="handleDrop($event, folder)"
+                    @dragleave="handleDragLeave">
               <v-card-title class="folder-title">
-                <v-icon
-                    class="folder-icon"
-                    :style="{
-                    background: getFolderColor(folder),
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }"
-                >
+                <v-icon class="folder-icon"
+                        :style="{ background: getFolderColor(folder), WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }">
                   mdi-folder
                 </v-icon>
                 <span class="folder-name">{{ folder.dir_name }}</span>
@@ -102,33 +91,27 @@
       </v-container>
     </v-main>
 
-    <!-- Вставляем диалог создания директории -->
-    <CreateDirView
-        :visible="dialog"
-        @update:visible="dialog = $event"
-        :newFolderName="newFolderName"
-        :errorMessage="errorMessage"
-        :successMessage="successMessage"
-        @close="closeDialog"
-        @create="createDirectory"
-        @update:newFolderName="newFolderName = $event"
-    />
+    <CreateDirView :visible="dialog"
+                   @update:visible="dialog = $event"
+                   :newFolderName="newFolderName"
+                   :errorMessage="errorMessage"
+                   :successMessage="successMessage"
+                   @close="closeDialog"
+                   @create="createDirectory"
+                   @update:newFolderName="newFolderName = $event" />
 
-    <!-- Вставляем диалог списка папок -->
-    <EditDirView
-        :visible="folderListDialog"
-        :folders="folders"
-        :linkCounts="linkCounts"
-        :selectedFolderId="selectedFolderId"
-        @close="folderListDialog = false"
-        @editDirHash="editDirHash"
-        @clearDirHash="clearDirHash"
-        @update:selectedFolderId="selectedFolderId = $event"
-        @deleteFolder="deleteSelectedFolder"
-        @toggleFolder="toggleFolder"
-        @resetRadio="resetRadio"
-        @update:visible="folderListDialog = $event"
-    />
+    <EditDirView :visible="folderListDialog"
+                 :folders="folders"
+                 :linkCounts="linkCounts"
+                 :selectedFolderId="selectedFolderId"
+                 @close="folderListDialog = false"
+                 @editDirHash="editDirHash"
+                 @clearDirHash="clearDirHash"
+                 @update:selectedFolderId="selectedFolderId = $event"
+                 @deleteFolder="deleteSelectedFolder"
+                 @toggleFolder="toggleFolder"
+                 @resetRadio="resetRadio"
+                 @update:visible="folderListDialog = $event" />
   </v-app>
 </template>
 

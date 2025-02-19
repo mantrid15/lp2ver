@@ -1,220 +1,3 @@
-md
-<script>
-// Функция для вычисления SHA‑256 хеша строки
-const hashString = async (inputString) => {
-  try {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(inputString);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
-    return hashHex;
-  } catch (error) {
-    console.error('Ошибка при вычислении хеша:', error);
-    throw error;
-  }
-};
-
-// Функция для проверки уникальности хеша на новом названии
-// Если currentFolderId передан, то исключаем его из запроса
-const checkHashUniqueness = async (dirHash, currentFolderId = null) => {
-  try {
-    let query = supabase
-        .from('dir')
-        .select('*')
-        .eq('dir_hash', dirHash)
-        .eq('user_id', userId.value);
-    if (currentFolderId) {
-      query = query.neq('id', currentFolderId);
-    }
-    const { data, error } = await query;
-    if (error) throw error;
-    console.log('Результат проверки уникальности:', data);
-    return data.length === 0;
-  } catch (error) {
-    console.error('Ошибка при проверке уникальности хеша:', error);
-    return false;
-  }
-};
-
-export default {
-  name: 'EditDirView',
-  props: {
-    visible: {
-      type: Boolean,
-      required: true
-    },
-    folders: {
-      type: Array,
-      required: true
-    },
-    linkCounts: {
-      type: Object,
-      required: true
-    },
-    selectedFolderId: {
-      type: [Number, String, null],
-      default: null
-    }
-  },
-  emits: [
-    'update:selectedFolderId',
-    'close',
-    'editDirHash',
-    'clearDirHash',
-    'deleteFolder',
-    'toggleFolder',
-    'resetRadio',
-    'update:visible',
-    'saveFolderEdit'
-  ],
-  data() {
-    return {
-      editingFolderId: null,
-      editingFolderName: '',
-      errorMessage: '',
-      successMessage: ''
-    };
-  },
-  computed: {
-    localSelectedFolderId: {
-      get() {
-        return this.selectedFolderId;
-      },
-      set(value) {
-        this.$emit('update:selectedFolderId', value);
-      }
-    },
-    internalVisible: {
-      get() {
-        return this.visible;
-      },
-      set(value) {
-        this.$emit('update:visible', value);
-        if (!value) {
-          this.handleResetRadio();
-          this.editingFolderId = null;
-        }
-      }
-    }
-  },
-  methods: {
-    handleEditDirHash() {
-      // Если выбрана папка, переводим её в режим редактирования
-      const selectedFolder = this.folders.find(f => f.id === this.localSelectedFolderId);
-      if (selectedFolder) {
-        this.editingFolderId = selectedFolder.id;
-        this.editingFolderName = selectedFolder.dir_name;
-        this.$emit('editDirHash');
-      }
-    },
-    handleClearDirHash() {
-      this.$emit('clearDirHash');
-    },
-    handleDeleteFolder() {
-      this.$emit('deleteFolder');
-    },
-    handleSetSelectedFolder(folderId) {
-      this.$emit('update:selectedFolderId', folderId);
-    },
-    handleToggleFolder(folderId) {
-      this.$emit('toggleFolder', folderId);
-    },
-    handleResetRadio() {
-      this.$emit('resetRadio');
-    },
-    handleCancelEdit() {
-      // Выход из режима редактирования без сохранения
-      this.editingFolderId = null;
-      this.editingFolderName = '';
-    },
-    async handleConfirmEdit() {
-      // Находим редактируемую папку
-      const folder = this.folders.find(f => f.id === this.editingFolderId);
-      if (!folder) return;
-
-      // Если имя не изменилось — выходим из режима редактирования
-      if (folder.dir_name === this.editingFolderName) {
-        this.editingFolderId = null;
-        this.editingFolderName = '';
-        return;
-      }
-
-      try {
-        const newName = this.editingFolderName.trim();
-        if (!newName) return;
-
-        const upperCaseFolderName = newName.toUpperCase();
-        // Пересчет нового хеша с использованием hashString
-        const newDirHash = await hashString(upperCaseFolderName);
-
-        // Проверка уникальности нового хеша (на основе нового названия)
-        const isUnique = await checkHashUniqueness(newDirHash, this.editingFolderId);
-        if (!isUnique) {
-          this.errorMessage = 'Директория с таким именем уже существует!';
-          setTimeout(() => {
-            this.errorMessage = '';
-          }, 2000);
-          return;
-        }
-
-        // Обновляем таблицу dir: меняем имя и хеш
-        const { data, error } = await supabase
-            .from('dir')
-            .update({
-              dir_name: upperCaseFolderName,
-              dir_hash: newDirHash
-            })
-            .eq('id', this.editingFolderId);
-
-        if (error) {
-          this.errorMessage = 'Ошибка при обновлении директории!';
-          setTimeout(() => {
-            this.errorMessage = '';
-          }, 2000);
-          console.error('Ошибка при обновлении директории:', error);
-          return;
-        }
-
-        // Обновляем таблицу links:
-        // Для всех записей, где dir_hash равен старому значению, заменяем его на новый
-        const oldDirHash = folder.dir_hash;
-        const { data: linkData, error: linkError } = await supabase
-            .from('links')
-            .update({ dir_hash: newDirHash })
-            .eq('dir_hash', oldDirHash);
-
-        if (linkError) {
-          this.errorMessage = 'Ошибка при обновлении ссылок!';
-          setTimeout(() => {
-            this.errorMessage = '';
-          }, 2000);
-          console.error('Ошибка при обновлении ссылок:', linkError);
-          return;
-        }
-
-        this.successMessage = 'Директория обновлена!';
-        setTimeout(() => {
-          this.successMessage = '';
-        }, 1000);
-
-        // Завершаем режим редактирования
-        this.editingFolderId = null;
-        this.editingFolderName = '';
-        // Передаем обновленные данные родительскому компоненту, если необходимо
-        this.$emit('saveFolderEdit', { id: folder.id, newDirName: upperCaseFolderName, newDirHash });
-      } catch (error) {
-        console.error('Необработанная ошибка при обновлении директории:', error);
-        this.errorMessage = 'Произошла неизвестная ошибка при обновлении директории!';
-        setTimeout(() => {
-          this.errorMessage = '';
-        }, 2000);
-      }
-    }
-  }
-};
-</script>
-
 <template>
   <v-dialog v-model="internalVisible" max-width="300px">
     <v-card>
@@ -298,11 +81,243 @@ export default {
   </v-dialog>
 </template>
 
+<script>
+import { supabase } from '@/clients/supabase.js'; // Импортируйте supabase
+import { computed, ref } from 'vue';
+import { useStore } from 'vuex';
+
+// Функция для вычисления SHA‑256 хеша строки
+const hashString = async (inputString) => {
+  try {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(inputString);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+  } catch (error) {
+    console.error('Ошибка при вычислении хеша:', error);
+    throw error;
+  }
+};
+
+// Функция для проверки уникальности хеша на новом названии
+const checkHashUniqueness = async (dirHash, userId, currentFolderId = null) => {
+  try {
+    let query = supabase
+        .from('dir')
+        .select('*')
+        .eq('dir_hash', dirHash)
+        .eq('user_id', userId);
+    if (currentFolderId) {
+      query = query.neq('id', currentFolderId);
+    }
+    const {data, error} = await query;
+    if (error) throw error;
+    console.log('Результат проверки уникальности:', data);
+    return data.length === 0;
+  } catch (error) {
+    console.error('Ошибка при проверке уникальности хеша:', error);
+    return false;
+  }
+};
+
+export default {
+  name: 'EditDirView',
+  props: {
+    visible: {
+      type: Boolean,
+      required: true
+    },
+    folders: {
+      type: Array,
+      required: true
+    },
+    linkCounts: {
+      type: Object,
+      required: true
+    },
+    selectedFolderId: {
+      type: [Number, String, null],
+      default: null
+    }
+  },
+  emits: [
+    'update:selectedFolderId',
+    'close',
+    'editDirHash',
+    'clearDirHash',
+    'deleteFolder',
+    'toggleFolder',
+    'resetRadio',
+    'update:visible',
+    'saveFolderEdit'
+  ],
+  setup(props, {emit}) {
+    const store = useStore();
+    const editingFolderId = ref(null);
+    const editingFolderName = ref('');
+    const errorMessage = ref('');
+    const successMessage = ref('');
+
+    const localSelectedFolderId = computed({
+      get() {
+        return props.selectedFolderId;
+      },
+      set(value) {
+        emit('update:selectedFolderId', value);
+      }
+    });
+
+    const internalVisible = computed({
+      get() {
+        return props.visible;
+      },
+      set(value) {
+        emit('update:visible', value);
+        if (!value) {
+          handleResetRadio();
+          editingFolderId.value = null;
+        }
+      }
+    });
+
+    const userId = computed(() => store.state.userId); // Получаем userId из Vuex store
+
+    const handleEditDirHash = () => {
+      const selectedFolder = props.folders.find(f => f.id === localSelectedFolderId.value);
+      if (selectedFolder) {
+        editingFolderId.value = selectedFolder.id;
+        editingFolderName.value = selectedFolder.dir_name;
+        emit('editDirHash');
+      }
+    };
+
+    const handleClearDirHash = () => {
+      emit('clearDirHash');
+    };
+
+    const handleDeleteFolder = () => {
+      emit('deleteFolder');
+    };
+
+    const handleSetSelectedFolder = (folderId) => {
+      emit('update:selectedFolderId', folderId);
+    };
+
+    const handleToggleFolder = (folderId) => {
+      emit('toggleFolder', folderId);
+    };
+
+    const handleResetRadio = () => {
+      emit('resetRadio');
+    };
+
+    const handleCancelEdit = () => {
+      editingFolderId.value = null;
+      editingFolderName.value = '';
+    };
+
+    const handleConfirmEdit = async () => {
+      const folder = props.folders.find(f => f.id === editingFolderId.value);
+      if (!folder) return;
+
+      if (folder.dir_name === editingFolderName.value) {
+        editingFolderId.value = null;
+        editingFolderName.value = '';
+        return;
+      }
+
+      try {
+        const newName = editingFolderName.value.trim();
+        if (!newName) return;
+
+        const upperCaseFolderName = newName.toUpperCase();
+        const newDirHash = await hashString(upperCaseFolderName);
+        const isUnique = await checkHashUniqueness(newDirHash, userId.value, editingFolderId.value);
+        if (!isUnique) {
+          errorMessage.value = 'Директория с таким именем уже существует!';
+          setTimeout(() => {
+            errorMessage.value = '';
+          }, 2000);
+          return;
+        }
+
+        const {data, error} = await supabase
+            .from('dir')
+            .update({
+              dir_name: upperCaseFolderName,
+              dir_hash: newDirHash
+            })
+            .eq('id', editingFolderId.value);
+
+        if (error) {
+          errorMessage.value = 'Ошибка при обновлении директории!';
+          setTimeout(() => {
+            errorMessage.value = '';
+          }, 2000);
+          console.error('Ошибка при обновлении директории:', error);
+          return;
+        }
+
+        const oldDirHash = folder.dir_hash;
+        const {data: linkData, error: linkError} = await supabase
+            .from('links')
+            .update({dir_hash: newDirHash})
+            .eq('dir_hash', oldDirHash);
+
+        if (linkError) {
+          errorMessage.value = 'Ошибка при обновлении ссылок!';
+          setTimeout(() => {
+            errorMessage.value = '';
+          }, 2000);
+          console.error('Ошибка при обновлении ссылок:', linkError);
+          return;
+        }
+
+        successMessage.value = 'Директория обновлена!';
+        setTimeout(() => {
+          successMessage.value = '';
+        }, 1000);
+
+        editingFolderId.value = null;
+        editingFolderName.value = '';
+        emit('saveFolderEdit', {id: folder.id, newDirName: upperCaseFolderName, newDirHash});
+      } catch (error) {
+        console.error('Необработанная ошибка при обновлении директории:', error);
+        errorMessage.value = 'Произошла неизвестная ошибка при обновлении директории!';
+        setTimeout(() => {
+          errorMessage.value = '';
+        }, 2000);
+      }
+    };
+
+    return {
+      editingFolderId,
+      editingFolderName,
+      errorMessage,
+      successMessage,
+      localSelectedFolderId,
+      internalVisible,
+      handleEditDirHash,
+      handleClearDirHash,
+      handleDeleteFolder,
+      handleSetSelectedFolder,
+      handleToggleFolder,
+      handleResetRadio,
+      handleCancelEdit,
+      handleConfirmEdit,
+    };
+  }
+};
+</script>
+
 <style scoped>
 .scrollable-content {
   max-height: 400px;
   overflow-y: auto;
 }
+
 .fixed-actions {
   position: sticky;
   bottom: 0;
