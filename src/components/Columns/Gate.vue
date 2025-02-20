@@ -64,22 +64,38 @@
               {{ getDomain(link.url) }}
             </a>
           </td>
-          <td class="truncate content-padding right-align">
-    <span class="scrolling-text" v-tooltip="isCtrlPressed ? link.title : ''">
-      <span class="text-ellipsis">{{ truncateText(link.title, 100).truncated }}</span>
-    </span>
-          </td>
-          <td class="truncate content-padding right-align">
-    <span class="scrolling-text" v-tooltip="isCtrlPressed ? link.description : ''">
-      <span class="text-ellipsis">{{ truncateText(link.description, 100).truncated }}</span>
-    </span>
-          </td>
-          <td class="truncate content-padding right-align">
-    <span class="scrolling-text" v-tooltip="isCtrlPressed ? (link.keywords ? link.keywords.join(', ') : '') : ''">
-      <span class="text-ellipsis">{{ truncateText(link.keywords, 100).truncated }}</span>
-    </span>
-          </td>
 
+
+          <td
+              class="truncate content-padding right-align"
+              @mouseenter="handleMouseEnter($event, link.title)"
+              @mouseleave="handleMouseLeave"
+          >
+            <span class="text-ellipsis">{{ truncateText(link.title, 100).truncated }}</span>
+            <div v-if="showTooltip && isCtrlPressed" class="custom-tooltip" :style="tooltipStyle">
+              {{ tooltipContent }}
+            </div>
+          </td>
+          <td
+              class="truncate content-padding right-align"
+              @mouseenter="handleMouseEnter($event, link.description)"
+              @mouseleave="handleMouseLeave"
+          >
+            <span class="text-ellipsis">{{ truncateText(link.description, 100).truncated }}</span>
+            <div v-if="showTooltip && isCtrlPressed" class="custom-tooltip" :style="tooltipStyle">
+              {{ tooltipContent }}
+            </div>
+          </td>
+          <td
+              class="truncate content-padding right-align"
+              @mouseenter="handleMouseEnter($event, link.keywords ? link.keywords.join(', ') : '')"
+              @mouseleave="handleMouseLeave"
+          >
+            <span class="text-ellipsis">{{ truncateText(link.keywords, 100).truncated }}</span>
+            <div v-if="showTooltip && isCtrlPressed" class="custom-tooltip" :style="tooltipStyle">
+              {{ tooltipContent }}
+            </div>
+          </td>
           <td class="content-padding">{{ formatDate(link.date) }}</td>
         </tr>
         </tbody>
@@ -144,17 +160,43 @@ export default {
     const activeLinkId = ref(null);
     const draggedLink = ref(null); // Объявляем draggedLink здесь
 
-    const isCtrlPressed = ref(false);
+    const isCtrlPressed = ref(false); // Состояние клавиши Ctrl
+    const showTooltip = ref(false); // Видимость tooltip
+    const tooltipContent = ref(''); // Содержимое tooltip
+    const tooltipStyle = ref({}); // Стили для позиционирования tooltip
 
+    // Обработчик наведения на ячейку
+    const handleMouseEnter = (event, content) => {
+      if (isCtrlPressed.value) {
+        tooltipContent.value = content;
+        showTooltip.value = true;
+
+        // Позиционируем tooltip относительно ячейки
+        const rect = event.target.getBoundingClientRect();
+        tooltipStyle.value = {
+          top: `${rect.bottom + window.scrollY}px`,
+          left: `${rect.left + window.scrollX}px`,
+        };
+      }
+    };
+
+    // Обработчик ухода мыши с ячейки
+    const handleMouseLeave = () => {
+      showTooltip.value = false;
+    };
+
+    // Обработчик нажатия клавиши Ctrl
     const handleKeyDown = (event) => {
       if (event.ctrlKey) {
         isCtrlPressed.value = true;
       }
     };
 
+    // Обработчик отпускания клавиши Ctrl
     const handleKeyUp = (event) => {
       if (!event.ctrlKey) {
         isCtrlPressed.value = false;
+        showTooltip.value = false; // Скрываем tooltip при отпускании Ctrl
       }
     };
 
@@ -306,6 +348,11 @@ export default {
     });
     return {
       isCtrlPressed,
+      showTooltip,
+      tooltipContent,
+      tooltipStyle,
+      handleMouseEnter,
+      handleMouseLeave,
       truncateText,
       filteredLinks,
       onDragStart,
@@ -341,6 +388,18 @@ export default {
 };
 </script>
 <style scoped>
+.custom-tooltip {
+  position: absolute;
+  background-color: rgba(9, 178, 17, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none; /* Чтобы tooltip не перехватывал события мыши */
+  transform: translateY(5px); /* Небольшой отступ от ячейки */
+}
 
 .scrolling-text {
   position: relative;
