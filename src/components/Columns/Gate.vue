@@ -72,9 +72,7 @@
               @mouseleave="handleMouseLeave"
           >
             <span class="text-ellipsis">{{ truncateText(link.title, 100).truncated }}</span>
-            <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle">
-              {{ tooltipContent }}
-            </div>
+            <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle" v-html="tooltipContent"></div>
           </td>
           <td
               class="truncate content-padding right-align"
@@ -82,9 +80,7 @@
               @mouseleave="handleMouseLeave"
           >
             <span class="text-ellipsis">{{ truncateText(link.description, 100).truncated }}</span>
-            <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle">
-              {{ tooltipContent }}
-            </div>
+            <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle" v-html="tooltipContent"></div>
           </td>
           <td
               class="truncate content-padding right-align"
@@ -92,10 +88,9 @@
               @mouseleave="handleMouseLeave"
           >
             <span class="text-ellipsis">{{ truncateText(link.keywords, 100).truncated }}</span>
-            <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle">
-              {{ tooltipContent }}
-            </div>
+            <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle" v-html="tooltipContent"></div>
           </td>
+
 
 
           <td class="content-padding">{{ formatDate(link.date) }}</td>
@@ -167,10 +162,21 @@ export default {
     const tooltipContent = ref(''); // Содержимое tooltip
     const tooltipStyle = ref({}); // Стили для позиционирования tooltip
 
+    // Функция для разбиения текста на строки по 200 символов
+    const splitTextIntoLines = (text) => {
+      if (!text) return '';
+      const chunkSize = 100; // Количество символов в строке
+      const chunks = [];
+      for (let i = 0; i < text.length; i += chunkSize) {
+        chunks.push(text.slice(i, i + chunkSize));
+      }
+      return chunks.join('<br>'); // Добавляем <br> для переноса строк
+    };
+
     // Обработчик наведения на ячейку
     const handleMouseEnter = (event, content) => {
       if (isCtrlPressed.value && content) { // Проверяем, что содержимое не пустое
-        tooltipContent.value = content;
+        tooltipContent.value = splitTextIntoLines(content); // Разбиваем текст на строки
         showTooltip.value = true;
 
         // Позиционируем tooltip относительно ячейки
@@ -178,8 +184,7 @@ export default {
         tooltipStyle.value = {
           top: `${rect.top + window.scrollY}px`,
           left: `${rect.left + window.scrollX}px`,
-          maxWidth: 'none', // Убираем ограничение по ширине
-          whiteSpace: 'nowrap', // Текст не переносится
+          maxWidth: `${window.innerWidth - rect.left - 20}px`, // Ограничиваем ширину tooltip
         };
       }
     };
@@ -395,10 +400,12 @@ export default {
 <style scoped>
 .custom-tooltip {
   position: absolute;
-  background-color: rgba(0, 0, 0, 0.9); /* Фон tooltip */
+  background-color: rgba(9, 178, 17, 0.9); /* Фон tooltip */
   color: white; /* Цвет текста */
-  padding: 8px 12px; /* Отступы внутри tooltip */
-  border-radius: 4px; /* Скругление углов */
+  /*
+  padding: 8px 12px; !* Отступы внутри tooltip *!
+  */
+  border-radius: 2px; /* Скругление углов */
   font-size: 14px; /* Размер шрифта */
   white-space: nowrap; /* Текст не переносится */
   z-index: 1000; /* Tooltip поверх других элементов */
