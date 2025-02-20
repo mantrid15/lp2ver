@@ -65,21 +65,19 @@
             </a>
           </td>
           <td class="truncate content-padding right-align">
-            <span class="scrolling-text" v-tooltip="link.title">
-              <span class="text-ellipsis" style="margin-left: 5px">
-                {{ truncateText(link.title, 100).truncated }}
-              </span>
-            </span>
+  <span class="scrolling-text" v-tooltip="link.title">
+    <span class="text-ellipsis">{{ truncateText(link.title, 100).truncated }}</span>
+  </span>
           </td>
           <td class="truncate content-padding right-align">
-            <span class="scrolling-text" v-tooltip="link.description">
-              <span class="text-ellipsis"> {{ truncateText(link.description, 100).truncated }}</span>
-            </span>
+  <span class="scrolling-text" v-tooltip="link.description">
+    <span class="text-ellipsis">{{ truncateText(link.description, 100).truncated }}</span>
+  </span>
           </td>
           <td class="truncate content-padding right-align">
-            <span class="scrolling-text" v-tooltip="link.keywords">
-              <span class="text-ellipsis"> {{ truncateText(link.keywords, 10).truncated }}</span>
-            </span>
+            <span class="scrolling-text" v-tooltip="link.keywords ?link.keywords.join(', ') : ''">
+    <span class="text-ellipsis"> {{ truncateText(link.keywords, 100).truncated }}</span>
+  </span>
           </td>
 
           <td class="content-padding">{{ formatDate(link.date) }}</td>
@@ -147,12 +145,19 @@ export default {
     const draggedLink = ref(null); // Объявляем draggedLink здесь
 
     const truncateText = (text, length = 50) => {
-      if (!text) { // если text равно null, undefined или пустой строке
+      // Если text равен null, undefined или пуст, возвращаем пустые строки
+      if (!text) {
         return { truncated: '', remainder: '' };
       }
+      // Если text является массивом, преобразуем его в строку через запятую
+      if (Array.isArray(text)) {
+        text = text.join(', ');
+      }
+      // Если длина строки меньше или равна заданной, возвращаем оригинальный текст и пустой остаток
       if (text.length <= length) {
         return { truncated: text, remainder: '' };
       }
+      // Обрезаем строку и добавляем многоточие, а остаток сохраняем отдельно
       const truncated = text.slice(0, length) + '...';
       const remainder = text.slice(length);
       return { truncated, remainder };
