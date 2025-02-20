@@ -5,23 +5,66 @@
         <thead>
         <tr>
           <th>
-            <span class="row-count-button">{{ rowCount.toString().padStart(4, '0') }}</span>
+            <span class="row-count-button">{{ rowCount.toString().padStart(3, '0') }}</span>
             <!--
                         <span class="header-label">{{ FAVORITE_ICON }}</span>
             -->
           </th>
-          <th >
-  <span class="header-label-container" @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
-    <span class="header-label">{{ URL_LABEL }}</span>
-    <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
-  </span>
+          <th style="width: 15ch;" >
+            <span class="header-label-container" @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
+              <span class="header-label">{{ URL_LABEL }}</span>
+              <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
+            </span>
           </th>
+
+
           <th>
-  <span class="header-label-container" @click="(e) => handleClick(e, 'title')" data-sort-key="title" style="cursor: pointer;">
-    <span class="header-label">{{ TITLE_LABEL }}</span>
-    <span class="sort-icon">{{ getSortIcon('title') || SORT_DEFAULT_ICON }}</span>
-  </span>
+            <div style="display: flex; align-items: center;">
+              <span class="header-label-container" @click="(e) => handleClick(e, 'title')" data-sort-key="title" style="cursor: pointer;">
+                <span class="header-label">{{ TITLE_LABEL }}</span>
+                <span class="sort-icon">{{ getSortIcon('title') || SORT_DEFAULT_ICON }}</span>
+              </span>
+              <!-- Модуль фильтрации -->
+              <div style="position: relative; width: 100px; left: 0; top: 0;">
+                <input
+                    v-model="filter"
+                    placeholder="Фильтр"
+                    maxlength="6"
+                    class="filter-input"
+                    :class="{ 'thick-cursor': isFocused }"
+                    @focus="isFocused = true"
+                    @blur="isFocused = false"
+                    style="width: 100px;
+                    margin-left: 10px;
+                    height: 30px;
+                    padding: 1px 30px 1px 5px;
+                    border-radius: 5px;
+                    border: 1px solid #ccc;
+                    box-sizing: border-box;
+                    overflow: hidden;
+                     white-space: nowrap;
+                     text-overflow: ellipsis; min-width: 100px; max-width: 100px;"
+                />
+                <v-icon
+                    v-if="filter"
+                    @click="filter = ''"
+                    class="clear-icon"
+                    style="position: absolute; right: 5px; cursor: pointer; color: black; top: 50%; transform: translateY(-50%);"
+                >
+                  mdi-close-circle
+                </v-icon>
+                <v-icon
+                    v-else
+                    style="position: absolute; right: 5px; cursor: pointer; color: white; opacity: 0; top: 50%; transform: translateY(-50%);"
+                >
+                  mdi-close-circle
+                </v-icon>
+              </div>
+            </div>
           </th>
+
+
+
           <th >
   <span class="header-label-container" @click="(e) => handleClick(e, 'description')" data-sort-key="description" style="cursor: pointer;">
     <span class="header-label">{{ DESCRIPTION_LABEL }}</span>
@@ -59,7 +102,7 @@
             />-->
             <span v-if="link.id === activeLinkId" class="delete-icon" @click.stop="deleteLink(link)">{{ DELETE_ICON }}</span>
           </td>
-          <td class="truncate content-padding">
+          <td class="truncate content-padding" style="width: 15ch;">
             <a :href="link.url" target="_blank" rel="noopener noreferrer">
               {{ getDomain(link.url) }}
             </a>
@@ -162,6 +205,17 @@ export default {
     const tooltipContent = ref(''); // Содержимое tooltip
     const tooltipStyle = ref({}); // Стили для позиционирования tooltip
 
+    const filter = ref(''); // Фильтр для поиска по заголовку
+    const isFocused = ref(false); // Состояние фокуса на фильтре
+    const filteredLinks = computed(() => {
+      // Фильтрация по заголовку
+      const titleFilteredLinks = props.links.filter(link => {
+        return link.title.toLowerCase().includes(filter.value.toLowerCase());
+      });
+      // Сортировка по текущему ключу и порядку
+      return titleFilteredLinks.sort((a, b) => sortByKey(a, b, currentSortKey.value, currentSortOrder.value));
+    });
+
     // Функция для разбиения текста на строки по 200 символов
     const splitTextIntoLines = (text) => {
       if (!text) return '';
@@ -235,15 +289,7 @@ export default {
     const onDragEnd = () => {
       draggedLink.value = null; // Сбрасываем перетаскиваемую ссылку
     };
-    // Вычисляемое свойство для фильтрации ссылок
-    const filteredLinks = computed(() => {
-      if (props.selectedFolderHash) {
-        // Если выбрана папка, показываем только ссылки с соответствующим dir_hash
-        return sortedLinks.value.filter(link => link.dir_hash === props.selectedFolderHash);
-      }
-      // Если папка не выбрана, показываем ссылки без dir_hash
-      return sortedLinks.value.filter(link => !link.dir_hash);
-    });
+
     const rowCount = computed(() => filteredLinks.value.length); // Обновлено для использования filteredLinks
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
@@ -283,7 +329,7 @@ export default {
     const getDomain = (url) => {
       try {
         const { hostname } = new URL(url);
-        return hostname;
+        return hostname.replace(/^www\./, ''); // Удаляем www. в начале
       } catch (e) {
         return url;
       }
@@ -357,6 +403,8 @@ export default {
       window.removeEventListener('keyup', handleKeyUp);
     });
     return {
+      filter,
+      isFocused,
       isCtrlPressed,
       showTooltip,
       tooltipContent,
@@ -453,12 +501,11 @@ th:nth-child(2) {
   padding-left: 5px; /* Отступ слева на 5 пикселей */
 }
 .row-count-button {
-  font-size: 10px;               /* Минимальный размер шрифта – можно подбирать в зависимости от размера ячейки */
+  font-size: 14px;               /* Минимальный размер шрифта – можно подбирать в зависимости от размера ячейки */
   /*
   display: inline-flex; !* �?спользуем inline-flex для выравнивания по одной линии *!
   */
-  margin-top: 3px;
-  margin-right: 5px;
+  margin-top: 5px;
   align-items: center; /* Центрируем содержимое по вертикали */
   writing-mode: vertical-lr; /* Вертикальное направление текста */
   /* transform: rotate(180deg); Поворачиваем текст на 180 градусов */
