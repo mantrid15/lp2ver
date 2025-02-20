@@ -51,12 +51,12 @@
             @dragend="onDragEnd"
         >
           <td class="content-padding fav-column" @click="handleFavClick(link)">
-            <img
+<!--            <img
                 v-if="link.favicon_name"
                 :src="getFaviconUrl(link.favicon_name)"
                 alt="Favicon"
                 class="favicon"
-            />
+            />-->
             <span v-if="link.id === activeLinkId" class="delete-icon" @click.stop="deleteLink(link)">{{ DELETE_ICON }}</span>
           </td>
           <td class="truncate content-padding">
@@ -66,13 +66,21 @@
           </td>
           <td class="truncate content-padding right-align">
             <span class="scrolling-text" v-tooltip="link.title">
-              <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(link.title, 50).truncated }}</span>
+              <span class="text-ellipsis" style="margin-left: 5px">
+                {{ truncateText(link.title, 100).truncated }}
+              </span>
             </span>
           </td>
           <td class="truncate content-padding right-align">
-            {{ link.description }}
+            <span class="scrolling-text" v-tooltip="link.description">
+              <span class="text-ellipsis"> {{ truncateText(link.description, 100).truncated }}</span>
+            </span>
           </td>
-          <td class="truncate content-padding right-align">{{ formatKeywords(link.keywords) }}</td>
+          <td class="truncate content-padding right-align">
+            <span class="scrolling-text" v-tooltip="link.keywords">
+              <span class="text-ellipsis"> {{ truncateText(link.keywords, 10).truncated }}</span>
+            </span>
+          </td>
 
           <td class="content-padding">{{ formatDate(link.date) }}</td>
         </tr>
@@ -139,6 +147,9 @@ export default {
     const draggedLink = ref(null); // Объявляем draggedLink здесь
 
     const truncateText = (text, length = 50) => {
+      if (!text) { // если text равно null, undefined или пустой строке
+        return { truncated: '', remainder: '' };
+      }
       if (text.length <= length) {
         return { truncated: text, remainder: '' };
       }
