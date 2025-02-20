@@ -65,9 +65,15 @@
             </a>
           </td>
           <td class="truncate content-padding right-align">
-            {{ link.title }}</td>
-          <td class="truncate content-padding right-align">{{ link.description }}</td>
+            <span class="scrolling-text" v-tooltip="link.title">
+              <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(link.title, 50).truncated }}</span>
+            </span>
+          </td>
+          <td class="truncate content-padding right-align">
+            {{ link.description }}
+          </td>
           <td class="truncate content-padding right-align">{{ formatKeywords(link.keywords) }}</td>
+
           <td class="content-padding">{{ formatDate(link.date) }}</td>
         </tr>
         </tbody>
@@ -131,6 +137,15 @@ export default {
     const deleteIconTimer = ref(null);
     const activeLinkId = ref(null);
     const draggedLink = ref(null); // Объявляем draggedLink здесь
+
+    const truncateText = (text, length = 50) => {
+      if (text.length <= length) {
+        return { truncated: text, remainder: '' };
+      }
+      const truncated = text.slice(0, length) + '...';
+      const remainder = text.slice(length);
+      return { truncated, remainder };
+    };
     const onDragStart = (link) => {
       draggedLink.value = link; // Устанавливаем перетаскиваемую ссылку
       emit('update-dragged-link', link);
@@ -250,6 +265,7 @@ export default {
       return ''; // Возвращаем пустую строку, если keywords не массив
     };
     return {
+      truncateText,
       filteredLinks,
       onDragStart,
       onDragEnd,
