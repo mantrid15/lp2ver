@@ -5,38 +5,40 @@
         <thead>
         <tr>
           <th>
-            <span class="header-label">{{ FAVORITE_ICON }}</span>
+            <span class="row-count-button">{{ rowCount.toString().padStart(4, '0') }}</span>
+            <!--
+                        <span class="header-label">{{ FAVORITE_ICON }}</span>
+            -->
           </th>
-          <th @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
-  <span class="header-label-container">
+          <th >
+  <span class="header-label-container" @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
     <span class="header-label">{{ URL_LABEL }}</span>
     <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
   </span>
-            <span class="row-count-button" >{{ rowCount.toString().padStart(4, '0') }}</span>
           </th>
-          <th @click="(e) => handleClick(e, 'title')" style="cursor: pointer;" data-sort-key="title">
-            <span class="header-label-container">
-              <span class="header-label">{{ TITLE_LABEL }}</span>
-              <span class="sort-icon">{{ getSortIcon('title') || SORT_DEFAULT_ICON }}</span>
-            </span>
+          <th>
+  <span class="header-label-container" @click="(e) => handleClick(e, 'title')" data-sort-key="title" style="cursor: pointer;">
+    <span class="header-label">{{ TITLE_LABEL }}</span>
+    <span class="sort-icon">{{ getSortIcon('title') || SORT_DEFAULT_ICON }}</span>
+  </span>
           </th>
-          <th @click="(e) => handleClick(e, 'description')" style="cursor: pointer;" data-sort-key="description">
-            <span class="header-label-container">
-              <span class="header-label">{{ DESCRIPTION_LABEL }}</span>
-              <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
-            </span>
+          <th >
+  <span class="header-label-container" @click="(e) => handleClick(e, 'description')" data-sort-key="description" style="cursor: pointer;">
+    <span class="header-label">{{ DESCRIPTION_LABEL }}</span>
+    <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
+  </span>
           </th>
-          <th @click="(e) => handleClick(e, 'keywords')" style="cursor: pointer;" data-sort-key="keywords">
-            <span class="header-label-container">
-              <span class="header-label">{{ KEYWORDS_LABEL }}</span>
-              <span class="sort-icon">{{ getSortIcon('keywords') || SORT_DEFAULT_ICON }}</span>
-            </span>
+          <th >
+  <span class="header-label-container" @click="(e) => handleClick(e, 'keywords')" data-sort-key="keywords" style="cursor: pointer;">
+    <span class="header-label">{{ KEYWORDS_LABEL }}</span>
+    <span class="sort-icon">{{ getSortIcon('keywords') || SORT_DEFAULT_ICON }}</span>
+  </span>
           </th>
-          <th @click="(e) => handleClick(e, 'date')" style="cursor: pointer;" data-sort-key="date">
-            <span class="header-label-container">
-              <span class="header-label">{{ DATE_LABEL }}</span>
-              <span class="sort-icon">{{ getSortIcon('date') || SORT_DEFAULT_ICON }}</span>
-            </span>
+          <th >
+  <span class="header-label-container" @click="(e) => handleClick(e, 'date')" data-sort-key="date" style="cursor: pointer;">
+    <span class="header-label">{{ DATE_LABEL }}</span>
+    <span class="sort-icon">{{ getSortIcon('date') || SORT_DEFAULT_ICON }}</span>
+  </span>
           </th>
         </tr>
         </thead>
@@ -62,7 +64,8 @@
               {{ getDomain(link.url) }}
             </a>
           </td>
-          <td class="truncate content-padding right-align">{{ link.title }}</td>
+          <td class="truncate content-padding right-align">
+            {{ link.title }}</td>
           <td class="truncate content-padding right-align">{{ link.description }}</td>
           <td class="truncate content-padding right-align">{{ formatKeywords(link.keywords) }}</td>
           <td class="content-padding">{{ formatDate(link.date) }}</td>
@@ -72,12 +75,10 @@
     </div>
   </div>
 </template>
-
 <script>
 import { computed, ref, watchEffect } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
-
 const FAVORITE_ICON = 'F';
 const URL_LABEL = 'URL';
 const TITLE_LABEL = 'Title';
@@ -86,11 +87,10 @@ const KEYWORDS_LABEL = 'Keywords';
 const DATE_LABEL = 'Date';
 const SORT_ASC_ICON = '↑';
 const SORT_DESC_ICON = '↓';
-// const SORT_DEFAULT_ICON = '☯';
+// const SORT_DEFAULT_ICON = '�?�';
 const SORT_DEFAULT_ICON =  '⇅';
 const DELETE_ICON = '❌';
 const DELETE_ICON_TIMEOUT = 3000; // 3 секунды
-
 export default {
   name: 'Gate',
   props: {
@@ -131,7 +131,6 @@ export default {
     const deleteIconTimer = ref(null);
     const activeLinkId = ref(null);
     const draggedLink = ref(null); // Объявляем draggedLink здесь
-
     const onDragStart = (link) => {
       draggedLink.value = link; // Устанавливаем перетаскиваемую ссылку
       emit('update-dragged-link', link);
@@ -148,9 +147,7 @@ export default {
       // Если папка не выбрана, показываем ссылки без dir_hash
       return sortedLinks.value.filter(link => !link.dir_hash);
     });
-
     const rowCount = computed(() => filteredLinks.value.length); // Обновлено для использования filteredLinks
-
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
       const aValue = a[key] !== null ? a[key].toString() : '';
@@ -160,7 +157,6 @@ export default {
       }
       return (aValue > bValue ? 1 : -1) * modifier;
     };
-
     watchEffect(() => {
       if (!props.links || !props.links.length) {
         sortedLinks.value = [];
@@ -170,7 +166,6 @@ export default {
           sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
     });
-
     const handleClick = (event, key) => {
       if (key === 'url' && event.ctrlKey) {
         emit('handle-url-click', event, key);
@@ -184,12 +179,10 @@ export default {
         emit('sort', key, currentSortOrder.value);
       }
     };
-
     const formatDate = (dateString) => {
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('ru-RU').format(date);
     };
-
     const getDomain = (url) => {
       try {
         const { hostname } = new URL(url);
@@ -198,19 +191,16 @@ export default {
         return url;
       }
     };
-
     const getSortIcon = (key) => {
       if (props.sortKey === key) {
         return props.sortOrder === 'asc' ? SORT_ASC_ICON : SORT_DESC_ICON;
       }
       return '';
     };
-
     const getFaviconUrl = (faviconName) => {
       return '';
       // return `https://your-supabase-url.com/storage/v1/object/public/favicons/${faviconName}`;
     };
-
     const handleFavClick = (link) => {
       // Сбрасываем предыдущую активную ссылку
       if (activeLinkId.value === link.id) {
@@ -233,7 +223,6 @@ export default {
         deleteIconTimer.value = null; // Сброс таймера
       }, DELETE_ICON_TIMEOUT);
     };
-
     const deleteLink = async (link) => {
       try {
         if (!link.url_hash) {
@@ -254,15 +243,12 @@ export default {
         alert(error.message);
       }
     };
-
     const formatKeywords = (keywords) => {
       if (Array.isArray(keywords)) {
         return keywords.join(', ');
       }
       return ''; // Возвращаем пустую строку, если keywords не массив
     };
-
-
     return {
       filteredLinks,
       onDragStart,
@@ -297,12 +283,14 @@ export default {
   },
 };
 </script>
-
 <style scoped>
 .dragging {
   background-color: violet; /* Цвет фона для перетаскиваемой строки */
 }
-th:nth-child(1),
+th:nth-child(1){
+  width: 24px; /* FAV column */
+  background-color: green;
+}
 td:nth-child(1) {
   width: 24px; /* FAV column */
 }
@@ -327,27 +315,32 @@ td:nth-child(6) {
   width: 10ch; /* Date column */
 }
 th:nth-child(2) .header-label-container {
-  font-size: 0.75em; /* Уменьшите размер шрифта заголовка */
+  font-size: 1em; /* Уменьшите размер шрифта заголовка */
 }
 th:nth-child(2) {
   text-align: left; /* Выравнивание заголовка по правому краю */
   padding-left: 5px; /* Отступ слева на 5 пикселей */
-  background-color: green;
 }
 .row-count-button {
-  height: 5px;
-  display: inline-flex; /* Используем inline-flex для выравнивания по одной линии */
+  font-size: 10px;               /* Минимальный размер шрифта – можно подбирать в зависимости от размера ячейки */
+  /*
+  display: inline-flex; !* �?спользуем inline-flex для выравнивания по одной линии *!
+  */
+  margin-top: 3px;
+  margin-right: 5px;
   align-items: center; /* Центрируем содержимое по вертикали */
   writing-mode: vertical-lr; /* Вертикальное направление текста */
-  transform: rotate(180deg); /* Поворачиваем текст на 180 градусов */
-  margin-left: 10px; /* Отступ слева для отделения от заголовка */
-  cursor: pointer; /* Курсор при наведении */
-  color: white; /* Цвет текста (можно изменить) */
-  background-color: green; /* Цвет фона (можно изменить) */
-  padding: 0 5px; /* Отступы по горизонтали для создания заливки вокруг текста */
-  border-radius: 5px; /* Скругление углов */
+  /* transform: rotate(180deg); Поворачиваем текст на 180 градусов */
+  /*margin-left: 10px;  Отступ слева для отделения от заголовка */
+  /* cursor: pointer; Курсор при наведении */
+  color: black; /* Цвет текста (можно изменить) */
+  /*
+  background-color: green; !* Цвет фона (можно изменить) *!
+  */
+  padding: 0 ; /* Отступы по горизонтали для создания заливки вокруг текста */
+  /* border-radius: 5px; Скругление углов */
   width: fit-content; /* Заливка по содержимому */
-  min-width: 40px; /* Минимальная ширина для удобства нажатия */
+  min-width: 60px; /* Минимальная ширина для удобства нажатия */
 }
 .table-container {
   max-height: calc(100vh - 100px);
@@ -425,7 +418,7 @@ tbody tr {
   transform: translate(-50%, -50%);
   font-size: 16px;
   cursor: pointer;
-  display: block; /* Иконка всегда видна, если активна */
+  display: block; /* �?конка всегда видна, если активна */
 }
 .strike-through {
   text-decoration: line-through;

@@ -902,4 +902,9 @@ export default {
   margin-right: 10px;
   color: white;
 }
+.truncate {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 </style>

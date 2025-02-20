@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="internalVisible" max-width="300px">
+  <v-dialog v-model="internalVisible" max-width="400px">
     <v-card>
       <v-card-title class="headline" style="display: flex; align-items: center; justify-content: space-between;">
         <v-btn icon @click="handleEditDirHash" style="color: orange;">
@@ -18,20 +18,20 @@
             <v-list-item
                 v-for="(folder, index) in folders"
                 :key="index"
-                style="margin: 0; min-height: 30%; align-items: center;"
+                style="margin-right: 0; min-height: 30%; align-items: center;"
             >
               <v-list-item-title
                   :style="{
-                  display: 'flex',
-                  height: '22px',
-                  padding: '0 8px',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  backgroundColor: editingFolderId === folder.id
-                                    ? 'pink'
-                                    : (linkCounts[folder.dir_hash] > 0 ? 'green' : 'red'),
-                  width: '100%'
-                }"
+        display: 'flex',
+        height: '30px',
+        padding: '0 2px',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: editingFolderId === folder.id
+          ? 'pink'
+          : (linkCounts[folder.dir_hash] > 0 ? 'lightgreen' : 'red'),
+        width: '100%'
+      }"
               >
                 <div style="flex-grow: 1; display: flex; align-items: center; max-width: calc(100% - 50px);">
                   <v-radio
@@ -40,34 +40,38 @@
                       color="primary"
                       @change="handleSetSelectedFolder(folder.id)"
                       @click.stop="handleToggleFolder(folder.id)"
+                      style="margin-right: 20px; padding: 0; min-width: 20px; min-height: 20px;"
                   ></v-radio>
-                  <div v-if="editingFolderId === folder.id" style="width: 100%;">
-                    <v-text-field
-                        v-model="editingFolderName"
-                        dense
+<!--                  <div v-if="editingFolderId === folder.id" style="display: flex; width: 100%; align-items: center;">-->
+                    <v-text-field v-if="editingFolderId === folder.id"
+                                  v-model="editingFolderName"
                         hide-details
                         solo
-                        style="font-size: 0.8em; padding: 0;"
+                        style="font-size: 0.8em; padding: 0; margin-left: 10px;"
                     ></v-text-field>
-                  </div>
-                  <span v-else style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8em;">
-                    {{ folder.dir_name }}
-                  </span>
+<!--                  </div>-->
+                  <span v-else style="overflow: hidden;  /* Уменьшено пространство между радио и текстом */
+-                 text-overflow: ellipsis;
+                 white-space: nowrap;
+                 font-size: 1em;">
+          {{ folder.dir_name }}
+        </span>
                 </div>
                 <div v-if="editingFolderId === folder.id">
-                  <v-btn icon @click.stop="handleCancelEdit" style="color: red;">
-                    <v-icon style="font-size: 18px;">mdi-close</v-icon>
+                  <v-btn icon @click.stop="handleCancelEdit" style="color: red; background: transparent;">
+                    <v-icon style="font-size: 34px;">mdi-close</v-icon>
                   </v-btn>
-                  <v-btn icon @click.stop="handleConfirmEdit" style="color: green;">
-                    <v-icon style="font-size: 18px;">mdi-check</v-icon>
+                  <v-btn icon @click.stop="handleConfirmEdit" style="color: green; background: transparent;">
+                    <v-icon style="font-size: 34px;">mdi-check</v-icon>
                   </v-btn>
                 </div>
                 <span v-else style="color: white;">
-                  {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
-                </span>
+        {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
+      </span>
               </v-list-item-title>
             </v-list-item>
           </v-list>
+
         </v-card-text>
       </div>
       <v-card-actions class="fixed-actions">

@@ -405,15 +405,17 @@ th:nth-child(3), td:nth-child(3) {
 /* Ограничение ширины текста */
 .truncate {
   max-width: 350px;
-  overflow: hidden;
+/*  overflow: hidden;
   white-space: nowrap;
-  text-overflow: ellipsis;
+  text-overflow: ellipsis;*/
 }
 
 table {
   border-collapse: collapse; /* Убирает двойные границы */
   width: 100%;
-  table-layout: fixed; /* Автоматическая ширина столбцов */
+  /*
+  table-layout: fixed; !* Автоматическая ширина столбцов *!
+  */
 }
 
 .content-padding {
