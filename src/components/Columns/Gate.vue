@@ -72,7 +72,7 @@
               @mouseleave="handleMouseLeave"
           >
             <span class="text-ellipsis">{{ truncateText(link.title, 100).truncated }}</span>
-            <div v-if="showTooltip && isCtrlPressed" class="custom-tooltip" :style="tooltipStyle">
+            <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle">
               {{ tooltipContent }}
             </div>
           </td>
@@ -82,7 +82,7 @@
               @mouseleave="handleMouseLeave"
           >
             <span class="text-ellipsis">{{ truncateText(link.description, 100).truncated }}</span>
-            <div v-if="showTooltip && isCtrlPressed" class="custom-tooltip" :style="tooltipStyle">
+            <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle">
               {{ tooltipContent }}
             </div>
           </td>
@@ -92,10 +92,12 @@
               @mouseleave="handleMouseLeave"
           >
             <span class="text-ellipsis">{{ truncateText(link.keywords, 100).truncated }}</span>
-            <div v-if="showTooltip && isCtrlPressed" class="custom-tooltip" :style="tooltipStyle">
+            <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle">
               {{ tooltipContent }}
             </div>
           </td>
+
+
           <td class="content-padding">{{ formatDate(link.date) }}</td>
         </tr>
         </tbody>
@@ -167,15 +169,17 @@ export default {
 
     // Обработчик наведения на ячейку
     const handleMouseEnter = (event, content) => {
-      if (isCtrlPressed.value) {
+      if (isCtrlPressed.value && content) { // Проверяем, что содержимое не пустое
         tooltipContent.value = content;
         showTooltip.value = true;
 
         // Позиционируем tooltip относительно ячейки
         const rect = event.target.getBoundingClientRect();
         tooltipStyle.value = {
-          top: `${rect.bottom + window.scrollY}px`,
+          top: `${rect.top + window.scrollY}px`,
           left: `${rect.left + window.scrollX}px`,
+          maxWidth: 'none', // Убираем ограничение по ширине
+          whiteSpace: 'nowrap', // Текст не переносится
         };
       }
     };
@@ -199,6 +203,7 @@ export default {
         showTooltip.value = false; // Скрываем tooltip при отпускании Ctrl
       }
     };
+
 
     const truncateText = (text, length = 50) => {
       // Если text равен null, undefined или пуст, возвращаем пустые строки
@@ -390,35 +395,19 @@ export default {
 <style scoped>
 .custom-tooltip {
   position: absolute;
-  background-color: rgba(9, 178, 17, 0.9);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 14px;
-  white-space: nowrap;
-  z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.9); /* Фон tooltip */
+  color: white; /* Цвет текста */
+  padding: 8px 12px; /* Отступы внутри tooltip */
+  border-radius: 4px; /* Скругление углов */
+  font-size: 14px; /* Размер шрифта */
+  white-space: nowrap; /* Текст не переносится */
+  z-index: 1000; /* Tooltip поверх других элементов */
   pointer-events: none; /* Чтобы tooltip не перехватывал события мыши */
-  transform: translateY(5px); /* Небольшой отступ от ячейки */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); /* Тень для tooltip */
+  display: inline-block; /* Tooltip растягивается под содержимым */
+  max-width: none; /* Убираем ограничение по ширине */
 }
 
-.scrolling-text {
-  position: relative;
-}
-
-.scrolling-text:hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 5px;
-  border-radius: 3px;
-  white-space: nowrap;
-  z-index: 1000;
-  display: block;
-}
 .dragging {
   background-color: violet; /* Цвет фона для перетаскиваемой строки */
 }
