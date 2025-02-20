@@ -65,19 +65,19 @@
             </a>
           </td>
           <td class="truncate content-padding right-align">
-  <span class="scrolling-text" v-tooltip="link.title">
-    <span class="text-ellipsis">{{ truncateText(link.title, 100).truncated }}</span>
-  </span>
+    <span class="scrolling-text" v-tooltip="isCtrlPressed ? link.title : ''">
+      <span class="text-ellipsis">{{ truncateText(link.title, 100).truncated }}</span>
+    </span>
           </td>
           <td class="truncate content-padding right-align">
-  <span class="scrolling-text" v-tooltip="link.description">
-    <span class="text-ellipsis">{{ truncateText(link.description, 100).truncated }}</span>
-  </span>
+    <span class="scrolling-text" v-tooltip="isCtrlPressed ? link.description : ''">
+      <span class="text-ellipsis">{{ truncateText(link.description, 100).truncated }}</span>
+    </span>
           </td>
           <td class="truncate content-padding right-align">
-            <span class="scrolling-text" v-tooltip="link.keywords ?link.keywords.join(', ') : ''">
-    <span class="text-ellipsis"> {{ truncateText(link.keywords, 100).truncated }}</span>
-  </span>
+    <span class="scrolling-text" v-tooltip="isCtrlPressed ? (link.keywords ? link.keywords.join(', ') : '') : ''">
+      <span class="text-ellipsis">{{ truncateText(link.keywords, 100).truncated }}</span>
+    </span>
           </td>
 
           <td class="content-padding">{{ formatDate(link.date) }}</td>
@@ -88,7 +88,7 @@
   </div>
 </template>
 <script>
-import { computed, ref, watchEffect } from 'vue';
+import { computed, ref, watchEffect, onMounted, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
 const FAVORITE_ICON = 'F';
@@ -143,6 +143,20 @@ export default {
     const deleteIconTimer = ref(null);
     const activeLinkId = ref(null);
     const draggedLink = ref(null); // Объявляем draggedLink здесь
+
+    const isCtrlPressed = ref(false);
+
+    const handleKeyDown = (event) => {
+      if (event.ctrlKey) {
+        isCtrlPressed.value = true;
+      }
+    };
+
+    const handleKeyUp = (event) => {
+      if (!event.ctrlKey) {
+        isCtrlPressed.value = false;
+      }
+    };
 
     const truncateText = (text, length = 50) => {
       // Если text равен null, undefined или пуст, возвращаем пустые строки
@@ -280,7 +294,18 @@ export default {
       }
       return ''; // Возвращаем пустую строку, если keywords не массив
     };
+
+    onMounted(() => {
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    });
     return {
+      isCtrlPressed,
       truncateText,
       filteredLinks,
       onDragStart,
@@ -316,6 +341,25 @@ export default {
 };
 </script>
 <style scoped>
+
+.scrolling-text {
+  position: relative;
+}
+
+.scrolling-text:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  z-index: 1000;
+  display: block;
+}
 .dragging {
   background-color: violet; /* Цвет фона для перетаскиваемой строки */
 }
