@@ -207,15 +207,26 @@ export default {
     const filter = ref(''); // Фильтр для поиска по заголовку
     const isFocused = ref(false); // Состояние фокуса на фильтре
     const filteredLinks = computed(() => {
-      // Фильтрация по заголовку
-      const titleFilteredLinks = props.links.filter(link => {
-        return link.title.toLowerCase().includes(filter.value.toLowerCase());
-      });
+      // Получаем значение фильтра в нижнем регистре
+      const searchTerm = filter.value.toLowerCase();
 
-      // Если выбрана папка, показываем только ссылки с соответствующим dir_hash
+      // Функция для проверки совпадения по всей строке
+      const matchesSearchTerm = (link) => {
+        const titleMatch = link.title?.toLowerCase()?.includes(searchTerm) ?? false;
+        const descriptionMatch = link.description?.toLowerCase()?.includes(searchTerm) ?? false;
+        const keywordsMatch = link.keywords?.toString()?.toLowerCase()?.includes(searchTerm) ?? false;
+        const urlMatch = link.url?.toLowerCase()?.includes(searchTerm) ?? false;
+        const dateMatch = link.date?.toLowerCase()?.includes(searchTerm) ?? false;
+        return titleMatch || descriptionMatch || keywordsMatch || urlMatch || dateMatch;
+      };
+
+      // Фильтрация по всей строке
+      const allFilteredLinks = props.links.filter(matchesSearchTerm);
+
+      // Фильтрация по папке
       const folderFilteredLinks = props.selectedFolderHash
-          ? titleFilteredLinks.filter(link => link.dir_hash === props.selectedFolderHash)
-          : titleFilteredLinks.filter(link => !link.dir_hash);
+          ? allFilteredLinks.filter(link => link.dir_hash === props.selectedFolderHash)
+          : allFilteredLinks.filter(link => !link.dir_hash);
 
       // Сортировка по текущему ключу и порядку
       return folderFilteredLinks.sort((a, b) => sortByKey(a, b, currentSortKey.value, currentSortOrder.value));
