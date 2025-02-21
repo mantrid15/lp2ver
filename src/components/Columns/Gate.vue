@@ -62,9 +62,6 @@
               </div>
             </div>
           </th>
-
-
-
           <th >
   <span class="header-label-container" @click="(e) => handleClick(e, 'description')" data-sort-key="description" style="cursor: pointer;">
     <span class="header-label">{{ DESCRIPTION_LABEL }}</span>
@@ -88,7 +85,9 @@
         <tbody>
         <tr v-for="link in filteredLinks"
             :key="link.id"
-            :class="{ 'strike-through': link.id === activeLinkId, 'dragging': draggedLink && link.id === draggedLink.id }"
+            :class="{
+              'strike-through': link.id === activeLinkId,
+              'dragging': draggedLink && link.id === draggedLink.id }"
             draggable="true"
             @dragstart="onDragStart(link)"
             @dragend="onDragEnd"
@@ -212,8 +211,14 @@ export default {
       const titleFilteredLinks = props.links.filter(link => {
         return link.title.toLowerCase().includes(filter.value.toLowerCase());
       });
+
+      // Если выбрана папка, показываем только ссылки с соответствующим dir_hash
+      const folderFilteredLinks = props.selectedFolderHash
+          ? titleFilteredLinks.filter(link => link.dir_hash === props.selectedFolderHash)
+          : titleFilteredLinks.filter(link => !link.dir_hash);
+
       // Сортировка по текущему ключу и порядку
-      return titleFilteredLinks.sort((a, b) => sortByKey(a, b, currentSortKey.value, currentSortOrder.value));
+      return folderFilteredLinks.sort((a, b) => sortByKey(a, b, currentSortKey.value, currentSortOrder.value));
     });
 
     // Функция для разбиения текста на строки по 200 символов
@@ -501,7 +506,8 @@ th:nth-child(2) {
   padding-left: 5px; /* Отступ слева на 5 пикселей */
 }
 .row-count-button {
-  font-size: 14px;               /* Минимальный размер шрифта – можно подбирать в зависимости от размера ячейки */
+  font-size: 14px;
+  /* Минимальный размер шрифта – можно подбирать в зависимости от размера ячейки */
   /*
   display: inline-flex; !* �?спользуем inline-flex для выравнивания по одной линии *!
   */
