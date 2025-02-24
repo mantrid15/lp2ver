@@ -10,13 +10,16 @@
                         <span class="header-label">{{ FAVORITE_ICON }}</span>
             -->
           </th>
-          <th style="width: 15ch;" >
-            <span class="header-label-container" @click="(e) => handleClick(e, 'url')" style="cursor: pointer;">
-              <span class="header-label">{{ URL_LABEL }}</span>
-              <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
-            </span>
+          <th style="width: 15ch;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+    <span class="header-label-container" @click="(e) => handleClick(e, 'url')" style="cursor: pointer; text-align: left;">
+      <span class="header-label">{{ URL_LABEL }}</span>
+      <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
+    </span>
+              <!-- Чекбокс с правым отступом 3 пикселя -->
+              <input type="checkbox" v-model="showAllDirs" style="margin-right: 5px;" />
+            </div>
           </th>
-
 
           <th>
             <div style="display: flex; align-items: center;">
@@ -214,6 +217,8 @@ export default {
 
     const filter = ref(''); // Фильтр для поиска по заголовку
     const isFocused = ref(false); // Состояние фокуса на фильтре
+
+    const showAllDirs = ref(false);
     const debouncedFilter = debounce(() => {
       if (!filteredLinks.value || !filteredLinks.value.length) {
         sortedLinks.value = [];
@@ -243,8 +248,12 @@ export default {
         const urlMatch = link.url ? link.url.toLowerCase().includes(searchTerm) : false;
         return titleMatch || descriptionMatch || keywordsMatch || urlMatch;
       };
-
       const allFilteredLinks = props.links.filter(matchesSearchTerm);
+      // Если checkbox включён, возвращаем все элементы, без фильтрации по dir_hash
+      if (showAllDirs.value) {
+        return allFilteredLinks;
+      }
+      // Иначе фильтруем по folder (dir_hash)
       return props.selectedFolderHash
           ? allFilteredLinks.filter(link => link.dir_hash === props.selectedFolderHash)
           : allFilteredLinks.filter(link => !link.dir_hash);
@@ -294,6 +303,7 @@ export default {
       if (!event.ctrlKey) {
         isCtrlPressed.value = false;
         showTooltip.value = false; // Скрываем tooltip при отпускании Ctrl
+
       }
     };
 
@@ -439,6 +449,7 @@ export default {
       window.removeEventListener('keyup', handleKeyUp);
     });
     return {
+      showAllDirs,
       filter,
       isFocused,
       isCtrlPressed,
