@@ -96,17 +96,17 @@
             @dragend="onDragEnd"
         >
           <td class="content-padding fav-column" @click="handleFavClick(link)">
-<!--            <img
-                v-if="link.favicon_name"
-                :src="getFaviconUrl(link.favicon_name)"
-                alt="Favicon"
-                class="favicon"
-            />-->
+            <!--            <img
+                            v-if="link.favicon_name"
+                            :src="getFaviconUrl(link.favicon_name)"
+                            alt="Favicon"
+                            class="favicon"
+                        />-->
             <span v-if="link.id === activeLinkId" class="delete-icon" @click.stop="deleteLink(link)">{{ DELETE_ICON }}</span>
           </td>
           <td class="truncate content-padding"
               :class="{ 'highlighted': isHighlighted(link.url) }"
-               style="width: 15ch;">
+              style="width: 15ch;">
             <a :href="link.url" target="_blank" rel="noopener noreferrer">
               {{ getDomain(link.url) }}
             </a>
@@ -143,7 +143,10 @@
 
 
 
-          <td class="content-padding">{{ formatDate(link.date) }}</td>
+          <td class="content-padding">
+            <span v-if="!showAllDirs">{{ formatDate(link.date) }}</span>
+            <span v-else>{{ getFolderNameByHash(link.dir_hash) }}</span>
+          </td>
         </tr>
         </tbody>
       </table>
@@ -217,7 +220,7 @@ export default {
 
     const filter = ref(''); // Фильтр для поиска по заголовку
     const isFocused = ref(false); // Состояние фокуса на фильтре
-
+    const folders = ref([]);
     const showAllDirs = ref(false);
     const debouncedFilter = debounce(() => {
       if (!filteredLinks.value || !filteredLinks.value.length) {
@@ -229,7 +232,26 @@ export default {
       );
     }, 300);
 
+    const getFolderName = async (dirHash) => {
+      if (!dirHash) return '';
+      try {
+        const { data, error } = await supabase
+            .from('dir')
+            .select('dir_name')
+            .eq('dir_hash', dirHash)
+            .single();
+        if (error) throw error;
+        return data?.dir_name || '';
+      } catch (error) {
+        console.error('Ошибка при получении названия папки:', error);
+        return '';
+      }
+    };
 
+    const getFolderNameByHash = computed(() => (dirHash) => {
+      const folder = folders.value.find(f => f.dir_hash === dirHash);
+      return folder ? folder.dir_name : '';
+    });
 
     const isHighlighted = (value) => {
       if (!filter.value) return false; // Если фильтр пуст, не выделяем
@@ -438,10 +460,23 @@ export default {
       }
       return ''; // Возвращаем пустую строку, если keywords не массив
     };
-
+    const fetchFolders = async () => {
+      try {
+        const { data, error } = await supabase
+            .from('dir')
+            .select('*')
+            .eq('user_id', userId.value);
+        if (error) throw error;
+        folders.value = data || [];
+      } catch (error) {
+        console.error('Ошибка при получении директорий:', error);
+      }
+    };
     onMounted(() => {
-      window.addEventListener('keydown', handleKeyDown);
-      window.addEventListener('keyup', handleKeyUp);
+      fetchFolders().then(() => {
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+      });
     });
 
     onUnmounted(() => {
@@ -450,6 +485,8 @@ export default {
     });
     return {
       showAllDirs,
+
+      getFolderNameByHash,
       filter,
       isFocused,
       isCtrlPressed,
