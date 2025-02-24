@@ -359,6 +359,17 @@ export default {
     const rowCount = computed(() => filteredLinks.value.length); // Обновлено для использования filteredLinks
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
+
+      // Если ключ сортировки — 'dir_name', используем название папки
+      if (key === 'dir_name') {
+        const aFolder = folders.value.find(f => f.dir_hash === a.dir_hash);
+        const bFolder = folders.value.find(f => f.dir_hash === b.dir_hash);
+        const aValue = aFolder ? aFolder.dir_name : '';
+        const bValue = bFolder ? bFolder.dir_name : '';
+        return (aValue > bValue ? 1 : -1) * modifier;
+      }
+
+      // Для остальных ключей сортировки (включая 'date')
       const aValue = a[key] !== null ? a[key].toString() : '';
       const bValue = b[key] !== null ? b[key].toString() : '';
       if (key === 'date') {
@@ -381,13 +392,17 @@ export default {
       if (key === 'url' && event.ctrlKey) {
         emit('handle-url-click', event, key);
       } else {
-        if (currentSortKey.value === key) {
+        // Если чекбокс включен и ключ сортировки — 'date', меняем его на 'dir_name'
+        const sortKey = showAllDirs.value && key === 'date' ? 'dir_name' : key;
+
+        if (currentSortKey.value === sortKey) {
           currentSortOrder.value = currentSortOrder.value === 'asc' ? 'desc' : 'asc';
         } else {
-          currentSortKey.value = key;
           currentSortOrder.value = 'asc';
         }
-        emit('sort', key, currentSortOrder.value);
+
+        currentSortKey.value = sortKey;
+        emit('sort', sortKey, currentSortOrder.value);
       }
     };
     const formatDate = (dateString) => {
@@ -403,8 +418,11 @@ export default {
       }
     };
     const getSortIcon = (key) => {
-      if (props.sortKey === key) {
-        return props.sortOrder === 'asc' ? SORT_ASC_ICON : SORT_DESC_ICON;
+      // Если чекбокс включен и ключ — 'date', используем 'dir_name' для проверки
+      const sortKey = showAllDirs.value && key === 'date' ? 'dir_name' : key;
+
+      if (currentSortKey.value === sortKey) {
+        return currentSortOrder.value === 'asc' ? SORT_ASC_ICON : SORT_DESC_ICON;
       }
       return '';
     };
