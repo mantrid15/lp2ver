@@ -55,7 +55,6 @@ export default {
     const handleFolderSelected = (dirHash) => {
       selectedFolderHash.value = dirHash;
     };
-
     const handleResetFolderSelection = () => {
       selectedFolderHash.value = null; // Сбрасываем состояние выбранной папки
     };
@@ -248,6 +247,7 @@ export default {
     onMounted(async () => {
       await getSession();
       console.log('Account after session fetch:', account.value);
+
       // Подписка на изменения авторизации
       supabase.auth.onAuthStateChange((event, session) => {
         account.value = { data: { session } };
