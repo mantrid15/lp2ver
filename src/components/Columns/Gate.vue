@@ -77,11 +77,11 @@
     <span class="sort-icon">{{ getSortIcon('keywords') || SORT_DEFAULT_ICON }}</span>
   </span>
           </th>
-          <th >
-  <span class="header-label-container" @click="(e) => handleClick(e, 'date')" data-sort-key="date" style="cursor: pointer;">
-    <span class="header-label">{{ DATE_LABEL }}</span>
-    <span class="sort-icon">{{ getSortIcon('date') || SORT_DEFAULT_ICON }}</span>
-  </span>
+          <th>
+            <span class="header-label-container" @click="(e) => handleClick(e, 'date')" data-sort-key="date" style="cursor: pointer;">
+              <span class="header-label">{{ dateColumnLabel }}</span>
+              <span class="sort-icon">{{ getSortIcon('date') || SORT_DEFAULT_ICON }}</span>
+            </span>
           </th>
         </tr>
         </thead>
@@ -222,6 +222,10 @@ export default {
     const isFocused = ref(false); // Состояние фокуса на фильтре
     const folders = ref([]);
     const showAllDirs = ref(false);
+
+    const dateColumnLabel = computed(() => {
+      return showAllDirs.value ? 'Folder' : 'Date';
+    });
     const debouncedFilter = debounce(() => {
       if (!filteredLinks.value || !filteredLinks.value.length) {
         sortedLinks.value = [];
@@ -231,7 +235,6 @@ export default {
           sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
     }, 300);
-
     const getFolderName = async (dirHash) => {
       if (!dirHash) return '';
       try {
@@ -247,12 +250,25 @@ export default {
         return '';
       }
     };
+    const subscribeToRealtimeChanges = () => {
+      const channel = supabase
+          .channel('realtime-dir')
+          .on(
+              'postgres_changes',
+              { event: 'INSERT', schema: 'public', table: 'dir' },
+              (payload) => {
+                // Добавляем новую папку в список
+                folders.value.push(payload.new);
+              }
+          )
+          .subscribe();
 
+      return channel;
+    };
     const getFolderNameByHash = computed(() => (dirHash) => {
       const folder = folders.value.find(f => f.dir_hash === dirHash);
       return folder ? folder.dir_name : '';
     });
-
     const isHighlighted = (value) => {
       if (!filter.value) return false; // Если фильтр пуст, не выделяем
 
@@ -280,7 +296,6 @@ export default {
           ? allFilteredLinks.filter(link => link.dir_hash === props.selectedFolderHash)
           : allFilteredLinks.filter(link => !link.dir_hash);
     });
-
     // Функция для разбиения текста на строки по 200 символов
     const splitTextIntoLines = (text) => {
       if (!text) return '';
@@ -291,7 +306,6 @@ export default {
       }
       return chunks.join('<br>'); // Добавляем <br> для переноса строк
     };
-
     // Обработчик наведения на ячейку
     const handleMouseEnter = (event, content) => {
       if (isCtrlPressed.value && content) { // Проверяем, что содержимое не пустое
@@ -307,19 +321,16 @@ export default {
         };
       }
     };
-
     // Обработчик ухода мыши с ячейки
     const handleMouseLeave = () => {
       showTooltip.value = false;
     };
-
     // Обработчик нажатия клавиши Ctrl
     const handleKeyDown = (event) => {
       if (event.ctrlKey) {
         isCtrlPressed.value = true;
       }
     };
-
     // Обработчик отпускания клавиши Ctrl
     const handleKeyUp = (event) => {
       if (!event.ctrlKey) {
@@ -328,8 +339,6 @@ export default {
 
       }
     };
-
-
     const truncateText = (text, length = 50) => {
       // Если text равен null, undefined или пуст, возвращаем пустые строки
       if (!text) {
@@ -360,12 +369,19 @@ export default {
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
 
-      // Если ключ сортировки — 'dir_name', используем название папки
+      // Если ключ сортировки — 'dir_name', сортируем по названию папки
       if (key === 'dir_name') {
         const aFolder = folders.value.find(f => f.dir_hash === a.dir_hash);
         const bFolder = folders.value.find(f => f.dir_hash === b.dir_hash);
         const aValue = aFolder ? aFolder.dir_name : '';
         const bValue = bFolder ? bFolder.dir_name : '';
+
+        // Пустые значения идут после непустых
+        if (aValue === '' && bValue !== '') return 1; // a идет после b
+        if (bValue === '' && aValue !== '') return -1; // a идет перед b
+        if (aValue === '' && bValue === '') return 0; // a и b равны
+
+        // Сортировка по значению
         return (aValue > bValue ? 1 : -1) * modifier;
       }
 
@@ -386,7 +402,6 @@ export default {
           sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
     });
-
     watch(filter, debouncedFilter);
     const handleClick = (event, key) => {
       if (key === 'url' && event.ctrlKey) {
@@ -491,6 +506,7 @@ export default {
       }
     };
     onMounted(() => {
+      const channel = subscribeToRealtimeChanges();
       fetchFolders().then(() => {
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keyup', handleKeyUp);
@@ -498,12 +514,15 @@ export default {
     });
 
     onUnmounted(() => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     });
     return {
+      dateColumnLabel,
       showAllDirs,
-
       getFolderNameByHash,
       filter,
       isFocused,
@@ -565,7 +584,9 @@ export default {
   z-index: 1000; /* Tooltip поверх других элементов */
   pointer-events: none; /* Чтобы tooltip не перехватывал события мыши */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); /* Тень для tooltip */
-  display: inline-block; /* Tooltip растягивается под содержимым */
+  /*
+  display: inline-block; !* Tooltip растягивается под содержимым *!
+  */
   max-width: none; /* Убираем ограничение по ширине */
 }
 
@@ -597,7 +618,7 @@ td:nth-child(5) {
 }
 th:nth-child(6),
 td:nth-child(6) {
-  width: 10ch; /* Date column */
+  width: 11ch; /* Date column */
 }
 th:nth-child(2) .header-label-container {
   font-size: 1em; /* Уменьшите размер шрифта заголовка */
@@ -678,8 +699,12 @@ thead th {
   border-bottom: 1px solid gray; /* Одиночная граница внизу заголовков */
 }
 tbody {
+  overflow-x: hidden; /* Скрыть горизонтальную прокрутку */
   max-height: calc(100vh - 50px);
   overflow-y: auto;
+  /*
+  display: block; !* Убедитесь, что tbody ведет себя как блок *!
+  */
 }
 thead,
 tbody tr {
@@ -713,8 +738,12 @@ tbody tr {
 /* Удаление сдвоенной границы между ячейками */
 table {
   border-collapse: collapse;
+  width: 100%; /* Ширина таблицы равна ширине контейнера */
+  table-layout: fixed; /* Фиксированная ширина столбцов */
 }
 th, td {
   border: 1px solid gray;
 }
+
+
 </style>
