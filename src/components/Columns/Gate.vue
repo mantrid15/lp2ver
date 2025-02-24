@@ -29,7 +29,7 @@
                 <input
                     v-model="filter"
                     placeholder="Фильтр"
-                    maxlength="6"
+                    maxlength="8"
                     class="filter-input"
                     :class="{ 'thick-cursor': isFocused }"
                     @focus="isFocused = true"
@@ -83,7 +83,7 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="link in filteredLinks"
+        <tr v-for="link in sortedLinks"
             :key="link.id"
             :class="{
               'strike-through': link.id === activeLinkId,
@@ -101,7 +101,9 @@
             />-->
             <span v-if="link.id === activeLinkId" class="delete-icon" @click.stop="deleteLink(link)">{{ DELETE_ICON }}</span>
           </td>
-          <td class="truncate content-padding" style="width: 15ch;">
+          <td class="truncate content-padding"
+              :class="{ 'highlighted': isHighlighted(link.url) }"
+               style="width: 15ch;">
             <a :href="link.url" target="_blank" rel="noopener noreferrer">
               {{ getDomain(link.url) }}
             </a>
@@ -110,6 +112,7 @@
 
           <td
               class="truncate content-padding right-align"
+              :class="{ 'highlighted': isHighlighted(link.title) }"
               @mouseenter="handleMouseEnter($event, link.title)"
               @mouseleave="handleMouseLeave"
           >
@@ -118,6 +121,7 @@
           </td>
           <td
               class="truncate content-padding right-align"
+              :class="{ 'highlighted': isHighlighted(link.description) }"
               @mouseenter="handleMouseEnter($event, link.description)"
               @mouseleave="handleMouseLeave"
           >
@@ -126,6 +130,7 @@
           </td>
           <td
               class="truncate content-padding right-align"
+              :class="{ 'highlighted': isHighlighted(link.keywords) }"
               @mouseenter="handleMouseEnter($event, link.keywords ? link.keywords.join(', ') : '')"
               @mouseleave="handleMouseLeave"
           >
@@ -143,9 +148,12 @@
   </div>
 </template>
 <script>
-import { computed, ref, watchEffect, onMounted, onUnmounted } from 'vue';
+import { computed, ref, watchEffect, onMounted, onUnmounted, watch} from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
+import { debounce } from 'lodash';
+
+
 const FAVORITE_ICON = 'F';
 const URL_LABEL = 'URL';
 const TITLE_LABEL = 'Title';
@@ -206,30 +214,40 @@ export default {
 
     const filter = ref(''); // Фильтр для поиска по заголовку
     const isFocused = ref(false); // Состояние фокуса на фильтре
-    const filteredLinks = computed(() => {
-      // Получаем значение фильтра в нижнем регистре
-      const searchTerm = filter.value.toLowerCase();
+    const debouncedFilter = debounce(() => {
+      if (!filteredLinks.value || !filteredLinks.value.length) {
+        sortedLinks.value = [];
+        return;
+      }
+      sortedLinks.value = [...filteredLinks.value].sort((a, b) =>
+          sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+      );
+    }, 300);
 
-      // Функция для проверки совпадения по всей строке
+
+
+    const isHighlighted = (value) => {
+      if (!filter.value) return false; // Если фильтр пуст, не выделяем
+
+      // Преобразуем значение в строку, если оно не строка
+      const text = Array.isArray(value) ? value.join(', ') : value?.toString() || '';
+      const searchTerm = filter.value.toLowerCase();
+      return text.toLowerCase().includes(searchTerm);
+    };
+    const filteredLinks = computed(() => {
+      const searchTerm = filter.value.toLowerCase();
       const matchesSearchTerm = (link) => {
-        const titleMatch = link.title?.toLowerCase()?.includes(searchTerm) ?? false;
-        const descriptionMatch = link.description?.toLowerCase()?.includes(searchTerm) ?? false;
-        const keywordsMatch = link.keywords?.toString()?.toLowerCase()?.includes(searchTerm) ?? false;
-        const urlMatch = link.url?.toLowerCase()?.includes(searchTerm) ?? false;
-        const dateMatch = link.date?.toLowerCase()?.includes(searchTerm) ?? false;
-        return titleMatch || descriptionMatch || keywordsMatch || urlMatch || dateMatch;
+        const titleMatch = link.title ? link.title.toLowerCase().includes(searchTerm) : false;
+        const descriptionMatch = link.description ? link.description.toLowerCase().includes(searchTerm) : false;
+        const keywordsMatch = link.keywords ? link.keywords.toString().toLowerCase().includes(searchTerm) : false;
+        const urlMatch = link.url ? link.url.toLowerCase().includes(searchTerm) : false;
+        return titleMatch || descriptionMatch || keywordsMatch || urlMatch;
       };
 
-      // Фильтрация по всей строке
       const allFilteredLinks = props.links.filter(matchesSearchTerm);
-
-      // Фильтрация по папке
-      const folderFilteredLinks = props.selectedFolderHash
+      return props.selectedFolderHash
           ? allFilteredLinks.filter(link => link.dir_hash === props.selectedFolderHash)
           : allFilteredLinks.filter(link => !link.dir_hash);
-
-      // Сортировка по текущему ключу и порядку
-      return folderFilteredLinks.sort((a, b) => sortByKey(a, b, currentSortKey.value, currentSortOrder.value));
     });
 
     // Функция для разбиения текста на строки по 200 символов
@@ -317,14 +335,16 @@ export default {
       return (aValue > bValue ? 1 : -1) * modifier;
     };
     watchEffect(() => {
-      if (!props.links || !props.links.length) {
+      if (!filteredLinks.value || !filteredLinks.value.length) {
         sortedLinks.value = [];
         return;
       }
-      sortedLinks.value = [...props.links].sort((a, b) =>
+      sortedLinks.value = [...filteredLinks.value].sort((a, b) =>
           sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
     });
+
+    watch(filter, debouncedFilter);
     const handleClick = (event, key) => {
       if (key === 'url' && event.ctrlKey) {
         emit('handle-url-click', event, key);
@@ -456,12 +476,16 @@ export default {
       SORT_DEFAULT_ICON,
       DELETE_ICON,
       activeLinkId,
+      isHighlighted,
       // isDragging, // Возвращаем состояние перетаскивания
     };
   },
 };
 </script>
 <style scoped>
+.highlighted {
+  background-color: lightblue; /* Голубой цвет фона */
+}
 .custom-tooltip {
   position: absolute;
   background-color: rgba(9, 178, 17, 0.9); /* Фон tooltip */
