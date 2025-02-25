@@ -42,27 +42,27 @@ chrome.action.onClicked.addListener(() => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: url }),
     })
-        .then((response) => {
-          console.log("Получен ответ от сервера.");
-          return response.json();
-        })
-        .then((data) => {
-          console.log("Успешно отправлено на сервер, данные:", data);
-          // Уведомление об успешной отправке URL
-          chrome.tabs.sendMessage(tab.id, {
-            action: "showPopup",
-            status: "success",
-            text: "Ссылка отправлена",
-          });
-        })
-        .catch((error) => {
-          console.error("Ошибка при отправке URL на сервер:", error);
-          // Отправляем сообщение в content script для отображения всплывающего окна (ошибка)
-          chrome.tabs.sendMessage(tab.id, {
-            action: "showPopup",
-            status: "error",
-            text: "Ошибка отправки",
-          });
+      .then((response) => {
+        console.log("Получен ответ от сервера.");
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Успешно отправлено на сервер, данные:", data);
+        // Уведомление об успешной отправке URL
+        chrome.tabs.sendMessage(tab.id, {
+          action: "showPopup",
+          status: "success",
+          text: "Ссылка отправлена",
         });
+      })
+      .catch((error) => {
+        console.error("Ошибка при отправке URL на сервер:", error);
+        // Отправляем сообщение в content script для отображения всплывающего окна (ошибка)
+        chrome.tabs.sendMessage(tab.id, {
+          action: "showPopup",
+          status: "error",
+          text: "Ошибка отправки",
+        });
+      });
   });
 });
