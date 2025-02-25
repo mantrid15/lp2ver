@@ -4,9 +4,23 @@ console.log("Content script загружен и активен!");
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "showPopup") {
     showPopupMessage(request.status, request.text);
+    // Отправляем синхронный ответ, чтобы избежать ошибки в консоли
+    sendResponse({ received: true });
+    return false;
+  } else if (request.action === "getMeta") {
+    // Получаем метаданные страницы
+    const title = document.title;
+    const descriptionElement = document.querySelector('meta[name="description"]');
+    const keywordsElement = document.querySelector('meta[name="keywords"]');
+    const tagElement = document.querySelector('meta[name="tag"]');
+
+    const description = descriptionElement ? descriptionElement.getAttribute("content") : "";
+    const keywords = keywordsElement ? keywordsElement.getAttribute("content") : "";
+    const tag = tagElement ? tagElement.getAttribute("content") : "";
+
+    sendResponse({ title, description, keywords, tag });
+    return false;
   }
-  // Можно вернуть ответ, если это необходимо
-  sendResponse({ received: true });
 });
 
 // Функция для отображения всплывающего окна
@@ -26,7 +40,6 @@ function showPopupMessage(status, message) {
     popup.style.fontSize = '16px';
     document.body.appendChild(popup);
   }
-
   // Настраиваем стили в зависимости от типа уведомления
   if (status === "success") {
     popup.style.backgroundColor = "#4caf50"; // зелёный для успеха
@@ -41,20 +54,16 @@ function showPopupMessage(status, message) {
     popup.style.backgroundColor = "#333";
     popup.style.color = "#fff";
   }
-
   // Устанавливаем текст
   popup.textContent = message;
   popup.style.display = 'block';
-
   // Удаляем popup через 3 секунды (или делаем fade-out)
   setTimeout(() => {
     popup.style.display = 'none';
   }, 3000);
-
-  // Дополнительно можно генерировать CustomEvent для интеграции с Vue (если необходимо)
-  const event = new CustomEvent('extensionPopup', { detail: { status, message } });
-  window.dispatchEvent(event);
 }
 
 // Пример существующего кода – если он предусмотрен (например, позиционирование textarea)
-textarea.style.left = "0";
+if (typeof textarea !== "undefined") {
+  textarea.style.left = "0";
+}

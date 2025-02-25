@@ -7,6 +7,7 @@ chrome.action.onClicked.addListener(() => {
       console.error("Активная вкладка не найдена.");
       return;
     }
+
     const tab = tabs[0];
     const url = tab.url;
     console.log("URL активной вкладки:", url);
@@ -17,6 +18,23 @@ chrome.action.onClicked.addListener(() => {
       status: "info",
       text: "Расширение активировано на данной странице"
     });
+
+    // Запрашиваем у content script метаданные открытой страницы (title, description, keywords, tag)
+    chrome.tabs.sendMessage(tab.id, { action: "getMeta" }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error("Ошибка запроса метаданных:", chrome.runtime.lastError);
+        return;
+      }
+      if (response) {
+        console.log("Title:", response.title);
+        console.log("Description:", response.description);
+        console.log("Keywords:", response.keywords);
+        console.log("Tag:", response.tag);
+      } else {
+        console.error("Метаданные не получены.");
+      }
+    });
+
     // Отправка URL на сервер
     console.log("Отправляем URL на сервер...");
     fetch("http://localhost:3000/api/send-url", {
