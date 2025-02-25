@@ -2,6 +2,8 @@ console.log("Content script загружен и активен!");
 
 // Прослушивание входящих сообщений от background.js
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log("Получено сообщение:", request);
+
   if (request.action === "showPopup") {
     showPopupMessage(request.status, request.text);
     // Отправляем синхронный ответ, чтобы избежать ошибки в консоли
@@ -18,6 +20,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const keywords = keywordsElement ? keywordsElement.getAttribute("content") : "";
     const tag = tagElement ? tagElement.getAttribute("content") : "";
 
+    // Отправляем ответ с метаданными
     sendResponse({ title, description, keywords, tag });
     return false;
   }
@@ -40,6 +43,7 @@ function showPopupMessage(status, message) {
     popup.style.fontSize = '16px';
     document.body.appendChild(popup);
   }
+
   // Настраиваем стили в зависимости от типа уведомления
   if (status === "success") {
     popup.style.backgroundColor = "#4caf50"; // зелёный для успеха
@@ -54,16 +58,13 @@ function showPopupMessage(status, message) {
     popup.style.backgroundColor = "#333";
     popup.style.color = "#fff";
   }
+
   // Устанавливаем текст
   popup.textContent = message;
   popup.style.display = 'block';
-  // Удаляем popup через 3 секунды (или делаем fade-out)
+
+  // Удаляем popup через 3 секунды
   setTimeout(() => {
     popup.style.display = 'none';
   }, 3000);
-}
-
-// Пример существующего кода – если он предусмотрен (например, позиционирование textarea)
-if (typeof textarea !== "undefined") {
-  textarea.style.left = "0";
 }

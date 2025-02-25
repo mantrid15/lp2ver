@@ -8,10 +8,14 @@ chrome.action.onClicked.addListener(() => {
       console.error("Активная вкладка не найдена.");
       return;
     }
-
+    console.log("USha!!!")
     const tab = tabs[0];
+    console.log(tabs)
     const url = tab.url;
+    const title = tab.title;
+    console.log("Активная вкладка:", tab);
     console.log("URL активной вкладки:", url);
+    console.log("title активной вкладки:", title);
 
     // Показываем уведомление об активации расширения
     chrome.tabs.sendMessage(tab.id, {
@@ -20,51 +24,50 @@ chrome.action.onClicked.addListener(() => {
       text: "Расширение активировано на данной странице"
     });
 
-    // Запрашиваем у content script метаданные (title, description, keywords, tag)
-    chrome.tabs.sendMessage(tab.id, { action: "getMeta" }, (response) => {
-      // Инициализируем объект метаданных с пустыми значениями
-      let meta = {
-        title: "",
-        description: "",
-        keywords: "",
-        tag: ""
-      };
+    // Задержка перед запросом метаданных, чтобы content.js успел загрузиться
+    setTimeout(() => {
+      // Запрашиваем у content script метаданные (title, description, keywords, tag)
+      chrome.tabs.sendMessage(tab.id, { action: "getMeta" }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error("Ошибка запроса метаданных:", chrome.runtime.lastError);
+          return;
+        }
 
-      if (chrome.runtime.lastError) {
-        console.error("Ошибка запроса метаданных:", chrome.runtime.lastError);
-      } else if (response) {
-        meta.title = response.title || "";
-        meta.description = response.description || "";
-        meta.keywords = response.keywords || "";
-        meta.tag = response.tag || "";
+        // Инициализируем объект метаданных с пустыми значениями
+        let meta = {
+          title: response?.title || "",
+          description: response?.description || "",
+          keywords: response?.keywords || "",
+          tag: response?.tag || ""
+        };
+
         console.log("Получены метаданные:");
         console.log("Title:", meta.title);
         console.log("Description:", meta.description);
         console.log("Keywords:", meta.keywords);
         console.log("Tag:", meta.tag);
-      } else {
-        console.error("Метаданные не получены.");
-      }
 
-      // Формирование объекта data с URL и метаданными
-      const data = {
-        url: url,
-        title: meta.title,
-        description: meta.description,
-        keywords: meta.keywords,
-        tag: meta.tag
-      };
+        // Формирование объекта data с URL и метаданными
+        const data = {
+          url: tab.url,
+          title: meta.title,
+          description: meta.description,
+          keywords: meta.keywords,
+          tag: meta.tag
+        };
 
-      console.log("Отправляем URL и метаданные на сервер...");
+        console.log("Отправляем URL и метаданные на сервер...");
 
-      // Отправка данных на сервер
-      fetch("http://localhost:3000/api/send-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      })
+        // Отправка данных на сервер
+        fetch("http://localhost:3000/api/send-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        })
           .then((response) => {
-            console.log("Получен ответ от сервера.");
+            if (!response.ok) {
+              throw new Error("Ошибка сети");
+            }
             return response.json();
           })
           .then((serverData) => {
@@ -84,6 +87,7 @@ chrome.action.onClicked.addListener(() => {
               text: "Ошибка отправки"
             });
           });
-    });
+      });
+    }, 1000); // Задержка в 1 секунду
   });
 });
