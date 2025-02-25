@@ -67,4 +67,11 @@ function showPopupMessage(status, message) {
   setTimeout(() => {
     popup.style.display = 'none';
   }, 3000);
+
+  // Дополнительно можно генерировать CustomEvent для интеграции с Vue (если необходимо)
+  const event = new CustomEvent('extensionPopup', { detail: { status, message } });
+  window.dispatchEvent(event);
 }
+
+// Пример существующего кода – если он предусмотрен (например, позиционирование textarea)
+textarea.style.left = "0";

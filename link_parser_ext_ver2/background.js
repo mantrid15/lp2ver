@@ -24,70 +24,50 @@ chrome.action.onClicked.addListener(() => {
       text: "Расширение активировано на данной странице"
     });
 
-    // Задержка перед запросом метаданных, чтобы content.js успел загрузиться
-    setTimeout(() => {
-      // Запрашиваем у content script метаданные (title, description, keywords, tag)
-      chrome.tabs.sendMessage(tab.id, { action: "getMeta" }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error("Ошибка запроса метаданных:", chrome.runtime.lastError);
-          return;
-        }
+    // Запрашиваем у content script метаданные открытой страницы (title, description, keywords, tag)
+    chrome.tabs.sendMessage(tab.id, { action: "getMeta" }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error("Ошибка запроса метаданных:", chrome.runtime.lastError);
+        return;
+      }
+      if (response) {
+        console.log("Title:", response.title);
+        console.log("Description:", response.description);
+        console.log("Keywords:", response.keywords);
+        console.log("Tag:", response.tag);
+      } else {
+        console.error("Метаданные не получены.");
+      }
+    });
 
-        // Инициализируем объект метаданных с пустыми значениями
-        let meta = {
-          title: response?.title || "",
-          description: response?.description || "",
-          keywords: response?.keywords || "",
-          tag: response?.tag || ""
-        };
-
-        console.log("Получены метаданные:");
-        console.log("Title:", meta.title);
-        console.log("Description:", meta.description);
-        console.log("Keywords:", meta.keywords);
-        console.log("Tag:", meta.tag);
-
-        // Формирование объекта data с URL и метаданными
-        const data = {
-          url: tab.url,
-          title: meta.title,
-          description: meta.description,
-          keywords: meta.keywords,
-          tag: meta.tag
-        };
-
-        console.log("Отправляем URL и метаданные на сервер...");
-
-        // Отправка данных на сервер
-        fetch("http://localhost:3000/api/send-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
+    // Отправка URL на сервер
+    console.log("Отправляем URL на сервер...");
+    fetch("http://localhost:3000/api/send-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: url }),
+    })
+        .then((response) => {
+          console.log("Получен ответ от сервера.");
+          return response.json();
         })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("Ошибка сети");
-            }
-            return response.json();
-          })
-          .then((serverData) => {
-            console.log("Успешно отправлено на сервер, данные:", serverData);
-            // Уведомление об успешной отправке данных
-            chrome.tabs.sendMessage(tab.id, {
-              action: "showPopup",
-              status: "success",
-              text: "Данные отправлены"
-            });
-          })
-          .catch((error) => {
-            console.error("Ошибка при отправке данных на сервер:", error);
-            chrome.tabs.sendMessage(tab.id, {
-              action: "showPopup",
-              status: "error",
-              text: "Ошибка отправки"
-            });
+        .then((data) => {
+          console.log("Успешно отправлено на сервер, данные:", data);
+          // Уведомление об успешной отправке URL
+          chrome.tabs.sendMessage(tab.id, {
+            action: "showPopup",
+            status: "success",
+            text: "Ссылка отправлена",
           });
-      });
-    }, 1000); // Задержка в 1 секунду
+        })
+        .catch((error) => {
+          console.error("Ошибка при отправке URL на сервер:", error);
+          // Отправляем сообщение в content script для отображения всплывающего окна (ошибка)
+          chrome.tabs.sendMessage(tab.id, {
+            action: "showPopup",
+            status: "error",
+            text: "Ошибка отправки",
+          });
+        });
   });
 });
