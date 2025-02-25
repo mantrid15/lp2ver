@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LinZer",
   "version": "1.0",
-  "permissions": ["activeTab", "tabs", "clipboardWrite", "clipboardRead"],
+  "permissions": ["activeTab", "scripting", "tabs", "clipboardWrite", "clipboardRead"],
   "action": {
     "default_icon": {
       "18": "icon.png",

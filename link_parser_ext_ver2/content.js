@@ -72,6 +72,3 @@ function showPopupMessage(status, message) {
   const event = new CustomEvent('extensionPopup', { detail: { status, message } });
   window.dispatchEvent(event);
 }
-
-// Пример существующего кода – если он предусмотрен (например, позиционирование textarea)
-textarea.style.left = "0";
