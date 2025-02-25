@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import store from './store'; // Импортируйте ваш store
 import 'vuetify/styles'
+import cors from 'cors';
 
 const app = createApp(App)
 

@@ -161,31 +161,32 @@ chrome.action.onClicked.addListener((tab) => {
           fetch("http://localhost:3000/api/send-url", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
+            body: JSON.stringify({ url: data.url })
           })
-            .then((response) => {
-              if (!response.ok) {
-                throw new Error("Ошибка сети");
-              }
-              return response.json();
-            })
-            .then((serverData) => {
-              console.log("Успешно отправлено на сервер, данные:", serverData);
-              // Уведомление об успешной отправке данных
-              chrome.tabs.sendMessage(tab.id, {
-                action: "showPopup",
-                status: "success",
-                text: "Данные отправлены"
+              .then((response) => {
+                if (!response.ok) {
+                  // Логируем статус и текст ошибки
+                  console.error("Ошибка сервера:", response.status, response.statusText);
+                  throw new Error("Ошибка сети");
+                }
+                return response.json();
+              })
+              .then((serverData) => {
+                console.log("Успешно отправлено на сервер, данные:", serverData);
+                chrome.tabs.sendMessage(tab.id, {
+                  action: "showPopup",
+                  status: "success",
+                  text: "Данные отправлены"
+                });
+              })
+              .catch((error) => {
+                console.error("Ошибка при отправке данных на сервер:", error);
+                chrome.tabs.sendMessage(tab.id, {
+                  action: "showPopup",
+                  status: "error",
+                  text: "Ошибка отправки"
+                });
               });
-            })
-            .catch((error) => {
-              console.error("Ошибка при отправке данных на сервер:", error);
-              chrome.tabs.sendMessage(tab.id, {
-                action: "showPopup",
-                status: "error",
-                text: "Ошибка отправки"
-              });
-            });
         });
       }, 1000); // Задержка в 1 секунду
     });
