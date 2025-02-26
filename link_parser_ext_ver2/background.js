@@ -126,13 +126,24 @@ chrome.action.onClicked.addListener((tab) => {
           console.log("Description:", meta.description);
           console.log("Keywords:", meta.keywords);
 
+          let favicon = tab.favIconUrl; // Используем фавикон из активной вкладки
+
+          if (!favicon || !favicon.startsWith('http')) {
+            // Если favIconUrl отсутствует или неполный, используем фавикон из метатегов
+            favicon = normalizedData['favicon'];
+            if (favicon && !favicon.startsWith('http')) {
+              const baseUrl = new URL(tab.url).origin; // Получаем базовый URL (например, https://zidansec.com)
+              favicon = new URL(favicon, baseUrl).href; // Создаем полный URL для фавикона
+            }
+          }
+
           // Формирование объекта data с URL и метаданными
           const data = {
-            url: tab.url, // Используем URL активной вкладки:
+            url: tab.url, // Всегда используем URL активной вкладки
             title: meta.title || normalizedData['title'], // Используем meta.title, если он не пустой, иначе берем из normalizedData
             description: meta.description || normalizedData['description'], // Аналогично для description
             keywords: meta.keywords || normalizedData['keywords'], // Аналогично для keywords
-            favicon: normalizedData['favicon'], // Используем нормализованный favicon
+            favicon: favicon || "", // Используем обработанный фавикон
             rss: normalizedData['rss'], // Используем нормализованный RSS
             lang: normalizedData['lang'] // Используем нормализованный lang
           };
