@@ -55,16 +55,26 @@ const broadcastUrl = (url) => {
 
 // Маршрут для приема URL от расширения Chrome
 app.post('/api/send-url', async (req, res) => {
-    const { url } = req.body;
-    if (!url) {
+    // Принимаем весь словарь (объект) из тела запроса
+    const data = req.body;
+
+    // Проверяем, что в словаре есть ключ `url`
+    if (!data || !data.url) {
         return res.status(400).json({ error: 'URL не предоставлен' });
     }
-    console.log('Received URL from extension:', url);
-    // Отправляем URL всем подключенным клиентам через WebSocket:
-    broadcastUrl(url);
-    res.json({ status: 'URL received', url });
-});
 
+    // Извлекаем URL из словаря
+    const { url } = data;
+
+    console.log('Received data from extension:', data);
+    console.log('Extracted URL:', url);
+
+    // Отправляем URL всем подключенным клиентам через WebSocket
+    broadcastUrl(url);
+
+    // Возвращаем ответ с полученными данными
+    res.json({ status: 'Data received', data });
+});
 // Остальные маршруты (прокси, Puppeteer и т.д.)
 app.get('/proxy', async (req, res) => {
     const url = req.query.url;
@@ -87,6 +97,7 @@ app.get('/fetch-metadata', async (req, res) => {
         return res.status(400).json({ error: 'URL не предоставлен' });
     }
     const metaData = await puppeteerMetaData(url);
+
     if (metaData) {
         res.json(metaData);
     } else {

@@ -3,11 +3,11 @@ console.log("Фоновый скрипт активирован.");
 chrome.action.onClicked.addListener((tab) => {
   console.log("Иконка расширения нажата.");
 
-  // Шаг 1: Извлечение метатегов и тегов <link> из <head>
+  // Шаг 1: Извлечение метатегов, тегов <link> и атрибута lang из <html>
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
     func: () => {
-      // Функция для извлечения метатегов и тегов <link>
+      // Функция для извлечения метатегов, тегов <link> и атрибута lang из <html>
       const metaTags = document.querySelectorAll('head meta[property], head link[rel]');
       const htmlLang = document.documentElement.getAttribute('lang') || ""; // Получаем атрибут lang из <html>
       const result = {};
@@ -47,17 +47,12 @@ chrome.action.onClicked.addListener((tab) => {
 
       // Обработка keywords и tag
       if (result['keywords'] && result['tag']) {
-        // Если есть и keywords, и tag, объединяем их через запятую
         result['keywords'] = `${result['keywords']}, ${result['tag']}`;
       } else if (result['keywords']) {
-        // Если есть только keywords, используем его как keywords
         result['keywords'] = result['keywords'];
-
       } else if (result['tag']) {
-        // Если есть только tag, используем его как keywords
         result['keywords'] = result['tag'];
       } else if (!result['keywords']) {
-        // Если нет ни keywords, ни tag, используем пустую строку
         result['keywords'] = "";
       }
 
@@ -71,6 +66,7 @@ chrome.action.onClicked.addListener((tab) => {
       console.error("Ошибка выполнения скрипта:", chrome.runtime.lastError);
       return;
     }
+
     // Выводим результат в консоль
     const metaData = results[0].result;
     console.log("Метаданные из тегов <head> и lang из <html>:", metaData);
@@ -124,15 +120,15 @@ chrome.action.onClicked.addListener((tab) => {
             tag: "" // Очищаем tag, так как он объединен с keywords
           };
 
-          console.log(meta)
-          // console.log("Получены метаданные:");
-          // console.log("Title:", meta.title);
-          // console.log("Description:", meta.description);
-          // console.log("Keywords:", meta.keywords);
+          console.log(meta);
+          console.log("Получены метаданные:");
+          console.log("Title:", meta.title);
+          console.log("Description:", meta.description);
+          console.log("Keywords:", meta.keywords);
 
           // Формирование объекта data с URL и метаданными
           const data = {
-            url: normalizedData['url'], // Используем нормализованный URL
+            url: tab.url, // Используем URL активной вкладки:
             title: meta.title || normalizedData['title'], // Используем meta.title, если он не пустой, иначе берем из normalizedData
             description: meta.description || normalizedData['description'], // Аналогично для description
             keywords: meta.keywords || normalizedData['keywords'], // Аналогично для keywords
@@ -141,7 +137,7 @@ chrome.action.onClicked.addListener((tab) => {
             lang: normalizedData['lang'] // Используем нормализованный lang
           };
 
-// Дополнительная проверка на длину данных
+          // Дополнительная проверка на длину данных
           if (meta.title && normalizedData['title'] && meta.title.length < normalizedData['title'].length) {
             data.title = normalizedData['title'];
           }
@@ -165,14 +161,13 @@ chrome.action.onClicked.addListener((tab) => {
           })
               .then((response) => {
                 if (!response.ok) {
-                  // Логируем статус и текст ошибки
-                  console.error("Ошибка сервера:", response.status, response.statusText);
                   throw new Error("Ошибка сети");
                 }
                 return response.json();
               })
               .then((serverData) => {
                 console.log("Успешно отправлено на сервер, данные:", serverData);
+                // Уведомление об успешной отправке данных
                 chrome.tabs.sendMessage(tab.id, {
                   action: "showPopup",
                   status: "success",
