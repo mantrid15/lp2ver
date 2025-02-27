@@ -30,25 +30,27 @@
                density="compact"
                fixed-header>
         <tbody>
-        <tr v-if="linkInfoParsed">
-          <td style="width: 300px;" class="divider">
-            <a :href="linkInfoParsed.url"
+        <tr>
+          <td  class="divider" style="width: 300px; border: 1px solid white; padding: 0;">
+<!--            <span class="text-ellipsis"
+                  style="display: block;
+              overflow: hidden;
+              white-space: nowrap;
+              text-overflow: ellipsis;">-->
+                      <input ref="urlInput" v-model="url" class="url-input" type="text" placeholder="Введите URL" @keydown.enter="handleEnter" style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;" />
+
+<!--          {{ linkInfoParsed ? truncateText(linkInfoParsed.url, 30).truncated : '' }}-->
+<!--        </span>-->
+<!--            <a :href="linkInfoParsed?.url || '#'"
                target="_blank"
                rel="noopener noreferrer"
                style="display: flex;
-               justify-content: start;
-               padding-right: 10px;">
-                <span class="text-ellipsis"
-                      style="display: block;
-                      overflow: hidden;
-                      white-space: nowrap;
-                      text-overflow: ellipsis;">
-                  {{ truncateText(linkInfoParsed.url, 30).truncated }}
-                </span>
-            </a>
+         justify-content: start;
+         padding-right: 10px;">
+            </a>-->
           </td>
           <td class="divider"
-              style="width: 30px; display: flex; justify-content: center; align-items: center; padding: 0;">
+              style="width: 30px; border: 1px solid white; display: flex; justify-content: center; align-items: center; padding: 0;">
             <div class="favicon-container">
               <img src="/lpicon.png"
                    alt="Favicon"
@@ -56,39 +58,39 @@
                    height="18" />
             </div>
           </td>
-          <td class="divider" style="width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-              <span class="scrolling-text" v-tooltip="linkInfoParsed.title">
-                <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.title, 30).truncated }}</span>
-              </span>
+          <td class="divider" style="width: 400px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        <span class="scrolling-text" v-tooltip="linkInfoParsed?.title || ''">
+          <span class="text-ellipsis" style="margin-left: 5px">{{ linkInfoParsed ? truncateText(linkInfoParsed.title, 30).truncated : '' }}</span>
+        </span>
           </td>
-          <td class="divider" style="width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-              <span class="scrolling-text" v-tooltip="linkInfoParsed.description">
-                <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.description, 20).truncated }}</span>
-              </span>
+          <td class="divider" style="width: 200px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
+        <span class="scrolling-text" v-tooltip="linkInfoParsed?.description || ''">
+          <span class="text-ellipsis" style="margin-left: 5px">{{ linkInfoParsed ? truncateText(linkInfoParsed.description, 20).truncated : '' }}</span>
+        </span>
           </td>
-          <td class="divider" style="width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-              <span class="scrolling-text" v-tooltip="linkInfoParsed.keywords.join(', ')">
-                <span class="text-ellipsis" style="margin-left: 5px">{{ truncateText(linkInfoParsed.keywords.join(', '), 20).truncated }}</span>
-              </span>
+          <td class="divider" style="width: 150px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
+        <span class="scrolling-text" v-tooltip="linkInfoParsed?.keywords?.join(', ') || ''">
+          <span class="text-ellipsis" style="margin-left: 5px">{{ linkInfoParsed ? truncateText(linkInfoParsed.keywords.join(', '), 20).truncated : '' }}</span>
+        </span>
           </td>
-          <td class="divider" v-tooltip="linkInfoParsed.date" style="width: 100px; padding-left: 10px;">
-            {{ new Date().toLocaleDateString() }}
+          <td class="divider" v-tooltip="linkInfoParsed?.date || ''" style="width: 100px; border: 1px solid white; padding-left: 10px;">
+            {{ linkInfoParsed ? new Date(linkInfoParsed.date).toLocaleDateString() : new Date().toLocaleDateString() }}
           </td>
         </tr>
-        <tr v-else>
-          <td class="divider" style="width: 300px; padding: 0;">
-            <input ref="urlInput" v-model="url" class="url-input" type="text" placeholder="Введите URL" @keydown.enter="handleEnter" style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;" />
-          </td>
-          <td style="width: 30px; display: flex; justify-content: center; align-items: center; padding: 0;">
-            <div class="favicon-container">
-              <img src="/lpicon.png" alt="Favicon" width="18" height="18" />
-            </div>
-          </td>
-          <td style="width: 400px; padding: 0;"></td>
-          <td style="width: 200px; padding: 0;"></td>
-          <td style="width: 200px; padding: 0;"></td>
-          <td class="divider placeholder-text" style="width: 80px; margin-left: 5px;"></td>
-        </tr>
+<!--        <tr>-->
+<!--          <td class="divider" style="width: 300px; border: 1px solid white; padding: 0;">-->
+<!--            <input ref="urlInput" v-model="url" class="url-input" type="text" placeholder="Введите URL" @keydown.enter="handleEnter" style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;" />-->
+<!--          </td>-->
+<!--          <td style="width: 30px; border: 1px solid white; display: flex; justify-content: center; align-items: center; padding: 0;">-->
+<!--            <div class="favicon-container">-->
+<!--              <img src="/lpicon.png" alt="Favicon" width="18" height="18" />-->
+<!--            </div>-->
+<!--          </td>-->
+<!--          <td style="width: 400px; border: 1px solid white; padding: 0;"></td>-->
+<!--          <td style="width: 200px; border: 1px solid white; padding: 0;"></td>-->
+<!--          <td style="width: 200px; border: 1px solid white; padding: 0;"></td>-->
+<!--          <td class="divider placeholder-text" style="width: 80px; border: 1px solid white; margin-left: 5px;"></td>-->
+<!--        </tr>-->
         </tbody>
       </v-table>
     </div>

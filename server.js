@@ -16,9 +16,9 @@ const server = app.listen(3000, () => {
 // Создаем WebSocket-сервер
 const wss = new WebSocketServer({ server });
 
-// Хранилище для WebSocket-клиентов и их последней отправленной ссылки
+// Хранилище для WebSocket-клиентов и их последних отправленных данных
 const clients = new Set();
-const clientLastUrls = new Map();
+const clientLastData = new Map();
 
 wss.on('connection', (ws) => {
     console.log('Новое подключение WebSocket');
@@ -27,8 +27,9 @@ wss.on('connection', (ws) => {
     ws.on('close', () => {
         console.log('WebSocket соединение закрыто');
         clients.delete(ws);
-        clientLastUrls.delete(ws);
+        clientLastData.delete(ws);
     });
+
     ws.on('error', (error) => {
         console.error('Ошибка WebSocket:', error);
     });
@@ -36,19 +37,21 @@ wss.on('connection', (ws) => {
 
 // Функция для отправки URL всем подключенным клиентам.
 // Если у клиента уже есть предыдущая ссылка, сначала отправляем команду удаления.
-const broadcastUrl = (url) => {
+const broadcastUrl = (data) => {
+    console.log('Broadcasting data to clients:', data); // Логирование перед отправкой данных
+
     clients.forEach((client) => {
         // Проверяем, что соединение открыто (числовое значение 1 соответствует OPEN)
         if (client.readyState === 1) {
-            if (clientLastUrls.has(client)) {
-                const previousUrl = clientLastUrls.get(client);
-                // Отправляем клиенту команду удаления старой ссылки
-                client.send(JSON.stringify({ remove: previousUrl }));
+            if (clientLastData.has(client)) {
+                const previousData = clientLastData.get(client);
+                // Отправляем клиенту команду удаления старых данных
+                client.send(JSON.stringify({ remove: previousData.url }));
             }
-            // Сохраняем новую ссылку для клиента
-            clientLastUrls.set(client, url);
-            // Отправляем новую ссылку
-            client.send(JSON.stringify({ url }));
+            // Сохраняем новые данные для клиента
+            clientLastData.set(client, data);
+            // Отправляем новые данные
+            client.send(JSON.stringify(data));
         }
     });
 };
@@ -57,24 +60,17 @@ const broadcastUrl = (url) => {
 app.post('/api/send-url', async (req, res) => {
     // Принимаем весь словарь (объект) из тела запроса
     const data = req.body;
-
     // Проверяем, что в словаре есть ключ `url`
     if (!data || !data.url) {
         return res.status(400).json({ error: 'URL не предоставлен' });
     }
-
-    // Извлекаем URL из словаря
-    const { url } = data;
-
     console.log('Received data from extension:', data);
-    console.log('Extracted URL:', url);
-
-    // Отправляем URL всем подключенным клиентам через WebSocket
-    broadcastUrl(url);
-
+    // Отправляем данные всем подключенным клиентам через WebSocket
+    broadcastUrl(data);
     // Возвращаем ответ с полученными данными
     res.json({ status: 'Data received', data });
 });
+
 // Остальные маршруты (прокси, Puppeteer и т.д.)
 app.get('/proxy', async (req, res) => {
     const url = req.query.url;
