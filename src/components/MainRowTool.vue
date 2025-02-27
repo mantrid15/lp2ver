@@ -32,22 +32,7 @@
         <tbody>
         <tr>
           <td  class="divider" style="width: 300px; border: 1px solid white; padding: 0;">
-<!--            <span class="text-ellipsis"
-                  style="display: block;
-              overflow: hidden;
-              white-space: nowrap;
-              text-overflow: ellipsis;">-->
-                      <input ref="urlInput" v-model="url" class="url-input" type="text" placeholder="Введите URL" @keydown.enter="handleEnter" style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;" />
-
-<!--          {{ linkInfoParsed ? truncateText(linkInfoParsed.url, 30).truncated : '' }}-->
-<!--        </span>-->
-<!--            <a :href="linkInfoParsed?.url || '#'"
-               target="_blank"
-               rel="noopener noreferrer"
-               style="display: flex;
-         justify-content: start;
-         padding-right: 10px;">
-            </a>-->
+            <input ref="urlInput" v-model="url" class="url-input" type="text" placeholder="Введите URL" @keydown.enter="handleEnter" style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;" />
           </td>
           <td class="divider"
               style="width: 30px; border: 1px solid white; display: flex; justify-content: center; align-items: center; padding: 0;">
@@ -77,20 +62,6 @@
             {{ linkInfoParsed ? new Date(linkInfoParsed.date).toLocaleDateString() : new Date().toLocaleDateString() }}
           </td>
         </tr>
-<!--        <tr>-->
-<!--          <td class="divider" style="width: 300px; border: 1px solid white; padding: 0;">-->
-<!--            <input ref="urlInput" v-model="url" class="url-input" type="text" placeholder="Введите URL" @keydown.enter="handleEnter" style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;" />-->
-<!--          </td>-->
-<!--          <td style="width: 30px; border: 1px solid white; display: flex; justify-content: center; align-items: center; padding: 0;">-->
-<!--            <div class="favicon-container">-->
-<!--              <img src="/lpicon.png" alt="Favicon" width="18" height="18" />-->
-<!--            </div>-->
-<!--          </td>-->
-<!--          <td style="width: 400px; border: 1px solid white; padding: 0;"></td>-->
-<!--          <td style="width: 200px; border: 1px solid white; padding: 0;"></td>-->
-<!--          <td style="width: 200px; border: 1px solid white; padding: 0;"></td>-->
-<!--          <td class="divider placeholder-text" style="width: 80px; border: 1px solid white; margin-left: 5px;"></td>-->
-<!--        </tr>-->
         </tbody>
       </v-table>
     </div>
@@ -113,7 +84,6 @@ import * as cheerio from 'cheerio';
 import { supabase } from "@/clients/supabase";
 import { useStore } from 'vuex';
 
-
 export default {
   name: 'MainRowTool',
   props: {
@@ -130,6 +100,12 @@ export default {
     const snackbar = ref(false);
     const snackbarMessage = ref('');
     const url = ref('');
+    const keywords = ref('');
+    const rss = ref('');
+    const lang = ref('');
+    const favicon = ref('');
+    const title = ref('');
+    const description = ref('');
     const linkInfo = ref('');
     const statusMessage = ref('');
     const urlInput = ref(null);
@@ -141,7 +117,7 @@ export default {
       url.value = receivedUrl;
       await handleButtonClick(); // Обрабатываем URL и отправляем в Supabase
     };
-    // const puppeteer = require('puppeteer-core');
+
     const showSnackbar = (message) => {
       snackbarMessage.value = message;
       snackbar.value = true;
@@ -170,7 +146,6 @@ export default {
       }
     };
 
-
     const getPageInfo = async (url) => {
       try {
         const response = await axios.get(`http://localhost:3000/proxy?url=${encodeURIComponent(url)}`);
@@ -198,7 +173,6 @@ export default {
         return { error: 'Ошибка при получении информации' };
       }
     };
-
 
     const fetchMetaData = async (url) => {
       try {
@@ -516,9 +490,16 @@ export default {
       };
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.url) {
+        if (data.url && data.title) {
           url.value = data.url; // обновляем значение URL
-          console.log('Получен URL от сервера:', data.url);
+          keywords.value = data.keywords;
+          description.value = data.description;
+          favicon.value = data.favicon;
+          lang.value = data.lang;
+          rss.value = data.rss;
+          title.value = data.keywords;
+
+          console.log('Получен URL от сервера:', data);
           // Если данные получены через WebSocket, автоматически вызываем handleButtonClick через 0.5 секунды
           setTimeout(() => {
             handleButtonClick();
@@ -566,16 +547,12 @@ export default {
       // Преобразуем строку в массив байтов
       const encoder = new TextEncoder();
       const data = encoder.encode(inputString);
-
       // Вычисляем хэш
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-
       // Преобразуем хэш в массив байтов
       const hashArray = Array.from(new Uint8Array(hashBuffer));
-
       // Преобразуем массив байтов в шестнадцатеричную строку
       // const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
@@ -587,6 +564,12 @@ export default {
       isFetching,
       buttonColor,
       url,
+      keywords,
+      description,
+      favicon,
+      lang,
+      rss,
+      title,
       urlInput,
       handleContextMenu,
       linkInfo,
@@ -610,14 +593,11 @@ export default {
   border: none; /* Убираем границу */
 }
 .custom-snackbar {
-  /*
-  background-color: red !important; !* Красный фон *!
-  */
-  color: black !important; /* Черный текст */
-  position: inherit; /* Фиксированное позиционирование */
-  top: 10px; /* Отступ сверху */
-  right: 20px; /* Отступ справа */
-  z-index: 200; /* Убедитесь, что snackbar выше других элементов */
+  color: black !important;
+  position: inherit;
+  top: 10px;
+  right: 20px;
+  z-index: 200;
 }
 .text-ellipsis {
   white-space: nowrap; /* Запрет на перенос строк */

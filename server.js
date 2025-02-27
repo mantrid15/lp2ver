@@ -64,7 +64,7 @@ app.post('/api/send-url', async (req, res) => {
     if (!data || !data.url) {
         return res.status(400).json({ error: 'URL не предоставлен' });
     }
-    console.log('Received data from extension:', data);
+    // console.log('Received data from extension:', data);
     // Отправляем данные всем подключенным клиентам через WebSocket
     broadcastUrl(data);
     // Возвращаем ответ с полученными данными
