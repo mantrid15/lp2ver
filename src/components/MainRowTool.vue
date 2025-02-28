@@ -150,16 +150,12 @@ export default {
       try {
         const response = await axios.get(`http://localhost:3000/proxy?url=${encodeURIComponent(url)}`);
         const $ = cheerio.load(response.data);
-
         // Получаем заголовок из тега <title> в любом месте документа
         const documentTitle = $('title').text();
-
         // Получаем заголовок строго по пути /html/head/title
         const headTitle = $('html head title').text();
-
         // Используем заголовок по пути /html/head/title, если он есть, иначе используем заголовок из документа
         const title = headTitle || documentTitle || '';
-
         const keywords = $('meta[name="keywords"]').attr('content') || ''; // Получаем ключевые слова
         console.log('Standard request:');
         return {
@@ -316,6 +312,23 @@ export default {
       }
     };
 
+    const getDomainName = (url) => {
+      try {
+        const urlObj = new URL(url);
+        let domain = urlObj.hostname;
+
+        // Удаляем 'www.' из доменного имени
+        if (domain.startsWith('www.')) {
+          domain = domain.slice(4);
+        }
+
+        return domain;
+      } catch (error) {
+        console.error('Ошибка при извлечении доменного имени:', error);
+        return '';
+      }
+    };
+
     const handleButtonClick = async () => {
       // Проверяем URL через fetchPageInfo
       await fetchPageInfo();
@@ -341,6 +354,15 @@ export default {
 
       try {
         showSnackbar('Отправка URL в Supabase...');
+
+        // Генерация favicon_name на основе доменного имени
+        const domainName = getDomainName(linkInfoParsed.value.url);
+        const faviconName = domainName;
+
+        // Генерация favicon_hash на основе favicon_name
+        const faviconHash = await hashString(faviconName);
+
+        // Проверка существования url_hash в таблице links
         const urlHash = await hashString(linkInfoParsed.value.url);
         console.log('Calculated url_hash:', urlHash);
 
@@ -361,23 +383,44 @@ export default {
           return;
         }
 
-        // Подготовка данных для таблицы favicons
-        const randomId = generateUid();
-        const faviconHash = await hashString(randomId);
+// Подготовка данных для таблицы favicons
         const faviconData = {
           favicon_hash: faviconHash,
-          favicon_name: randomId,
+          favicon_name: faviconName,
+          fav_url: favicon.value, // favicon_url из WebSocket
           storage_path: '',
           user_id: userIdValue,
         };
+
         console.log('Favicon Data:', faviconData);
 
+// Проверка существования favicon_hash в таблице favicons
+        const { data: existingFavicons, error: checkFaviconError } = await supabase
+            .from('favicons')
+            .select('favicon_hash')
+            .eq('favicon_hash', faviconHash);
+
+        if (checkFaviconError) {
+          console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
+          showSnackbar('Не удалось проверить существование фавикона. Попробуйте снова.');
+          return;
+        }
+
+        if (existingFavicons.length > 0) {
+          console.log('Такой фавикон уже существует в базе!');
+          showSnackbar('Такой фавикон уже существует в базе!');
+          clearFields();
+          return; // Прекращаем выполнение, если фавикон уже существует
+        }
+
+// Вставка данных в таблицу favicons
         const { error: faviconError } = await supabase
             .from('favicons')
             .insert([faviconData]);
+
         if (faviconError) {
           console.error('Ошибка при отправке данных в таблицу favicons:', faviconError);
-          showSnackbar('Не удалось отправить данные favicon. Попробуйте снова.');
+          showSnackbar('Не удалось отправить данные фавикона. Попробуйте снова.');
           return;
         }
 
@@ -385,7 +428,7 @@ export default {
         const linkData = {
           date: new Date().toISOString(),
           url_hash: urlHash,
-          favicon_name: randomId,
+          favicon_name: faviconName,
           url: linkInfoParsed.value.url,
           title: linkInfoParsed.value.title,
           description: linkInfoParsed.value.description.trim(),
