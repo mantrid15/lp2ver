@@ -176,13 +176,6 @@ export default {
         return response.data;
       } catch (error) {
         console.error('Ошибка при получении данных:', error);
-        if (error.response) {
-          console.error('Ответ сервера:', error.response.data);
-        } else if (error.request) {
-          console.error('Запрос был отправлен, но ответа не получено:', error.request);
-        } else {
-          console.error('Ошибка настройки запроса:', error.message);
-        }
         return { error: 'Ошибка при получении информации' };
       }
     };
@@ -316,12 +309,9 @@ export default {
       try {
         const urlObj = new URL(url);
         let domain = urlObj.hostname;
-
-        // Удаляем 'www.' из доменного имени
         if (domain.startsWith('www.')) {
           domain = domain.slice(4);
         }
-
         return domain;
       } catch (error) {
         console.error('Ошибка при извлечении доменного имени:', error);
@@ -340,32 +330,26 @@ export default {
       // Если URL валиден, продолжаем выполнение основной логики
       await getInfo();
       parseLinkInfo();
-
       if (!linkInfoParsed.value || !linkInfoParsed.value.url) {
         showSnackbar('Не удалось получить информацию о странице');
         return;
       }
-
       const userIdValue = userId.value;
       if (!userIdValue) {
         showSnackbar('Незарегистрированный пользователь. Демо-режим.');
         return;
       }
-
       try {
         showSnackbar('Отправка URL в Supabase...');
 
         // Генерация favicon_name на основе доменного имени
         const domainName = getDomainName(linkInfoParsed.value.url);
         const faviconName = domainName;
-
         // Генерация favicon_hash на основе favicon_name
         const faviconHash = await hashString(faviconName);
-
         // Проверка существования url_hash в таблице links
         const urlHash = await hashString(linkInfoParsed.value.url);
         console.log('Calculated url_hash:', urlHash);
-
         // Проверка существования url_hash в таблице links
         const { data: existingLinks, error: checkError } = await supabase
             .from('links')
@@ -391,37 +375,29 @@ export default {
           storage_path: '',
           user_id: userIdValue,
         };
-
         console.log('Favicon Data:', faviconData);
-
 // Проверка существования favicon_hash в таблице favicons
         const { data: existingFavicons, error: checkFaviconError } = await supabase
             .from('favicons')
             .select('favicon_hash')
             .eq('favicon_hash', faviconHash);
-
         if (checkFaviconError) {
           console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
           showSnackbar('Не удалось проверить существование фавикона. Попробуйте снова.');
           return;
         }
-
-        if (existingFavicons.length > 0) {
-          console.log('Такой фавикон уже существует в базе!');
-          showSnackbar('Такой фавикон уже существует в базе!');
-          clearFields();
-          return; // Прекращаем выполнение, если фавикон уже существует
-        }
-
-// Вставка данных в таблицу favicons
-        const { error: faviconError } = await supabase
+        if (existingFavicons.length === 0) {
+          const { error: faviconError } = await supabase
             .from('favicons')
             .insert([faviconData]);
-
-        if (faviconError) {
-          console.error('Ошибка при отправке данных в таблицу favicons:', faviconError);
-          showSnackbar('Не удалось отправить данные фавикона. Попробуйте снова.');
-          return;
+          if (faviconError) {
+            console.error('Ошибка при отправке данных в таблицу favicons:', faviconError);
+            showSnackbar('Не удалось отправить данные фавикона. Попробуйте снова.');
+            return;
+          }
+        } else {
+          console.log('Такой фавикон уже существует в базе!');
+          showSnackbar('Такой фавикон уже существует в базе!');
         }
 
         // Подготовка данных для таблицы links
@@ -436,6 +412,7 @@ export default {
           keywords: (Array.isArray(linkInfoParsed.value.keywords) && linkInfoParsed.value.keywords.length > 0)
               ? linkInfoParsed.value.keywords
               : null,
+          rss: '',
           ai_tag: '',
           favicon_hash: faviconHash,
           user_id: userIdValue,
@@ -497,7 +474,6 @@ export default {
       } else {
         console.error('urlInput не найден или не смонтирован');
       }
-
     };
 
     const handleContextMenu = (event) => {
@@ -541,7 +517,6 @@ export default {
           lang.value = data.lang;
           rss.value = data.rss;
           title.value = data.keywords;
-
           console.log('Получен URL от сервера:', data);
           // Если данные получены через WebSocket, автоматически вызываем handleButtonClick через 0.5 секунды
           setTimeout(() => {
@@ -555,13 +530,11 @@ export default {
       ws.onerror = (error) => {
         console.error('Ошибка WebSocket:', error);
       };
-
       // Прослушивание события, диспатченного в content.js, для отображения уведомления через showSnackbar
       window.addEventListener("extensionPopup", (event) => {
         const { status, message } = event.detail;
         showSnackbar(message);
       });
-
       window.addEventListener('changeButtonColor', (event) => changeButtonColor(event.detail));
       if (urlInput.value) {
         urlInput.value.focus(); // установка фокуса на поле ввода
@@ -578,25 +551,13 @@ export default {
       return { truncated, remainder };
     };
 
-    function generateUid() {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        const r = Math.random() * 16 | 0;
-        const v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-      });
-    }
-
     async function hashString(inputString) {
       // Преобразуем строку в массив байтов
       const encoder = new TextEncoder();
       const data = encoder.encode(inputString);
       // Вычисляем хэш
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      // Преобразуем хэш в массив байтов
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      // Преобразуем массив байтов в шестнадцатеричную строку
-      // const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     return {
