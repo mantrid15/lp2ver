@@ -221,6 +221,8 @@ export default {
         return { error: 'Ошибка при получении информации' };
       }
     };
+
+
 // Функция для обновления финальных данных
     const getInfo = async () => {
       if (!isValidURL(url.value)) {
@@ -330,7 +332,7 @@ export default {
     };
 
     const handleButtonClick = async () => {
-      // Проверяем URL через fetchPageInfo
+// Проверяем URL через fetchPageInfo
       await fetchPageInfo();
       if (!isValidURL(url.value)) {
         showSnackbar('Ссылка не ссылка!!!');
@@ -352,12 +354,12 @@ export default {
         return;
       }
 
+
       try {
         showSnackbar('Отправка URL в Supabase...');
 
         // Генерация favicon_name на основе доменного имени
-        const domainName = getDomainName(linkInfoParsed.value.url);
-        const faviconName = domainName;
+        const faviconName = getDomainName(linkInfoParsed.value.url);
 
         // Генерация favicon_hash на основе favicon_name
         const faviconHash = await hashString(faviconName);
@@ -409,12 +411,6 @@ export default {
         if (existingFavicons.length > 0) {
           console.log('Такой фавикон уже существует в базе!');
           showSnackbar('Такой фавикон уже существует в базе!');
-/*
-          clearFields();
-*/
-/*
-          return; // Прекращаем выполнение, если фавикон уже существует
-*/
         } else  {
           // Вставка данных в таблицу favicons
           const { error: faviconError } = await supabase
@@ -427,9 +423,6 @@ export default {
             return;
           }
         }
-
-
-
         // Подготовка данных для таблицы links
         const linkData = {
           date: new Date().toISOString(),
@@ -537,7 +530,7 @@ export default {
       ws.onopen = () => {
         console.log('WebSocket соединение установлено');
       };
-      ws.onmessage = (event) => {
+      ws.onmessage = async (event) => {
         const data = JSON.parse(event.data);
         if (data.url && data.title) {
           url.value = data.url; // обновляем значение URL
@@ -549,9 +542,60 @@ export default {
           title.value = data.keywords;
 
           console.log('Получен URL от сервера:', data);
-          // Если данные получены через WebSocket, автоматически вызываем handleButtonClick через 0.5 секунды
+
+          // Проверка уникальности url_hash и favicon_hash
+          const urlHash = await hashString(url.value);
+          const faviconName = getDomainName(url.value);
+          const faviconHash = await hashString(faviconName);
+
+          // Проверка существования url_hash в таблице links
+          const { data: existingLinks, error: checkError } = await supabase
+              .from('links')
+              .select('url_hash')
+              .eq('url_hash', urlHash);
+
+          if (checkError) {
+            console.error('Ошибка при проверке url_hash:', checkError);
+          } else {
+            console.log('Результат проверки url_hash:', existingLinks.length > 0 ? 'Не уникален' : 'Уникален');
+          }
+
+          // Проверка существования favicon_hash в таблице favicons
+          const { data: existingFavicons, error: checkFaviconError } = await supabase
+              .from('favicons')
+              .select('favicon_hash')
+              .eq('favicon_hash', faviconHash);
+
+          if (checkFaviconError) {
+            console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
+          } else {
+            console.log('Результат проверки favicon_hash:', existingFavicons.length > 0 ? 'Не уникален' : 'Уникален');
+            const userIdValue = userId.value;
+            // Если favicon_hash уникален, сохраняем его в таблицу favicons
+            const faviconData = {
+              favicon_hash: faviconHash,
+              favicon_name: faviconName,
+              fav_url: favicon.value, // favicon_url из WebSocket
+              storage_path: '',
+              user_id: userIdValue,
+            };
+            console.log(faviconData)
+            if (existingFavicons.length === 0) {
+              const { error: insertError } = await supabase
+                  .from('favicons')
+                  .insert([faviconData]);
+
+              if (insertError) {
+                console.error('Ошибка при вставке favicon_hash в favicons:', insertError);
+              } else {
+                console.log('favicon_hash успешно добавлен в favicons');
+              }
+            }
+          }
+          // Автоматически вызываем handleButtonClick через 0.5 секунды
           setTimeout(() => {
-            handleButtonClick();
+            console.log('Автоматический вызов extentionDataToLinks')
+            // handleButtonClick();
           }, 500);
         }
       };
