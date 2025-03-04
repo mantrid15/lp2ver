@@ -29,7 +29,7 @@ export default {
 
     async function getSession() {
       account.value = await supabase.auth.getSession();
-      console.log(account.value);
+      // console.log(account.value);
     }
 
     onMounted(() => {

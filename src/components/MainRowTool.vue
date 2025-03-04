@@ -113,10 +113,11 @@ export default {
     const buttonLabelOk = ref('LinZer');
     const linkInfoParsed = ref(null);
 
-    const receiveUrlFromExtension = async (receivedUrl) => {
-      url.value = receivedUrl;
-      await handleButtonClick(); // Обрабатываем URL и отправляем в Supabase
-    };
+    // const receiveUrlFromExtension = async (receivedUrl) => {
+    //   url.value = receivedUrl;
+    //   console.log('Received URL from extension:', receivedUrl)
+    //   // await handleButtonClick(); // Обрабатываем URL и отправляем в Supabase
+    // };
 
     const showSnackbar = (message) => {
       snackbarMessage.value = message;
@@ -332,10 +333,28 @@ export default {
     };
 
     const handleButtonClick = async () => {
-// Проверяем URL через fetchPageInfo
+      // Проверяем URL через fetchPageInfo
       await fetchPageInfo();
       if (!isValidURL(url.value)) {
         showSnackbar('Ссылка не ссылка!!!');
+        return;
+      }
+
+      // Проверка существования url_hash в таблице links
+      const urlHash = await hashString(linkInfoParsed.value.url);
+      const { data: existingLinks, error: checkError } = await supabase
+          .from('links')
+          .select('url_hash')
+          .eq('url_hash', urlHash);
+      if (checkError) {
+        console.error('Ошибка при проверке url_hash:', checkError);
+        showSnackbar('Не удалось проверить существование ссылки. Попробуйте снова.');
+        return;
+      }
+      if (existingLinks.length > 0) {
+        console.log('Такая ссылка в базе уже есть!');
+        showSnackbar('Такая ссылка в базе уже есть!');
+        clearFields();
         return;
       }
 
@@ -354,7 +373,6 @@ export default {
         return;
       }
 
-
       try {
         showSnackbar('Отправка URL в Supabase...');
 
@@ -364,39 +382,7 @@ export default {
         // Генерация favicon_hash на основе favicon_name
         const faviconHash = await hashString(faviconName);
 
-        // Проверка существования url_hash в таблице links
-        const urlHash = await hashString(linkInfoParsed.value.url);
-        console.log('Calculated url_hash:', urlHash);
-
-        // Проверка существования url_hash в таблице links
-        const { data: existingLinks, error: checkError } = await supabase
-            .from('links')
-            .select('url_hash')
-            .eq('url_hash', urlHash);
-        if (checkError) {
-          console.error('Ошибка при проверке url_hash:', checkError);
-          showSnackbar('Не удалось проверить существование ссылки. Попробуйте снова.');
-          return;
-        }
-        if (existingLinks.length > 0) {
-          console.log('Такая ссылка в базе уже есть!');
-          showSnackbar('Такая ссылка в базе уже есть!');
-          clearFields();
-          return;
-        }
-
-// Подготовка данных для таблицы favicons
-        const faviconData = {
-          favicon_hash: faviconHash,
-          favicon_name: faviconName,
-          fav_url: favicon.value, // favicon_url из WebSocket
-          storage_path: '',
-          user_id: userIdValue,
-        };
-
-        console.log('Favicon Data:', faviconData);
-
-// Проверка существования favicon_hash в таблице favicons
+        // Проверка существования favicon_hash в таблице favicons
         const { data: existingFavicons, error: checkFaviconError } = await supabase
             .from('favicons')
             .select('favicon_hash')
@@ -411,8 +397,18 @@ export default {
         if (existingFavicons.length > 0) {
           console.log('Такой фавикон уже существует в базе!');
           showSnackbar('Такой фавикон уже существует в базе!');
-        } else  {
+        } else {
           // Вставка данных в таблицу favicons
+          const faviconData = {
+            favicon_hash: faviconHash,
+            favicon_name: faviconName,
+            fav_url: favicon.value,
+            storage_path: '',
+            user_id: userIdValue,
+          };
+
+          console.log('Favicon Data:', faviconData);
+
           const { error: faviconError } = await supabase
               .from('favicons')
               .insert([faviconData]);
@@ -423,6 +419,7 @@ export default {
             return;
           }
         }
+
         // Подготовка данных для таблицы links
         const linkData = {
           date: new Date().toISOString(),
@@ -595,6 +592,7 @@ export default {
           // Автоматически вызываем handleButtonClick через 0.5 секунды
           setTimeout(() => {
             console.log('Автоматический вызов extentionDataToLinks')
+
             // handleButtonClick();
           }, 500);
         }
@@ -650,7 +648,7 @@ export default {
     }
 
     return {
-      receiveUrlFromExtension,
+      // receiveUrlFromExtension,
       snackbar,
       snackbarMessage,
       buttonColorClass,

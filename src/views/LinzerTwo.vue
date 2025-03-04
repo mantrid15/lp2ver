@@ -246,7 +246,7 @@ export default {
     // Lifecycle hooks
     onMounted(async () => {
       await getSession();
-      console.log('Account after session fetch:', account.value);
+      // console.log('Account after session fetch:', account.value);
 
       // Подписка на изменения авторизации
       supabase.auth.onAuthStateChange((event, session) => {
