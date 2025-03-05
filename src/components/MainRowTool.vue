@@ -176,13 +176,6 @@ export default {
         return response.data;
       } catch (error) {
         console.error('Ошибка при получении данных: (fetchMetadata)', error);
-        if (error.response) {
-          console.error('Ответ сервера:', error.response.data);
-        } else if (error.request) {
-          console.error('Запрос был отправлен, но ответа не получено: (fetchMetadata)', error.request);
-        } else {
-          console.error('Ошибка настройки запроса: (fetchMetadata)', error.message);
-        }
         return { error: 'Ошибка при получении информации (fetchMetadata)' };
       }
     };
@@ -221,7 +214,20 @@ export default {
         return { error: 'Ошибка при получении информации (fetchMetaSerp)' };
       }
     };
-// Функция для обновления финальных данных
+
+    const fetchData = async (fetchFunction) => {
+      try {
+        const data = await fetchFunction(url.value);
+        console.log('Данные:', data);
+        updateFinalData(data);
+        return data; // Возвращаем данные для проверки
+      } catch (error) {
+        console.error('Ошибка:', error);
+        finalData.error = error.message; // Устанавливаем ошибку в финальные данные
+        return null; // Возвращаем null в случае ошибки
+      }
+    };
+
     const getInfo = async () => {
       if (!isValidURL(url.value)) {
         linkInfo.value = 'Некорректный URL.';
@@ -241,55 +247,27 @@ export default {
           finalData.title = data.title || finalData.title;
           finalData.description = data.description || finalData.description;
           finalData.keywords = data.keywords || finalData.keywords;
-          if (data.error) finalData.error = data.error;
+          if (data.error) finalData.error = data.error; // Устанавливаем ошибку, если она есть
         } else {
           console.warn('Передан некорректный объект данных:', data);
         }
       };
 
-      const fetchData = async (fetchFunction) => {
-        try {
-          const data = await fetchFunction(url.value);
-          console.log('Данные:', data);
-          updateFinalData(data);
-          return data; // Возвращаем данные для проверки
-        } catch (error) {
-          console.error('Ошибка:', error);
-          finalData.error = error.message;
-          return null; // Возвращаем null в случае ошибки
-        }
-      };
-      // 1. Получение данных из getPageInfo
+      // Получаем данные из всех функций
       await fetchData(getPageInfo);
-      if (finalData.title && finalData.description) {
-        console.log('Финальная информация (getPageInfo):', finalData);
-        linkInfo.value = JSON.stringify(finalData, null, 2);
-        return;
-      }
-      // 2. Получение данных из fetchMetaData
       await fetchData(fetchMetaData);
-      if (finalData.title) {
-        console.log('Финальная информация (fetchMetaData):', finalData);
-        linkInfo.value = JSON.stringify(finalData, null, 2);
-        return;
-      }
-      // 3. Получение данных из fetchMetaSerp
       await fetchData(fetchMetaSerp);
-      if (finalData.title) {
-        console.log('Финальная информация (fetchMetaSerp):', finalData);
-        linkInfo.value = JSON.stringify(finalData, null, 2);
-        return;
-      }
-      // 4. Получение данных из getPuppeteerData
       await fetchData(getPuppeteerData);
-      if (finalData.title) {
-        console.log('Финальная информация (getPuppeteerData):', finalData);
-        linkInfo.value = JSON.stringify(finalData, null, 2);
+
+      // Проверяем, есть ли ошибка в финальных данных
+      if (finalData.error) {
+        showSnackbar('Произошла ошибка: ' + finalData.error);
         return;
       }
-      // Логирование финальной информации, если ничего не найдено
-      console.log('Финальная информация:', finalData);
+
+      // Если нет ошибок, сохраняем данные
       linkInfo.value = JSON.stringify(finalData, null, 2);
+      console.log('Финальная информация:', finalData);
     };
 
     const getDomainName = (url) => {
@@ -381,7 +359,13 @@ export default {
           console.log('Такой фавикон уже существует в базе!');
           showSnackbar('Такой фавикон уже существует в базе!');
         } else {
-          // Вставка данных в таблицу favicons
+          const faviconData = {
+            favicon_hash: faviconHash,
+            favicon_name: faviconName,
+            fav_url: linkInfoParsed.value.favicon || null,
+            storage_path: '',
+            user_id: userIdValue,
+          };
           const { error: faviconError } = await supabase
               .from('favicons')
               .insert([faviconData]);
@@ -504,7 +488,6 @@ export default {
 
         if (data.url) {
           const urlHash = await hashString(data.url); // Используем data.url сразу
-
           // Проверка существования url_hash
           const { data: existingLinks, error: checkError } = await supabase
               .from('links')
@@ -577,7 +560,6 @@ export default {
               const { error: insertError } = await supabase
                   .from('favicons')
                   .insert([faviconData]);
-
               console.log('faviconData:', faviconData);
 
               if (insertError) {
@@ -632,16 +614,10 @@ export default {
     }
 
     async function hashString(inputString) {
-      // Преобразуем строку в массив байтов
       const encoder = new TextEncoder();
       const data = encoder.encode(inputString);
-      // Вычисляем хэш
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      // Преобразуем хэш в массив байтов
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      // Преобразуем массив байтов в шестнадцатеричную строку
-      // const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     return {
