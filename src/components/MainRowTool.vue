@@ -261,21 +261,34 @@ export default {
       };
 
       // Получаем информацию о странице
-      await fetchData(getPageInfo, finalData);
+      // await fetchData(getPageInfo, finalData);
 
       // Проверяем, был ли получен title
-      if (finalData.title) {
-        console.log('Title получен:', finalData.title);
-        // Если title получен, прекращаем выполнение
-        linkInfo.value = JSON.stringify(finalData, null, 2);
-        console.log('Финальная информация:', finalData);
-        return;
+      // if (finalData.title) {
+      //   console.log('Title получен:', finalData.title);
+      //   // Если title получен, прекращаем выполнение
+      //   linkInfo.value = JSON.stringify(finalData, null, 2);
+      //   console.log('Финальная информация:', finalData);
+      //   return;
+      // }
+
+      // Массив функций для выполнения
+
+      const fetchFunctions = [getPageInfo,fetchMetaSerp, fetchMetaData, getPuppeteerData];
+
+      // Цикл по функциям
+      for (const fetchFunction of fetchFunctions) {
+        console.log(`Вызов функции: ${fetchFunction.name}`); // Логирование имени вызываемой функции
+        await fetchData(fetchFunction, finalData);
+        // Проверяем, был ли получен title после каждого запроса
+        if (finalData.title) {
+          console.log('Title получен после запроса:', finalData.title);
+          linkInfo.value = JSON.stringify(finalData, null, 2);
+          console.log('Финальная информация:', finalData);
+          return;
+        }
       }
 
-      // Если title не получен, продолжаем с другими запросами
-      await fetchData(fetchMetaData, finalData);
-      await fetchData(fetchMetaSerp, finalData);
-      await fetchData(getPuppeteerData, finalData);
 
       // Проверяем, есть ли ошибка в финальных данных
       if (finalData.error) {
