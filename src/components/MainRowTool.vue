@@ -215,16 +215,34 @@ export default {
       }
     };
 
-    const fetchData = async (fetchFunction) => {
+    const fetchData = async (fetchFunction, finalData) => {
       try {
         const data = await fetchFunction(url.value);
         console.log('Данные:', data);
-        updateFinalData(data);
-        return data; // Возвращаем данные для проверки
+        // Логирование перед обновлением
+        console.log('Текущее состояние finalData перед обновлением:', finalData);
+        updateFinalData(data, finalData);
+        return data;
       } catch (error) {
         console.error('Ошибка:', error);
-        finalData.error = error.message; // Устанавливаем ошибку в финальные данные
-        return null; // Возвращаем null в случае ошибки
+        finalData.error = error.message;
+        return null;
+      }
+    };
+
+    const updateFinalData = (data, finalData) => {
+      if (!finalData) {
+        console.error('finalData не определен');
+        return;
+      }
+
+      if (data && typeof data === 'object') {
+        finalData.title = data.title || finalData.title;
+        finalData.description = data.description || finalData.description;
+        finalData.keywords = data.keywords || finalData.keywords || '';
+        if (data.error) finalData.error = data.error;
+      } else {
+        console.warn('Передан некорректный объект данных:', data);
       }
     };
 
@@ -242,22 +260,22 @@ export default {
         error: null,
       };
 
-      const updateFinalData = (data) => {
-        if (data && typeof data === 'object') {
-          finalData.title = data.title || finalData.title;
-          finalData.description = data.description || finalData.description;
-          finalData.keywords = data.keywords || finalData.keywords;
-          if (data.error) finalData.error = data.error; // Устанавливаем ошибку, если она есть
-        } else {
-          console.warn('Передан некорректный объект данных:', data);
-        }
-      };
+      // Получаем информацию о странице
+      await fetchData(getPageInfo, finalData);
 
-      // Получаем данные из всех функций
-      await fetchData(getPageInfo);
-      await fetchData(fetchMetaData);
-      await fetchData(fetchMetaSerp);
-      await fetchData(getPuppeteerData);
+      // Проверяем, был ли получен title
+      if (finalData.title) {
+        console.log('Title получен:', finalData.title);
+        // Если title получен, прекращаем выполнение
+        linkInfo.value = JSON.stringify(finalData, null, 2);
+        console.log('Финальная информация:', finalData);
+        return;
+      }
+
+      // Если title не получен, продолжаем с другими запросами
+      await fetchData(fetchMetaData, finalData);
+      await fetchData(fetchMetaSerp, finalData);
+      await fetchData(getPuppeteerData, finalData);
 
       // Проверяем, есть ли ошибка в финальных данных
       if (finalData.error) {
@@ -269,6 +287,7 @@ export default {
       linkInfo.value = JSON.stringify(finalData, null, 2);
       console.log('Финальная информация:', finalData);
     };
+
 
     const getDomainName = (url) => {
       try {
@@ -317,7 +336,6 @@ export default {
         showSnackbar('Не удалось проверить существование ссылки. Попробуйте снова.');
         return;
       }
-
 
       // Если URL валиден, продолжаем выполнение основной логики
       await getInfo();
@@ -449,7 +467,6 @@ export default {
       } else {
         console.error('urlInput не найден или не смонтирован');
       }
-
     };
 
     const handleContextMenu = (event) => {
