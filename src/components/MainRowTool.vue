@@ -138,7 +138,9 @@ export default {
           title: info.title || '',
           description: info.description || '',
           keywords: Array.isArray(info.keywords) && info.keywords.length > 0 ? info.keywords : [], // Проверка на null, пустую строку и отсутствие данных
-          favicon: '/lpicon.png' || null,
+          favicon: info.favicon || '',
+          rss: info.rss || '',
+          lang: info.lang || ''
         };
       } catch (error) {
         console.error('Ошибка при парсинге linkInfo:', error);
@@ -150,20 +152,52 @@ export default {
       try {
         const response = await axios.get(`http://localhost:3000/proxy?url=${encodeURIComponent(url)}`);
         const $ = cheerio.load(response.data);
+
         // Получаем заголовок из тега <title> в любом месте документа
         const documentTitle = $('title').text();
-        // Получаем заголовок строго по пути /html/head/title
         const headTitle = $('html head title').text();
-        // Используем заголовок по пути /html/head/title, если он есть, иначе используем заголовок из документа
         const title = headTitle || documentTitle || '';
-        const keywords = $('meta[name="keywords"]').attr('content') || ''; // Получаем ключевые слова
-        console.log('Standard request:');
-        return {
+
+        const keywords = $('meta[name="keywords"]').attr('content') || '';
+        const description = $('meta[name="description"]').attr('content') || '';
+        let favicon = $('link[rel="icon"]').attr('href') || ''; // Получаем favicon
+        const rss = $('link[type="application/rss+xml"]').attr('href') || ''; // Получаем RSS
+        const lang = $('html').attr('lang') || ''; // Получаем язык страницы
+
+        // Проверка и обработка фавикона
+        if (!favicon || !favicon.startsWith('http')) {
+          // Если favicon отсутствует или неполный, используем favicon из метатегов
+          favicon = $('link[rel="shortcut icon"]').attr('href') || '';
+          if (favicon && !favicon.startsWith('http')) {
+            const baseUrl = new URL(url).origin; // Получаем базовый URL
+            favicon = new URL(favicon, baseUrl).href; // Создаем полный URL для фавикона
+          }
+        }
+
+        // Формирование объекта данных
+        const data = {
           url,
-          title: title, // Возвращаем заголовок
-          description: $('meta[name="description"]').attr('content') || '',
-          keywords: keywords.length > 0 ? keywords.split(',') : null, // Возвращаем null, если список пустой
+          title,
+          description,
+          keywords: !keywords ? [] : keywords.split(',').map(keyword => keyword.trim()).filter(keyword => keyword !== ""),
+          favicon,
+          rss,
+          lang
         };
+
+        // Дополнительная проверка на длину данных
+        if (title.length < 1) {
+          data.title = ''; // Устанавливаем пустое значение, если нет заголовка
+        }
+        if (description.length < 1) {
+          data.description = ''; // Устанавливаем пустое значение, если нет описания
+        }
+        if (data.keywords.length < 1) {
+          data.keywords = []; // Устанавливаем пустой массив, если нет ключевых слов
+        }
+
+        console.log('Полученные данные:', data);
+        return data;
       } catch (error) {
         console.error('Ошибка при получении информации (getPageInfo) о странице:', error);
         return { error: 'Ошибка при получении информации (getPageInfo)' };
@@ -208,6 +242,9 @@ export default {
           title: item.content.title.value,
           description: item.content.description.value,
           keywords: '',
+          lang: '', // Убедитесь, что lang имеет значение по умолчанию
+          rss: '', // Убедитесь, что rss имеет значение по умолчанию
+
         };
       } catch (error) {
         console.error('Ошибка при выполнении запроса: (fetchMetaSerp)', error);
@@ -234,12 +271,14 @@ export default {
       if (!finalData) {
         console.error('finalData не определен');
         return;
-      }
-
+      }favicon
       if (data && typeof data === 'object') {
         finalData.title = data.title || finalData.title;
         finalData.description = data.description || finalData.description;
         finalData.keywords = data.keywords || finalData.keywords || '';
+        finalData.lang = data.lang || finalData.lang || '';
+        finalData.favicon = data.favicon || finalData.favicon || '';
+        finalData.rss = data.rss || finalData.rss || '';
         if (data.error) finalData.error = data.error;
       } else {
         console.warn('Передан некорректный объект данных:', data);
@@ -257,12 +296,13 @@ export default {
         title: '',
         description: '',
         keywords: '',
+        lang:'',
+        rss:'',
         error: null,
       };
 
       // Получаем информацию о странице
       // await fetchData(getPageInfo, finalData);
-
       // Проверяем, был ли получен title
       // if (finalData.title) {
       //   console.log('Title получен:', finalData.title);
@@ -273,8 +313,8 @@ export default {
       // }
 
       // Массив функций для выполнения
-
-      const fetchFunctions = [getPageInfo,fetchMetaSerp, fetchMetaData, getPuppeteerData];
+      const fetchFunctions = [getPageInfo,fetchMetaSerp];
+      // const fetchFunctions = [getPageInfo,fetchMetaSerp, fetchMetaData, getPuppeteerData];
 
       // Цикл по функциям
       for (const fetchFunction of fetchFunctions) {
@@ -300,7 +340,6 @@ export default {
       linkInfo.value = JSON.stringify(finalData, null, 2);
       console.log('Финальная информация:', finalData);
     };
-
 
     const getDomainName = (url) => {
       try {
@@ -419,6 +458,8 @@ export default {
           keywords: (Array.isArray(linkInfoParsed.value.keywords) && linkInfoParsed.value.keywords.length > 0)
               ? linkInfoParsed.value.keywords
               : null,
+          lang: linkInfoParsed.value.lang,
+          rss: linkInfoParsed.value.rss,
           ai_tag: '',
           favicon_hash: faviconHash,
           user_id: userIdValue,
