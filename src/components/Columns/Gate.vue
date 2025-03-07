@@ -45,6 +45,7 @@
                     border: 1px solid #ccc;
                     box-sizing: border-box;
                     overflow: hidden;
+                    background-color: orange;
                      white-space: nowrap;
                      text-overflow: ellipsis; min-width: 100px; max-width: 100px;"
                 />

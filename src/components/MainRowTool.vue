@@ -44,22 +44,22 @@
             </div>
           </td>
           <td class="divider" style="width: 400px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-        <span class="scrolling-text" v-tooltip="linkInfoParsed?.title || ''">
-          <span class="text-ellipsis" style="margin-left: 5px">{{ linkInfoParsed ? truncateText(linkInfoParsed.title, 30).truncated : '' }}</span>
-        </span>
+  <span class="scrolling-text" v-tooltip="tableData.title || ''">
+    <span class="text-ellipsis" style="margin-left: 5px">{{ tableData.title ? truncateText(tableData.title, 30).truncated : '' }}</span>
+  </span>
           </td>
           <td class="divider" style="width: 200px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-        <span class="scrolling-text" v-tooltip="linkInfoParsed?.description || ''">
-          <span class="text-ellipsis" style="margin-left: 5px">{{ linkInfoParsed ? truncateText(linkInfoParsed.description, 20).truncated : '' }}</span>
-        </span>
+  <span class="scrolling-text" v-tooltip="tableData.description || ''">
+    <span class="text-ellipsis" style="margin-left: 5px">{{ tableData.description ? truncateText(tableData.description, 20).truncated : '' }}</span>
+  </span>
           </td>
           <td class="divider" style="width: 150px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-        <span class="scrolling-text" v-tooltip="linkInfoParsed?.keywords?.join(', ') || ''">
-          <span class="text-ellipsis" style="margin-left: 5px">{{ linkInfoParsed ? truncateText(linkInfoParsed.keywords.join(', '), 20).truncated : '' }}</span>
-        </span>
+  <span class="scrolling-text" v-tooltip="tableData.keywords?.join(', ') || ''">
+    <span class="text-ellipsis" style="margin-left: 5px">{{ tableData.keywords ? truncateText(tableData.keywords.join(', '), 20).truncated : '' }}</span>
+  </span>
           </td>
-          <td class="divider" v-tooltip="linkInfoParsed?.date || ''" style="width: 100px; border: 1px solid white; padding-left: 10px;">
-            {{ linkInfoParsed ? new Date(linkInfoParsed.date).toLocaleDateString() : new Date().toLocaleDateString() }}
+          <td class="divider" v-tooltip="tableData.date || ''" style="width: 100px; border: 1px solid white; padding-left: 10px;">
+            {{ tableData.date ? new Date(tableData.date).toLocaleDateString() : new Date().toLocaleDateString() }}
           </td>
         </tr>
         </tbody>
@@ -112,6 +112,22 @@ export default {
     const buttonLabel = ref('URL');
     const buttonLabelOk = ref('LinZer');
     const linkInfoParsed = ref(null);
+    const tableData = ref({});
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Функция для обновления tableData
+    const updateTableData = (linkInfoParsed, linkData) => {
+      tableData.value = getTableData(linkInfoParsed, linkData);
+    };
+
+    const getTableData = (linkInfoParsed, linkData) => {
+      return {
+        title: linkInfoParsed?.title || linkData?.title || '',
+        description: linkInfoParsed?.description || linkData?.description || '',
+        keywords: linkInfoParsed?.keywords || linkData?.keywords || [],
+        date: linkInfoParsed?.date || linkData?.date || new Date().toISOString(),
+      };
+    };
 
     const receiveUrlFromExtension = async (receivedUrl) => {
       url.value = receivedUrl;
@@ -480,6 +496,7 @@ export default {
             return;
           }
         }
+
         // Подготовка данных для таблицы links
         const linkData = {
           date: new Date().toISOString(),
@@ -500,6 +517,11 @@ export default {
           dir_hash: '',
           subdir_hash: '',
         };
+
+        // Обновляем tableData перед отправкой в Supabase
+        updateTableData(linkInfoParsed.value, linkData);
+        await delay(2000);
+
         console.log('Link Data:', linkData);
 
         const { error: linkError } = await supabase
@@ -511,12 +533,14 @@ export default {
         } else {
           console.log('Данные успешно отправлены!');
           showSnackbar('Данные успешно отправлены!');
-          clearFields();
+
         }
       } catch (error) {
         console.error('Произошла ошибка:', error);
         showSnackbar('Произошла ошибка. Попробуйте снова.');
       }
+      await delay(2000);
+      await clearFields();
 
       // Возвращаем фокус на поле ввода
       await nextTick();
@@ -548,6 +572,8 @@ export default {
       statusMessage.value = '';
       buttonLabel.value = 'URL';
       linkInfoParsed.value = null;
+      tableData.value = ref({});
+
       // Ждем, пока обновится DOM
       await nextTick();
       if (urlInput.value) {
@@ -630,6 +656,9 @@ export default {
             subdir_hash: '',
           };
 
+          // Обновляем tableData
+          updateTableData(linkInfoParsed.value, linkData);
+
           console.log('Link Data:', linkData);
           // Вставка данных в таблицу links
           const { error: linkError } = await supabase
@@ -641,14 +670,15 @@ export default {
           } else {
             console.log('Данные успешно отправлены!');
             showSnackbar('Данные успешно отправлены!');
-            await clearFields();
+
           }
           // Проверка существования favicon_hash
           const { data: existingFavicons, error: checkFaviconError } = await supabase
               .from('favicons')
               .select('favicon_hash')
               .eq('favicon_hash', faviconHash);
-
+          await delay(2000);
+          await clearFields();
           if (checkFaviconError) {
             console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
           } else {
@@ -668,11 +698,13 @@ export default {
                   .insert([faviconData]);
               console.log('faviconData:', faviconData);
 
+
               if (insertError) {
                 console.error('Ошибка при вставке favicon_hash в favicons:', insertError);
               } else {
                 console.log('favicon_hash успешно добавлен в favicons');
               }
+
             }
           }
           // Автоматический вызов handleButtonClick через 0.5 секунды
@@ -682,8 +714,6 @@ export default {
           // }, 500);
         }
       };
-
-
       ws.onclose = () => {
         console.log('WebSocket соединение закрыто');
       };
@@ -727,6 +757,8 @@ export default {
     }
 
     return {
+      tableData,
+      updateTableData,
       receiveUrlFromExtension,
       snackbar,
       snackbarMessage,
