@@ -164,13 +164,47 @@ export default {
         const rss = $('link[type="application/rss+xml"]').attr('href') || ''; // Получаем RSS
         const lang = $('html').attr('lang') || ''; // Получаем язык страницы
 
+        const icons = [];
+        $('link[rel*="icon"], link[rel*="apple-touch-icon"]').each((i, el) => {
+          const href = $(el).attr('href');
+          const sizes = $(el).attr('sizes');
+          const rel = $(el).attr('rel');
+          if (href) {
+            icons.push({ href, sizes, rel });
+          }
+        });
+
         // Проверка и обработка фавикона
+        // Если favicon не найден, выбираем наиболее подходящую иконку
         if (!favicon || !favicon.startsWith('http')) {
-          // Если favicon отсутствует или неполный, используем favicon из метатегов
-          favicon = $('link[rel="shortcut icon"]').attr('href') || '';
-          if (favicon && !favicon.startsWith('http')) {
-            const baseUrl = new URL(url).origin; // Получаем базовый URL
-            favicon = new URL(favicon, baseUrl).href; // Создаем полный URL для фавикона
+          if (icons.length > 0) {
+            // Сортируем иконки по размеру
+            icons.sort((a, b) => {
+              const sizeA = a.sizes ? parseInt(a.sizes.split('x')[0]) : 0;
+              const sizeB = b.sizes ? parseInt(b.sizes.split('x')[0]) : 0;
+              return sizeA - sizeB;
+            });
+
+            // Выбираем иконку с размером 18x18, если нет, то 16x16, иначе ближайшую по размеру
+            const preferredSizes = [18, 16];
+            let selectedIcon = null;
+            for (const size of preferredSizes) {
+              selectedIcon = icons.find(icon => icon.sizes && parseInt(icon.sizes.split('x')[0]) === size);
+              if (selectedIcon) break;
+            }
+
+            // Если не нашли иконку с предпочтительными размерами, берем первую из списка
+            if (!selectedIcon && icons.length > 0) {
+              selectedIcon = icons[0];
+            }
+
+            if (selectedIcon) {
+              favicon = selectedIcon.href;
+              if (!favicon.startsWith('http')) {
+                const baseUrl = new URL(url).origin; // Получаем базовый URL
+                favicon = new URL(favicon, baseUrl).href; // Создаем полный URL для фавикона
+              }
+            }
           }
         }
 
@@ -571,6 +605,7 @@ export default {
           }
           if (existingLinks.length > 0) {
             console.log('URL уже существует в базе данных. Пропускаем дальнейшие действия.');
+            showSnackbar('URL уже существует в базе данных. Пропускаем дальнейшие действия.');
             return; // Если URL не уникален, завершаем выполнение
           }
           const userIdValue = userId.value;

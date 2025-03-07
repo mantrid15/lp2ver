@@ -111,8 +111,6 @@
               {{ getDomain(link.url) }}
             </a>
           </td>
-
-
           <td
               class="truncate content-padding right-align"
               :class="{ 'highlighted': isHighlighted(link.title) }"
@@ -270,8 +268,8 @@ export default {
       return folder ? folder.dir_name : '';
     });
     const isHighlighted = (value) => {
-      if (!filter.value) return false; // Если фильтр пуст, не выделяем
-
+      // Если фильтр пуст, не выделяем
+      if (!filter.value) return false;
       // Преобразуем значение в строку, если оно не строка
       const text = Array.isArray(value) ? value.join(', ') : value?.toString() || '';
       const searchTerm = filter.value.toLowerCase();

@@ -16,3 +16,15 @@ git reset --hard origin/main
 
 
 Чтобы обновить коммиты на GitHub, вы можете использовать команду `git commit --amend` для изменения последнего коммита или `git rebase -i` для интерактивного перебазирования и изменения нескольких коммитов. Вот примеры
+
+свободен ли 3000 порт
+в терминале
+
+$port = 3000
+$tcpConnection = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
+
+if (-not $tcpConnection) {
+    Write-Host "Порт $port свободен."
+} else {
+    Write-Host "Порт $port занят."
+}
