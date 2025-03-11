@@ -5,11 +5,13 @@ import puppeteer from 'puppeteer';
 import { WebSocketServer } from 'ws';
 import dotenv from "dotenv"; // Импортируем только WebSocketServer
 
-dotenv.config({ path: '../../.env.local' });
+dotenv.config({ path: '.env.local' });
 const HF_TOKEN = process.env.VUE_APP_HF_TOKEN_AI;
-console.log('HF_TOKEN:', HF_TOKEN); // Проверка токена
+// console.log('HF_TOKEN:', HF_TOKEN); // Проверка токена
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: '*', // Или укажите конкретный домен
+}));
 app.use(express.json());
 
 // Создаем HTTP-сервер
@@ -41,7 +43,10 @@ wss.on('connection', (ws) => {
 
 // Эндпоинт для генерации тегов
 app.post('/generate-tags', async (req, res) => {
+
     const { title, description, keywords } = req.body;
+    console.log("Получен запрос на /generate-tags:", req.body);
+    // const repoId = "Qwen/Qwen2.5-Coder-32B-Instruct";
     const repoId = "mistralai/Mistral-7B-Instruct-v0.3";
     const teg = `${title} ${description} ${keywords}`.trim();
     const tegPrompt = `Identify three tags that you would use to characterize the following row if you were to assign

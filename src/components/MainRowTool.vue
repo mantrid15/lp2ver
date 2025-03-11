@@ -618,15 +618,17 @@ export default {
     });
 
     async function generateTags(title, description, keywords = "") {
+      console.log("Отправка данных на сервер:", { title, description, keywords });
       try {
         const response = await axios.post('http://localhost:3000/generate-tags', {
           title,
           description,
           keywords,
         });
+        console.log("Ответ от сервера:", response.data);
         return response.data.tags;
       } catch (error) {
-        console.error("Error calling the server:", error.response ? error.response.data : error.message);
+        console.error("Ошибка при вызове сервера:", error.response ? error.response.data : error.message);
         return "";
       }
     }
