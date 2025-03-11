@@ -1,7 +1,9 @@
 import axios from 'axios';
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Установите ваш токен
-const HF_TOKEN = "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"; // Замените на ваш токен
+const HF_TOKEN = process.env.HF_TOKEN_AI; // Замените на ваш токен
 const repo_id = "TinyLlama/TinyLlama-1.1B-Chat-v1.0";
 
 async function callLLM(prompt) {

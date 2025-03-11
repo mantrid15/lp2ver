@@ -1,9 +1,14 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
+const DEEP_AI_API_KEY = process.env.DEEP_AI_API_KEY;
+
 (async function() {
     const resp = await fetch('https://api.deepai.org/api/chat', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'api-key': ' 447c9662-2c32-4219-a06c-e221dbe676e7'
+            'api-key': DEEP_AI_API_KEY
         },
         body: JSON.stringify({
             text: "YOUR_TEXT_URL",

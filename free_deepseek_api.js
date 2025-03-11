@@ -1,8 +1,14 @@
 import OpenAI from "openai";
+import dotenv from 'dotenv';
+
+dotenv.config();
+const DEEP_SEEK_API_KEY = process.env.DEEP_SEEK_API_KEY;
+
+
 // код рабочий но надо платить для api
 const openai = new OpenAI({
     baseURL: 'https://api.deepseek.com',
-    apiKey: 'sk-938bb5e427e948df90c77b4eec6194d8'
+    apiKey: DEEP_SEEK_API_KEY
 });
 
 async function main(title, description, keywords) {
