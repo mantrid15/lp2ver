@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
-dotenv.config();
 
+dotenv.config({ path: '.env.local' });
 const DEEP_AI_API_KEY = process.env.DEEP_AI_API_KEY;
 
 (async function() {

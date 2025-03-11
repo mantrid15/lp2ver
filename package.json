@@ -11,7 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.46.2",
     "@vitalets/google-translate-api": "^9.2.0",
-    "axios": "^1.7.8",
+    "axios": "^1.8.2",
     "chatgpt-free-api": "^1.0.5",
     "cheerio": "^1.0.0",
     "compromise": "^14.14.4",

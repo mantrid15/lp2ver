@@ -2,8 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
 import puppeteer from 'puppeteer';
-import { WebSocketServer } from 'ws'; // Импортируем только WebSocketServer
+import { WebSocketServer } from 'ws';
+import dotenv from "dotenv"; // Импортируем только WebSocketServer
 
+dotenv.config({ path: '../../.env.local' });
+const HF_TOKEN = process.env.VUE_APP_HF_TOKEN_AI;
+console.log('HF_TOKEN:', HF_TOKEN); // Проверка токена
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -35,26 +39,40 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Функция для отправки URL всем подключенным клиентам.
-// Если у клиента уже есть предыдущая ссылка, сначала отправляем команду удаления.
-const broadcastUrl = (data) => {
-    console.log('Broadcasting data to clients:', data); // Логирование перед отправкой данных
+// Эндпоинт для генерации тегов
+app.post('/generate-tags', async (req, res) => {
+    const { title, description, keywords } = req.body;
+    const repoId = "mistralai/Mistral-7B-Instruct-v0.3";
+    const teg = `${title} ${description} ${keywords}`.trim();
+    const tegPrompt = `Identify three tags that you would use to characterize the following row if you were to assign
+  a clear classification that defined the area or domain of knowledge for that row. Avoid using general terms that do not
+  characterize the content. If the row does not provide enough information, you can gradually reduce the number of tags
+  returned to one. Also avoid using verbs, participles, or adjectives. Recommended tags should include terms, names,
+  or titles. No reasoning or intermediate data is needed. Return only comma-separated strings."${teg}"`;
 
-    clients.forEach((client) => {
-        // Проверяем, что соединение открыто (числовое значение 1 соответствует OPEN)
-        if (client.readyState === 1) {
-            if (clientLastData.has(client)) {
-                const previousData = clientLastData.get(client);
-                // Отправляем клиенту команду удаления старых данных
-                client.send(JSON.stringify({ remove: previousData.url }));
+    try {
+        const response = await axios.post(
+            `https://api-inference.huggingface.co/models/${repoId}`,
+            {
+                inputs: tegPrompt,
+                parameters: { max_new_tokens: 200 },
+                task: "text-generation",
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${HF_TOKEN}`,
+                },
             }
-            // Сохраняем новые данные для клиента
-            clientLastData.set(client, data);
-            // Отправляем новые данные
-            client.send(JSON.stringify(data));
-        }
-    });
-};
+        );
+
+        let generatedText = response.data[0].generated_text;
+        generatedText = generatedText.replace(tegPrompt, '').trim();
+        res.json({ tags: generatedText });
+    } catch (error) {
+        console.error("Error calling the LLM:", error.response ? error.response.data : error.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
 
 // Маршрут для приема URL от расширения Chrome
 app.post('/api/send-url', async (req, res) => {
@@ -126,3 +144,18 @@ async function puppeteerMetaData(url) {
         await browser.close();
     }
 }
+
+// Функция для отправки URL всем подключенным клиентам
+const broadcastUrl = (data) => {
+    console.log('Broadcasting data to clients:', data);
+    clients.forEach((client) => {
+        if (client.readyState === 1) {
+            if (clientLastData.has(client)) {
+                const previousData = clientLastData.get(client);
+                client.send(JSON.stringify({ remove: previousData.url }));
+            }
+            clientLastData.set(client, data);
+            client.send(JSON.stringify(data));
+        }
+    });
+};
