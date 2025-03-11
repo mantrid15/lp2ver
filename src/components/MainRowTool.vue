@@ -80,17 +80,10 @@
 <script>
 import {ref, onMounted, computed, nextTick} from 'vue';
 import axios from 'axios';
-// import dotenv from 'dotenv';
-
-// dotenv.config({ path: '../../.env.local' });
-// const HF_TOKEN = process.env.HF_TOKEN_AI; // Замените на ваш токен
-
 import * as cheerio from 'cheerio';
 import { supabase } from "@/clients/supabase";
 import { useStore } from 'vuex';
-// import { generateTags } from '../../hf_api_export.js';
-// import { generateTags } from 'hf_api_export.js';
-// import { generateTags } from './hf_api_export.js';
+
 export default {
   name: 'MainRowTool',
   props: {
@@ -660,20 +653,31 @@ export default {
           const userIdValue = userId.value;
           const faviconName = getDomainName(data.url);
           const faviconHash = await hashString(faviconName);
-          const title = data.title.trim()
-          const description = data.description ? data.description.trim() : null;// Проверка на наличие description
-          const aiTag = await generateTags(title,description);
+          const title = data.title.trim();
+          const keywordsToNull = {
+            "видео, поделиться, телефон с камерой, телефон с видео, бесплатно, загрузить": true,
+            // Добавьте другие подстроки, которые должны возвращать null
+          };
+          // const keywords = data.keywords.trim();
+// Проверка на наличие подстрок из словаря
+//           if (keywords && Object.keys(keywordsToNull).some(keyword => keywords.includes(keyword))) {
+//             keywords = null;
+//           }
+          console.log(data.keywords)
 
+          const description = data.description ? data.description.trim() : null;
+          const aiTag = (title === '' || title === null) && (description === '' || description === null) ? null : await generateTags(title, description);
+          // const aiTag = '';
 
           // Подготовка данных для вставки в таблицу links
           const linkData = {
-
             date: new Date().toISOString(),
             url: data.url,
             title: title,
             url_hash: urlHash,
             description: description,
-            keywords: Array.isArray(data.keywords) && data.keywords.length > 0 ? data.keywords : null,
+            keywords: (Array.isArray(data.keywords) && data.keywords.length > 0) ? data.keywords : aiTag,
+            // keywords: (Array.isArray(data.keywords) && data.keywords.length > 0) ? data.keywords : aiTag,
             lang: data.lang || null, // Убедитесь, что lang имеет значение по умолчанию
             rss: data.rss || null, // Убедитесь, что rss имеет значение по умолчанию
             favicon_hash: faviconHash,
@@ -687,7 +691,7 @@ export default {
 
           // Обновляем tableData
           updateTableData(linkInfoParsed.value, linkData);
-
+          console.log('++++++++++++++++++++++',data.keywords)
           console.log('Link Data:', linkData);
           // Вставка данных в таблицу links
           const { error: linkError } = await supabase
@@ -786,7 +790,6 @@ export default {
     }
 
     return {
-      HF_TOKEN,
       tableData,
       updateTableData,
       receiveUrlFromExtension,

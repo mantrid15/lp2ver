@@ -69,10 +69,17 @@ app.post('/generate-tags', async (req, res) => {
                 },
             }
         );
-
         let generatedText = response.data[0].generated_text;
         generatedText = generatedText.replace(tegPrompt, '').trim();
-        res.json({ tags: generatedText });
+
+        // Очистка от кавычек и ненужных слешей
+        generatedText = generatedText.replace(/["\\]/g, '').trim();
+
+        // Разделение тегов по запятой и возврат в виде массива
+        const tagsArray = generatedText.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
+
+        res.json({ tags: tagsArray });
+        console.log(tagsArray)
     } catch (error) {
         console.error("Error calling the LLM:", error.response ? error.response.data : error.message);
         res.status(500).json({ error: "Internal Server Error" });
