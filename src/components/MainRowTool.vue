@@ -654,20 +654,36 @@ export default {
           const faviconName = getDomainName(data.url);
           const faviconHash = await hashString(faviconName);
           const title = data.title.trim();
+          const resultStr = data.keywords.join(', ').trim();
+          console.log(resultStr);
           const keywordsToNull = {
             "видео, поделиться, телефон с камерой, телефон с видео, бесплатно, загрузить": true,
+            "RUTUBE, видео, клипы, сериалы, кино, трейлеры, фильмы, мультфильмы, онлайн, рутьюб, рутуб":true,
             // Добавьте другие подстроки, которые должны возвращать null
           };
-          // const keywords = data.keywords.trim();
-// Проверка на наличие подстрок из словаря
-//           if (keywords && Object.keys(keywordsToNull).some(keyword => keywords.includes(keyword))) {
-//             keywords = null;
-//           }
-          console.log(data.keywords)
+          function setKeywords() {
+            let keywords;
+            if (keywordsToNull[resultStr]) {
+              keywords = null; // Если равен, устанавливаем keywords в пустую строку
+            } else {
+              keywords = data.keywords; // Иначе присваиваем keywords объединенную строку
+            }
+            return keywords;
+          }
+          const keywords = setKeywords();
+          console.log(keywords)
 
           const description = data.description ? data.description.trim() : null;
           const aiTag = (title === '' || title === null) && (description === '' || description === null) ? null : await generateTags(title, description);
-          // const aiTag = '';
+          console.log("aiTag", aiTag)
+
+
+          const finalKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0)) ? aiTag : keywords;
+          // Если keywords равен null, используем aiTag, иначе используем keywords
+          console.log(data.keywords)
+          console.log("====================================")
+          console.log(finalKeywords)
+
 
           // Подготовка данных для вставки в таблицу links
           const linkData = {
@@ -676,7 +692,7 @@ export default {
             title: title,
             url_hash: urlHash,
             description: description,
-            keywords: (Array.isArray(data.keywords) && data.keywords.length > 0) ? data.keywords : aiTag,
+            keywords: finalKeywords,
             // keywords: (Array.isArray(data.keywords) && data.keywords.length > 0) ? data.keywords : aiTag,
             lang: data.lang || null, // Убедитесь, что lang имеет значение по умолчанию
             rss: data.rss || null, // Убедитесь, что rss имеет значение по умолчанию
@@ -790,6 +806,7 @@ export default {
     }
 
     return {
+
       tableData,
       updateTableData,
       receiveUrlFromExtension,
