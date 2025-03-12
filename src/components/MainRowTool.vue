@@ -610,6 +610,26 @@ export default {
       return props.buttonColor === 'purple' ? 'purple-button' : 'red-button';
     });
 
+    function mergeUniqueLists(list1, list2) {
+      console.log("Список 1:", list1);
+      console.log("Список 2:", list2);
+      // Проверка пустоты списков
+      if (list1.length === 0 && list2.length === 0) {
+        return [];
+      }
+
+      const mergedList = [...list1]; // Создаем новый массив и копируем элементы из первого списка
+      // Цикл по второму списку
+      for (const item of list2) {
+        // Проверяем, есть ли его версия в нижнем регистре в первом списке
+        if (!mergedList.some(existingItem => existingItem.toLowerCase() === item.toLowerCase())) {
+          mergedList.push(item); // Добавляем, если нет
+        }
+      }
+      console.log("Объединенный список:", mergedList)
+      return mergedList; // Возвращаем объединенный список
+    }
+
     async function generateTags(title, description, keywords = "") {
       console.log("Отправка данных на сервер:", { title, description, keywords });
       try {
@@ -671,18 +691,22 @@ export default {
             return keywords;
           }
           const keywords = setKeywords();
-          console.log(keywords)
+          console.log("После обработки и удаления всякого хлама по умолчанию -------",keywords)
 
           const description = data.description ? data.description.trim() : null;
           const aiTag = (title === '' || title === null) && (description === '' || description === null) ? null : await generateTags(title, description);
           console.log("aiTag", aiTag)
 
 
-          const finalKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0)) ? aiTag : keywords;
+          const aiKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0)) ? aiTag : keywords;
+
+
           // Если keywords равен null, используем aiTag, иначе используем keywords
           console.log(data.keywords)
           console.log("====================================")
-          console.log(finalKeywords)
+          console.log(aiKeywords)
+          const finalKeywords =  mergeUniqueLists(aiKeywords, aiTag );
+          console.log("ФИНальнНы список",finalKeywords)
 
 
           // Подготовка данных для вставки в таблицу links
