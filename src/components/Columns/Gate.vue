@@ -130,13 +130,15 @@
             <span class="text-ellipsis">{{ truncateText(link.description, 100).truncated }}</span>
             <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle" v-html="tooltipContent"></div>
           </td>
+<!--                        @mouseenter="handleMouseEnter($event, link.keywords ? link.keywords.join(', ') : '')"
+-->
           <td
               class="truncate content-padding right-align"
               :class="{ 'highlighted': isHighlighted(link.keywords) }"
-              @mouseenter="handleMouseEnter($event, link.keywords ? link.keywords.join(', ') : '')"
+              @mouseenter="handleMouseEnter($event, link.keywords)"
               @mouseleave="handleMouseLeave"
           >
-            <span class="text-ellipsis">{{ truncateText(link.keywords, 100).truncated }}</span>
+            <span class="text-ellipsis">{{ truncateText(link.keywords, 150).truncated }}</span>
             <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle" v-html="tooltipContent"></div>
           </td>
 

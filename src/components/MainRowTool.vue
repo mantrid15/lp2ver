@@ -30,53 +30,54 @@
                density="compact"
                fixed-header>
         <tbody>
-        <tr>
-          <td  class="divider" style="width: 300px; border: 1px solid white; padding: 0;">
-            <input ref="urlInput" v-model="url" class="url-input" type="text" placeholder="Введите URL" @keydown.enter="handleEnter" style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;" />
-          </td>
-          <td class="divider"
-              style="width: 30px; border: 1px solid white; display: flex; justify-content: center; align-items: center; padding: 0;">
-            <div class="favicon-container">
-              <img src="/lpicon.png"
-                   alt="Favicon"
-                   width="18"
-                   height="18" />
-            </div>
-          </td>
-          <td class="divider" style="width: 400px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-  <span class="scrolling-text" v-tooltip="tableData.title || ''">
-    <span class="text-ellipsis" style="margin-left: 5px">{{ tableData.title ? truncateText(tableData.title, 30).truncated : '' }}</span>
-  </span>
-          </td>
-          <td class="divider" style="width: 200px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-  <span class="scrolling-text" v-tooltip="tableData.description || ''">
-    <span class="text-ellipsis" style="margin-left: 5px">{{ tableData.description ? truncateText(tableData.description, 20).truncated : '' }}</span>
-  </span>
-          </td>
-          <td class="divider" style="width: 150px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-  <span class="scrolling-text" v-tooltip="tableData.keywords?.join(', ') || ''">
-    <span class="text-ellipsis" style="margin-left: 5px">{{ tableData.keywords ? truncateText(tableData.keywords.join(', '), 20).truncated : '' }}</span>
-  </span>
-          </td>
-          <td class="divider" v-tooltip="tableData.date || ''" style="width: 100px; border: 1px solid white; padding-left: 10px;">
-            {{ tableData.date ? new Date(tableData.date).toLocaleDateString() : new Date().toLocaleDateString() }}
-          </td>
-        </tr>
+          <tr>
+            <td class="divider" style="width: 300px; border: 1px solid white; padding: 0;">
+              <input ref="urlInput" v-model="url" class="url-input" type="text" placeholder="Введите URL" @keydown.enter="handleEnter" style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;" />
+            </td>
+            <td class="divider"
+                style="width: 30px; border: 1px solid white; display: flex; justify-content: center; align-items: center; padding: 0;">
+              <div class="favicon-container">
+                <img src="/lpicon.png"
+                     alt="Favicon"
+                     width="18"
+                     height="18" />
+              </div>
+            </td>
+            <td class="divider" style="width: 400px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              <span class="scrolling-text" v-tooltip="tableData?.title || ''">
+                <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.title ? truncateText(tableData.title, 30).truncated : '' }}</span>
+              </span>
+            </td>
+            <td class="divider" style="width: 200px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
+              <span class="scrolling-text" v-tooltip="tableData?.description || ''">
+                <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.description ? truncateText(tableData.description, 20).truncated : '' }}</span>
+              </span>
+            </td>
+            <td class="divider" style="width: 150px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
+              <span class="scrolling-text" v-tooltip="tableData?.keywords?.join(', ') || ''">
+                <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.keywords ? truncateText(tableData.keywords.join(', '), 20).truncated : '' }}</span>
+              </span>
+            </td>
+            <td class="divider" v-tooltip="tableData?.date || ''" style="width: 100px; border: 1px solid white; padding-left: 10px;">
+              {{ tableData?.date ? new Date(tableData.date).toLocaleDateString() : new Date().toLocaleDateString() }}
+            </td>
+          </tr>
         </tbody>
       </v-table>
     </div>
     <v-snackbar v-model="snackbar"
-                :timeout="3000" class="custom-snackbar"
-    >
+                :timeout="3000" class="custom-snackbar">
       {{ snackbarMessage }}
       <v-btn color="pink"
              text
              @click="snackbar = false"
-             style="top: 20px; right: 20px; width: 100px; height: 200px;"
-      >Закрыть</v-btn>
+             style="top: 20px; right: 20px; width: 100px; height: 200px;">
+        Закрыть
+      </v-btn>
     </v-snackbar>
   </v-container>
 </template>
+
 <script>
 import {ref, onMounted, computed, nextTick} from 'vue';
 import axios from 'axios';
@@ -112,12 +113,21 @@ export default {
     const buttonLabel = ref('URL');
     const buttonLabelOk = ref('LinZer');
     const linkInfoParsed = ref(null);
-    const tableData = ref({});
+    const tableData = ref({
+      title: '',
+      description: '',
+      keywords: [],
+      date: '',
+    });
 
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Функция для обновления tableData
     const updateTableData = (linkInfoParsed, linkData) => {
+      if (!linkInfoParsed || !linkData) {
+        console.error('Invalid data provided to updateTableData');
+        return;
+      }
       tableData.value = getTableData(linkInfoParsed, linkData);
     };
 
@@ -136,7 +146,7 @@ export default {
     };
 
     const showSnackbar = (message) => {
-      snackbarMessage.value = message;
+      snackbarMessage.value = message || 'An error occurred';
       snackbar.value = true;
     };
 
@@ -322,7 +332,7 @@ export default {
       if (!finalData) {
         console.error('finalData не определен');
         return;
-      }favicon
+      }
       if (data && typeof data === 'object') {
         finalData.title = data.title || finalData.title;
         finalData.description = data.description || finalData.description;
@@ -379,14 +389,11 @@ export default {
           return;
         }
       }
-
-
       // Проверяем, есть ли ошибка в финальных данных
       if (finalData.error) {
         showSnackbar('Произошла ошибка: ' + finalData.error);
         return;
       }
-
       // Если нет ошибок, сохраняем данные
       linkInfo.value = JSON.stringify(finalData, null, 2);
       console.log('Финальная информация:', finalData);
@@ -396,7 +403,6 @@ export default {
       try {
         const urlObj = new URL(url);
         let domain = urlObj.hostname;
-
         // Удаляем 'www.' из доменного имени
         if (domain.startsWith('www.')) {
           domain = domain.slice(4);
@@ -508,8 +514,8 @@ export default {
           description: linkInfoParsed.value.description.trim(),
           title_translation: '',
           keywords: (Array.isArray(linkInfoParsed.value.keywords) && linkInfoParsed.value.keywords.length > 0)
-              ? linkInfoParsed.value.keywords
-              : null,
+              ? linkInfoParsed.value.keywords.join(', ') // Преобразуем массив в строку
+              : '',
           lang: linkInfoParsed.value.lang,
           rss: linkInfoParsed.value.rss,
           ai_tag: '',
@@ -615,9 +621,12 @@ export default {
       console.log("Список 2:", list2);
       // Проверка пустоты списков
       if (list1.length === 0 && list2.length === 0) {
-        return [];
+        return "";
       }
-
+      // Проверка на равенство списков
+      if (list1.length === list2.length && list1.every((item, index) => item.toLowerCase() === list2[index].toLowerCase())) {
+        return list1.join(", "); // Возвращаем первый список, если они одинаковые
+      }
       const mergedList = [...list1]; // Создаем новый массив и копируем элементы из первого списка
       // Цикл по второму списку
       for (const item of list2) {
@@ -626,9 +635,10 @@ export default {
           mergedList.push(item); // Добавляем, если нет
         }
       }
-      console.log("Объединенный список:", mergedList)
-      return mergedList; // Возвращаем объединенный список
+      console.log("Объединенный список:", mergedList);
+      return mergedList.join(", "); // Возвращаем объединённый список в виде строки
     }
+
 
     async function generateTags(title, description, keywords = "") {
       console.log("Отправка данных на сервер:", { title, description, keywords });
@@ -652,6 +662,10 @@ export default {
       };
       ws.onmessage = async (event) => {
         const data = JSON.parse(event.data);
+        if (!data.url || !data.title || !data.description) {
+          console.error('Invalid WebSocket data:', data);
+          return;
+        }
 
         if (data.url) {
           const urlHash = await hashString(data.url); // Используем data.url сразу
@@ -670,6 +684,7 @@ export default {
             showSnackbar('URL уже существует в базе данных. Пропускаем дальнейшие действия.');
             return; // Если URL не уникален, завершаем выполнение
           }
+
           const userIdValue = userId.value;
           const faviconName = getDomainName(data.url);
           const faviconHash = await hashString(faviconName);
