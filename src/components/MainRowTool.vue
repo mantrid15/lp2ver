@@ -757,7 +757,26 @@ export default {
         }
       }
     }
+    async function checkUrlExistence(url) {
+      const urlHash = await hashString(url);
+      const { data: existingLinks, error: checkError } = await supabase
+          .from('links')
+          .select('url_hash')
+          .eq('url_hash', urlHash);
 
+      if (checkError) {
+        console.error('Ошибка при проверке url_hash:', checkError);
+        return { exists: false, error: checkError };
+      }
+
+      if (existingLinks.length > 0) {
+        console.log('URL уже существует в базе данных.');
+        showSnackbar('URL уже существует в базе данных.');
+        return { exists: true };
+      }
+
+      return { exists: false };
+    }
     onMounted(() => {
       const ws = new WebSocket('ws://localhost:3000');
       ws.onopen = () => {
@@ -772,20 +791,9 @@ export default {
         }
 
         if (data.url) {
-          const urlHash = await hashString(data.url);
-          const { data: existingLinks, error: checkError } = await supabase
-              .from('links')
-              .select('url_hash')
-              .eq('url_hash', urlHash);
-
-          if (checkError) {
-            console.error('Ошибка при проверке url_hash:', checkError);
-            return;
-          }
-          if (existingLinks.length > 0) {
-            console.log('URL уже существует в базе данных. Пропускаем дальнейшие действия.');
-            showSnackbar('URL уже существует в базе данных. Пропускаем дальнейшие действия.');
-            return;
+          const urlCheckResult = await checkUrlExistence(data.url);
+          if (urlCheckResult.exists) {
+            return; // Прекращаем выполнение, если URL уже существует
           }
 
           // Вызываем новую функцию для обработки данных
