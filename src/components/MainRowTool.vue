@@ -558,9 +558,6 @@ export default {
       const faviconHash = await hashString(faviconName);
       const title = data.title.trim();
       const resultStr = data.keywords.join(', ').trim();
-      // console.log(resultStr);
-
-
       function setKeywords() {
         let keywords;
         if (keywordsToNull[resultStr]) {
@@ -678,16 +675,31 @@ export default {
       };
       ws.onmessage = async (event) => {
         const data = JSON.parse(event.data);
-        if (!data.url || !data.title || !data.description) {
-          console.error('Invalid WebSocket data:', data);
-          return;
-        }
+        console.log('Data received from WebSocket:', data)
+
+        // if (!data.url || !data.title || !data.description) {
+        //   console.error('Invalid WebSocket data:', data);
+        //
+        //   // Вывод недействительных данных в консоль
+        //   if (!data.url) {
+        //     console.error('Missing URL:', data.url);
+        //   }
+        //   if (!data.title) {
+        //     console.error('Missing Title:', data.title);
+        //   }
+        //   if (!data.description) {
+        //     console.error('Missing Description:', data.description);
+        //   }
+        //
+        //   return;
+        // }
         if (data.url) {
           const urlCheckResult = await checkUrlExistence(data.url);
           if (urlCheckResult.exists) {
             return; // Прекращаем выполнение, если URL уже существует
           }
           // Вызываем новую функцию для обработки данных
+          // console.log('Data received from WebSocket:', data)
           await processLinkData(data);
         }
       };
