@@ -87,22 +87,24 @@
         </tr>
         </thead>
         <tbody>
-        <tr v-for="link in sortedLinks"
+          <tr
+            v-for="link in sortedLinks"
             :key="link.id"
             :class="{
               'strike-through': link.id === activeLinkId,
-              'dragging': draggedLink && link.id === draggedLink.id }"
+              'dragging': draggedLink && link.id === draggedLink.id
+            }"
             draggable="true"
             @dragstart="onDragStart(link)"
             @dragend="onDragEnd"
         >
           <td class="content-padding fav-column" @click="handleFavClick(link)">
-            <!--            <img
-                            v-if="link.favicon_name"
-                            :src="getFaviconUrl(link.favicon_name)"
+                        <img
+                            v-if="link.favicon_hash"
+                            :src="getFaviconUrl(link.favicon_hash)"
                             alt="Favicon"
                             class="favicon"
-                        />-->
+                        />
             <span v-if="link.id === activeLinkId" class="delete-icon" @click.stop="deleteLink(link)">{{ DELETE_ICON }}</span>
           </td>
           <td class="truncate content-padding"
@@ -130,8 +132,6 @@
             <span class="text-ellipsis">{{ truncateText(link.description, 100).truncated }}</span>
             <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle" v-html="tooltipContent"></div>
           </td>
-<!--                        @mouseenter="handleMouseEnter($event, link.keywords ? link.keywords.join(', ') : '')"
--->
           <td
               class="truncate content-padding right-align"
               :class="{ 'highlighted': isHighlighted(link.keywords) }"
@@ -141,9 +141,6 @@
             <span class="text-ellipsis">{{ truncateText(link.keywords, 150).truncated }}</span>
             <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle" v-html="tooltipContent"></div>
           </td>
-
-
-
           <td class="content-padding">
             <span v-if="!showAllDirs">{{ formatDate(link.date) }}</span>
             <span v-else>{{ getFolderNameByHash(link.dir_hash) }}</span>
@@ -160,7 +157,6 @@ import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
 import { debounce } from 'lodash';
 
-
 const FAVORITE_ICON = 'F';
 const URL_LABEL = 'URL';
 const TITLE_LABEL = 'Title';
@@ -173,6 +169,7 @@ const SORT_DESC_ICON = '↓';
 const SORT_DEFAULT_ICON =  '⇅';
 const DELETE_ICON = '❌';
 const DELETE_ICON_TIMEOUT = 3000; // 3 секунды
+
 export default {
   name: 'Gate',
   props: {
@@ -185,6 +182,10 @@ export default {
       required: true,
     },
     links: {
+      type: Array,
+      required: true,
+    },
+    favicons: {
       type: Array,
       required: true,
     },
@@ -205,6 +206,7 @@ export default {
   },
   emits: ['handle-url-click', 'sort', 'update-dragged-link'],
   setup(props, { emit }) {
+    const channel = ref(null); // Объявляем channel как ref
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const sortedLinks = ref([]);
@@ -227,6 +229,7 @@ export default {
     const dateColumnLabel = computed(() => {
       return showAllDirs.value ? 'Folder' : 'Date';
     });
+
     const debouncedFilter = debounce(() => {
       if (!filteredLinks.value || !filteredLinks.value.length) {
         sortedLinks.value = [];
@@ -236,6 +239,7 @@ export default {
           sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
     }, 300);
+
     const getFolderName = async (dirHash) => {
       if (!dirHash) return '';
       try {
@@ -251,8 +255,9 @@ export default {
         return '';
       }
     };
+
     const subscribeToRealtimeChanges = () => {
-      const channel = supabase
+      channel.value = supabase
           .channel('realtime-dir')
           .on(
               'postgres_changes',
@@ -266,10 +271,12 @@ export default {
 
       return channel;
     };
+
     const getFolderNameByHash = computed(() => (dirHash) => {
       const folder = folders.value.find(f => f.dir_hash === dirHash);
       return folder ? folder.dir_name : '';
     });
+
     const isHighlighted = (value) => {
       // Если фильтр пуст, не выделяем
       if (!filter.value) return false;
@@ -278,6 +285,7 @@ export default {
       const searchTerm = filter.value.toLowerCase();
       return text.toLowerCase().includes(searchTerm);
     };
+
     const filteredLinks = computed(() => {
       const searchTerm = filter.value.toLowerCase();
       const matchesSearchTerm = (link) => {
@@ -307,9 +315,11 @@ export default {
       }
       return chunks.join('<br>'); // Добавляем <br> для переноса строк
     };
+
     // Обработчик наведения на ячейку
     const handleMouseEnter = (event, content) => {
-      if (isCtrlPressed.value && content) { // Проверяем, что содержимое не пустое
+      if (isCtrlPressed.value && content) {
+        // Проверяем, что содержимое не пустое
         tooltipContent.value = splitTextIntoLines(content); // Разбиваем текст на строки
         showTooltip.value = true;
 
@@ -322,24 +332,27 @@ export default {
         };
       }
     };
+
     // Обработчик ухода мыши с ячейки
     const handleMouseLeave = () => {
       showTooltip.value = false;
     };
+
     // Обработчик нажатия клавиши Ctrl
     const handleKeyDown = (event) => {
       if (event.ctrlKey) {
         isCtrlPressed.value = true;
       }
     };
+
     // Обработчик отпускания клавиши Ctrl
     const handleKeyUp = (event) => {
       if (!event.ctrlKey) {
         isCtrlPressed.value = false;
         showTooltip.value = false; // Скрываем tooltip при отпускании Ctrl
-
       }
     };
+
     const truncateText = (text, length = 50) => {
       // Если text равен null, undefined или пуст, возвращаем пустые строки
       if (!text) {
@@ -358,15 +371,18 @@ export default {
       const remainder = text.slice(length);
       return { truncated, remainder };
     };
+
     const onDragStart = (link) => {
       draggedLink.value = link; // Устанавливаем перетаскиваемую ссылку
       emit('update-dragged-link', link);
     };
+
     const onDragEnd = () => {
       draggedLink.value = null; // Сбрасываем перетаскиваемую ссылку
     };
 
     const rowCount = computed(() => filteredLinks.value.length); // Обновлено для использования filteredLinks
+
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
 
@@ -394,6 +410,7 @@ export default {
       }
       return (aValue > bValue ? 1 : -1) * modifier;
     };
+
     watchEffect(() => {
       if (!filteredLinks.value || !filteredLinks.value.length) {
         sortedLinks.value = [];
@@ -403,7 +420,9 @@ export default {
           sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
     });
+
     watch(filter, debouncedFilter);
+
     const handleClick = (event, key) => {
       if (key === 'url' && event.ctrlKey) {
         emit('handle-url-click', event, key);
@@ -421,6 +440,7 @@ export default {
         emit('sort', sortKey, currentSortOrder.value);
       }
     };
+
     const formatDate = (dateString) => {
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('ru-RU').format(date);
@@ -442,9 +462,9 @@ export default {
       }
       return '';
     };
-    const getFaviconUrl = (faviconName) => {
-      return '';
-      // return `https://your-supabase-url.com/storage/v1/object/public/favicons/${faviconName}`;
+    const getFaviconUrl = (faviconHash) => {
+      const favicon = props.favicons.find(f => f.favicon_hash === faviconHash);
+      return favicon ? favicon.fav_url : '/lpicon.png';
     };
     const handleFavClick = (link) => {
       // Сбрасываем предыдущую активную ссылку
@@ -507,7 +527,7 @@ export default {
       }
     };
     onMounted(() => {
-      const channel = subscribeToRealtimeChanges();
+      subscribeToRealtimeChanges();
       fetchFolders().then(() => {
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('keyup', handleKeyUp);
@@ -515,8 +535,8 @@ export default {
     });
 
     onUnmounted(() => {
-      if (channel) {
-        supabase.removeChannel(channel);
+      if (channel.value) {
+        supabase.removeChannel(channel.value);
       }
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -563,7 +583,6 @@ export default {
       DELETE_ICON,
       activeLinkId,
       isHighlighted,
-      // isDragging, // Возвращаем состояние перетаскивания
     };
   },
 };

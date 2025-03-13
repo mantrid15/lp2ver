@@ -1,12 +1,11 @@
 <template>
   <div v-if="account?.data?.session" class="container">
     <Left :width="leftColumnWidth" />
-    <div class="resizer"
-        @mousedown="(e) => startResize(e, 1)"
-    ></div>
+    <div class="resizer" @mousedown="(e) => startResize(e, 1)"></div>
     <Gate
         :width="middleColumnWidth"
         :links="links"
+        :favicons="favicons"
         :sort-key="sortKey"
         :sort-order="sortOrder"
         :selected-folder-hash="selectedFolderHash"
@@ -15,10 +14,7 @@
         :draggedLink="draggedLink"
         @update-dragged-link="updateDraggedLink"
     />
-    <div
-        class="resizer"
-        @mousedown="(e) => startResize(e, 2)"
-    ></div>
+    <div class="resizer" @mousedown="(e) => startResize(e, 2)"></div>
     <Right
         :width="rightColumnWidth"
         :draggedLink="draggedLink"
@@ -37,8 +33,7 @@ import {ref, computed, onMounted, onUnmounted} from 'vue';
 import { supabase } from '@/clients/supabase.js';
 import Left from '@/components/Columns/Left.vue';
 import Right from '@/components/Columns/Right.vue';
-import Gate from "@/components/Columns/Gate.vue";
-
+import Gate from '@/components/Columns/Gate.vue';
 
 export default {
   name: 'LinzerTwo',
@@ -55,12 +50,20 @@ export default {
     const handleFolderSelected = (dirHash) => {
       selectedFolderHash.value = dirHash;
     };
+
     const handleResetFolderSelection = () => {
       selectedFolderHash.value = null; // Сбрасываем состояние выбранной папки
     };
+
     // Управление сессией
     const account = ref(null);
     const draggedLink = ref(null); // Объявляем draggedLink
+    const favicons = ref([]); // Реактивная переменная для хранения данных из favicons
+    // Data and sorting
+    const links = ref([]);
+
+    const sortKey = ref('date');
+    const sortOrder = ref('asc');
     async function getSession() {
       try {
         account.value = await supabase.auth.getSession();
@@ -89,10 +92,7 @@ export default {
     const MIN_MIDDLE_COLUMN_WIDTH = 40;
     const MAX_MIDDLE_COLUMN_WIDTH = 80;
 
-    // Data and sorting
-    const links = ref([]);
-    const sortKey = ref('date');
-    const sortOrder = ref('asc');
+
     let realtimeChannel;
 
     // Methods
@@ -100,7 +100,7 @@ export default {
       try {
         const { data, error } = await supabase
             .from("links")
-            .select("id, date, url, title, description, keywords, favicon_name, url_hash, dir_hash");
+            .select("id, date, url, title, description, keywords, favicon_name, favicon_hash, url_hash, dir_hash");
         if (error) {
           console.error("Error fetching links:", error);
         } else {
@@ -110,6 +110,27 @@ export default {
       } catch (err) {
         console.error("Unexpected error in fetchLinks:", err);
       }
+    };
+
+    const fetchFavicons = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('favicons')
+          .select('favicon_hash, fav_url');
+        if (error) {
+          console.error('Error fetching favicons:', error);
+        } else {
+          return data || [];
+        }
+      } catch (err) {
+        console.error('Unexpected error in fetchFavicons:', err);
+        return [];
+      }
+    };
+
+    const getFaviconUrl = (faviconHash) => {
+      const favicon = favicons.value.find((f) => f.favicon_hash === faviconHash);
+      return favicon ? favicon.fav_url : '/lpicon.png';
     };
 
     const sort = (key) => {
@@ -195,7 +216,6 @@ export default {
       middleColumnWidth.value = '40%';
       rightColumnWidth.value = '30%';
     };
-
     // Обновление draggedLink
     const updateDraggedLink = (link) => {
       draggedLink.value = link;
@@ -204,24 +224,44 @@ export default {
     // Realtime subscription
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
-          .channel("realtime-links")
+        .channel('realtime-links')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'links' },
+          async (payload) => {
+            if (payload.eventType === 'INSERT') {
+              links.value.push(payload.new);
+            } else if (payload.eventType === 'UPDATE') {
+              const index = links.value.findIndex((link) => link.id === payload.new.id);
+              if (index !== -1) {
+                links.value[index] = payload.new;
+              }
+            } else if (payload.eventType === 'DELETE') {
+              links.value = links.value.filter((link) => link.id !== payload.old.id);
+            }
+            // Обновляем данные из favicons при изменении links
+            favicons.value = await fetchFavicons();
+          }
+        )
           .on(
-              "postgres_changes",
-              { event: "*", schema: "public", table: "links" },
+              'postgres_changes',
+              { event: '*', schema: 'public', table: 'favicons' },
               (payload) => {
-                if (payload.eventType === "INSERT") {
-                  links.value.push(payload.new);
-                } else if (payload.eventType === "UPDATE") {
-                  const index = links.value.findIndex(link => link.id === payload.new.id);
-                  if (index !== -1) {
-                    links.value[index] = payload.new;
+                if (payload.eventType === 'INSERT') {
+                  if (payload.new.user_id === userId.value) {
+                    favicons.value.push(payload.new);
                   }
-                } else if (payload.eventType === "DELETE") {
-                  links.value = links.value.filter(link => link.id !== payload.old.id);
+                } else if (payload.eventType === 'UPDATE') {
+                  const index = favicons.value.findIndex(favicons => favicons.id === payload.new.id);
+                  if (index !== -1) {
+                    favicons.value[index] = payload.new;
+                  }
+                } else if (payload.eventType === 'DELETE') {
+                  favicons.value = favicons.value.filter(favicons => favicons.id !== payload.old.id);
                 }
               }
           )
-          .subscribe();
+        .subscribe();
     };
 
     const unsubscribeFromRealtimeChanges = () => {
@@ -229,7 +269,6 @@ export default {
         supabase.removeChannel(realtimeChannel);
       }
     };
-
     // Keyboard event handlers
     const handleKeyDown = (e) => {
       if (e.ctrlKey) {
@@ -242,7 +281,6 @@ export default {
         ctrlPressed = false;
       }
     };
-
     // Lifecycle hooks
     onMounted(async () => {
       await getSession();
@@ -254,7 +292,8 @@ export default {
         console.log('Auth state changed:', event, session);
       });
 
-      fetchLinks();
+      await fetchLinks();
+      favicons.value = await fetchFavicons(); // Загружаем данные из favicons
       subscribeToRealtimeChanges();
       document.addEventListener("keydown", handleKeyDown);
       document.addEventListener("keyup", handleKeyUp);
@@ -275,13 +314,15 @@ export default {
       middleColumnWidth,
       rightColumnWidth,
       links,
+      favicons,
       sortKey,
       sortOrder,
       startResize,
       handleUrlClick,
       sort,
       draggedLink,
-      updateDraggedLink // Возвращаем метод для обновления draggedLink
+      updateDraggedLink,
+      getFaviconUrl,
     };
   }
 };
