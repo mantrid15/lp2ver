@@ -655,11 +655,115 @@ export default {
         return "";
       }
     }
+    const keywordsToNull = {
+      "RUTUBE, видео, клипы, сериалы, кино, трейлеры, фильмы, мультфильмы, онлайн, рутьюб, рутуб": true,
+      "видео, поделиться, телефон с камерой, телефон с видео, бесплатно, загрузить": true,
+    };
+    async function processLinkData(data) {
+      const userIdValue = userId.value;
+      const faviconName = getDomainName(data.url);
+      const faviconHash = await hashString(faviconName);
+      const title = data.title.trim();
+      const resultStr = data.keywords.join(', ').trim();
+      console.log(resultStr);
+
+
+      function setKeywords() {
+        let keywords;
+        if (keywordsToNull[resultStr]) {
+          keywords = null;
+        } else {
+          keywords = data.keywords;
+        }
+        return keywords;
+      }
+
+      const keywords = setKeywords();
+      console.log("После обработки и удаления всякого хлама по умолчанию -------", keywords);
+
+      const description = data.description ? data.description.trim() : null;
+      const aiTag = (title === '' || title === null) && (description === '' || description === null) ? null : await generateTags(title, description);
+      console.log("aiTag", aiTag);
+
+      const aiKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0)) ? aiTag : keywords;
+
+      const finalKeywords = mergeUniqueLists(aiKeywords, aiTag);
+      console.log("ФИНальнНы список", finalKeywords);
+
+      const linkData = {
+        date: new Date().toISOString(),
+        url: data.url,
+        title: title,
+        url_hash: await hashString(data.url),
+        description: description,
+        keywords: finalKeywords,
+        lang: data.lang || null,
+        rss: data.rss || null,
+        favicon_hash: faviconHash,
+        favicon_name: faviconName,
+        title_translation: '',
+        ai_tag: aiTag,
+        user_id: userIdValue,
+        dir_hash: '',
+        subdir_hash: '',
+      };
+
+      updateTableData(linkInfoParsed.value, linkData);
+      console.log('Link Data:', linkData);
+
+      const { error: linkError } = await supabase
+          .from('links')
+          .insert([linkData]);
+
+      if (linkError) {
+        console.error('Ошибка при отправке данных в Supabase:', linkError);
+        showSnackbar('Не удалось отправить данные. Попробуйте снова.');
+      } else {
+        console.log('Данные успешно отправлены!');
+        showSnackbar('Данные успешно отправлены!');
+      }
+
+      const { data: existingFavicons, error: checkFaviconError } = await supabase
+          .from('favicons')
+          .select('favicon_hash')
+          .eq('favicon_hash', faviconHash);
+
+      await delay(2000);
+      await clearFields();
+
+      if (checkFaviconError) {
+        console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
+      } else {
+        console.log('Результат проверки favicon_hash:', existingFavicons.length > 0 ? 'Не уникален' : 'Уникален');
+
+        if (existingFavicons.length === 0) {
+          const faviconData = {
+            favicon_hash: faviconHash,
+            favicon_name: faviconName,
+            fav_url: data.favicon,
+            storage_path: '',
+            user_id: userIdValue,
+          };
+          const { error: insertError } = await supabase
+              .from('favicons')
+              .insert([faviconData]);
+          console.log('faviconData:', faviconData);
+
+          if (insertError) {
+            console.error('Ошибка при вставке favicon_hash в favicons:', insertError);
+          } else {
+            console.log('favicon_hash успешно добавлен в favicons');
+          }
+        }
+      }
+    }
+
     onMounted(() => {
       const ws = new WebSocket('ws://localhost:3000');
       ws.onopen = () => {
         console.log('WebSocket соединение установлено');
       };
+
       ws.onmessage = async (event) => {
         const data = JSON.parse(event.data);
         if (!data.url || !data.title || !data.description) {
@@ -668,8 +772,7 @@ export default {
         }
 
         if (data.url) {
-          const urlHash = await hashString(data.url); // Используем data.url сразу
-          // Проверка существования url_hash
+          const urlHash = await hashString(data.url);
           const { data: existingLinks, error: checkError } = await supabase
               .from('links')
               .select('url_hash')
@@ -677,129 +780,16 @@ export default {
 
           if (checkError) {
             console.error('Ошибка при проверке url_hash:', checkError);
-            return; // Завершаем выполнение, если произошла ошибка
+            return;
           }
           if (existingLinks.length > 0) {
             console.log('URL уже существует в базе данных. Пропускаем дальнейшие действия.');
             showSnackbar('URL уже существует в базе данных. Пропускаем дальнейшие действия.');
-            return; // Если URL не уникален, завершаем выполнение
+            return;
           }
 
-          const userIdValue = userId.value;
-          const faviconName = getDomainName(data.url);
-          const faviconHash = await hashString(faviconName);
-          const title = data.title.trim();
-          const resultStr = data.keywords.join(', ').trim();
-          console.log(resultStr);
-          const keywordsToNull = {
-            "видео, поделиться, телефон с камерой, телефон с видео, бесплатно, загрузить": true,
-            "RUTUBE, видео, клипы, сериалы, кино, трейлеры, фильмы, мультфильмы, онлайн, рутьюб, рутуб":true,
-            // Добавьте другие подстроки, которые должны возвращать null
-          };
-          function setKeywords() {
-            let keywords;
-            if (keywordsToNull[resultStr]) {
-              keywords = null; // Если равен, устанавливаем keywords в пустую строку
-            } else {
-              keywords = data.keywords; // Иначе присваиваем keywords объединенную строку
-            }
-            return keywords;
-          }
-          const keywords = setKeywords();
-          console.log("После обработки и удаления всякого хлама по умолчанию -------",keywords)
-
-          const description = data.description ? data.description.trim() : null;
-          const aiTag = (title === '' || title === null) && (description === '' || description === null) ? null : await generateTags(title, description);
-          console.log("aiTag", aiTag)
-
-
-          const aiKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0)) ? aiTag : keywords;
-
-
-          // Если keywords равен null, используем aiTag, иначе используем keywords
-          console.log(data.keywords)
-          console.log("====================================")
-          console.log(aiKeywords)
-          const finalKeywords =  mergeUniqueLists(aiKeywords, aiTag );
-          console.log("ФИНальнНы список",finalKeywords)
-
-
-          // Подготовка данных для вставки в таблицу links
-          const linkData = {
-            date: new Date().toISOString(),
-            url: data.url,
-            title: title,
-            url_hash: urlHash,
-            description: description,
-            keywords: finalKeywords,
-            // keywords: (Array.isArray(data.keywords) && data.keywords.length > 0) ? data.keywords : aiTag,
-            lang: data.lang || null, // Убедитесь, что lang имеет значение по умолчанию
-            rss: data.rss || null, // Убедитесь, что rss имеет значение по умолчанию
-            favicon_hash: faviconHash,
-            favicon_name: faviconName,
-            title_translation: '',
-            ai_tag: aiTag,
-            user_id: userIdValue,
-            dir_hash: '',
-            subdir_hash: '',
-          };
-
-          // Обновляем tableData
-          updateTableData(linkInfoParsed.value, linkData);
-          console.log('++++++++++++++++++++++',data.keywords)
-          console.log('Link Data:', linkData);
-          // Вставка данных в таблицу links
-          const { error: linkError } = await supabase
-              .from('links')
-              .insert([linkData]);
-          if (linkError) {
-            console.error('Ошибка при отправке данных в Supabase:', linkError);
-            showSnackbar('Не удалось отправить данные. Попробуйте снова.');
-          } else {
-            console.log('Данные успешно отправлены!');
-            showSnackbar('Данные успешно отправлены!');
-
-          }
-          // Проверка существования favicon_hash
-          const { data: existingFavicons, error: checkFaviconError } = await supabase
-              .from('favicons')
-              .select('favicon_hash')
-              .eq('favicon_hash', faviconHash);
-          await delay(2000);
-          await clearFields();
-          if (checkFaviconError) {
-            console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
-          } else {
-            console.log('Результат проверки favicon_hash:', existingFavicons.length > 0 ? 'Не уникален' : 'Уникален');
-
-            // Если favicon_hash уникален, сохраняем его
-            if (existingFavicons.length === 0) {
-              const faviconData = {
-                favicon_hash: faviconHash,
-                favicon_name: faviconName,
-                fav_url: data.favicon,
-                storage_path: '',
-                user_id: userIdValue,
-              };
-              const { error: insertError } = await supabase
-                  .from('favicons')
-                  .insert([faviconData]);
-              console.log('faviconData:', faviconData);
-
-
-              if (insertError) {
-                console.error('Ошибка при вставке favicon_hash в favicons:', insertError);
-              } else {
-                console.log('favicon_hash успешно добавлен в favicons');
-              }
-
-            }
-          }
-          // Автоматический вызов handleButtonClick через 0.5 секунды
-          // setTimeout(() => {
-          //   console.log('Автоматический вызов extentionDataToLinks');
-          //   // handleButtonClick();
-          // }, 500);
+          // Вызываем новую функцию для обработки данных
+          await processLinkData(data);
         }
       };
       ws.onclose = () => {
@@ -845,7 +835,7 @@ export default {
     }
 
     return {
-
+      keywordsToNull,
       tableData,
       updateTableData,
       receiveUrlFromExtension,
@@ -878,6 +868,7 @@ export default {
   },
 };
 </script>
+
 <style scoped>
 .v-table {
   background-color: transparent; /* Прозрачный фон для таблицы */
