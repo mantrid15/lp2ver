@@ -44,19 +44,19 @@
               </div>
             </td>
             <td class="divider" style="width: 400px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-              <span class="scrolling-text" v-tooltip="tableData?.title || ''">
-                <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.title ? truncateText(tableData.title, 30).truncated : '' }}</span>
-              </span>
+  <span class="scrolling-text" v-tooltip="Array.isArray(tableData?.title) ? tableData.title.join(', ') : tableData?.title || ''">
+    <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.title ? truncateText(tableData.title, 30).truncated : '' }}</span>
+  </span>
             </td>
             <td class="divider" style="width: 200px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-              <span class="scrolling-text" v-tooltip="tableData?.description || ''">
-                <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.description ? truncateText(tableData.description, 20).truncated : '' }}</span>
-              </span>
+  <span class="scrolling-text" v-tooltip="Array.isArray(tableData?.description) ? tableData.description.join(', ') : tableData?.description || ''">
+    <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.description ? truncateText(tableData.description, 20).truncated : '' }}</span>
+  </span>
             </td>
             <td class="divider" style="width: 150px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
-              <span class="scrolling-text" v-tooltip="tableData?.keywords?.join(', ') || ''">
-                <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.keywords ? truncateText(tableData.keywords.join(', '), 20).truncated : '' }}</span>
-              </span>
+  <span class="scrolling-text" v-tooltip="Array.isArray(tableData?.keywords) ? tableData.keywords.join(', ') : tableData?.keywords || ''">
+    <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.keywords ? truncateText(tableData.keywords, 20).truncated : '' }}</span>
+  </span>
             </td>
             <td class="divider" v-tooltip="tableData?.date || ''" style="width: 100px; border: 1px solid white; padding-left: 10px;">
               {{ tableData?.date ? new Date(tableData.date).toLocaleDateString() : new Date().toLocaleDateString() }}
@@ -126,20 +126,20 @@ export default {
     };
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // Функция для обновления tableData
-    const updateTableData = (linkInfoParsed, linkData) => {
-      if (!linkInfoParsed || !linkData) {
+    const updateTableData = (linkData) => {
+      if (!linkData) {
         console.error('Invalid data provided to updateTableData');
         return;
       }
-      tableData.value = getTableData(linkInfoParsed, linkData);
+      tableData.value = getTableData(linkData);
     };
 
-    const getTableData = (linkInfoParsed, linkData) => {
+    const getTableData = (lnkDt) => {
       return {
-        title: linkInfoParsed?.title || linkData?.title || '',
-        description: linkInfoParsed?.description || linkData?.description || '',
-        keywords: linkInfoParsed?.keywords || linkData?.keywords || [],
-        date: linkInfoParsed?.date || linkData?.date || new Date().toISOString(),
+        title: lnkDt.title || '',
+        description: lnkDt.description || '',
+        keywords: lnkDt.keywords || [],
+        date: lnkDt.date || new Date().toISOString(),
       };
     };
 
@@ -601,7 +601,7 @@ export default {
         subdir_hash: '',
       };
 
-      updateTableData(linkInfoParsed.value, linkData);
+      updateTableData(linkData);
       // console.log('Link Data:', linkData);
 
       const { error: linkError } = await supabase
