@@ -119,9 +119,12 @@ export default {
       keywords: [],
       date: '',
     });
-
+    // определение совокупности ключевых слов, которые нужно заменить на null
+    const keywordsToNull = {
+      "RUTUBE, видео, клипы, сериалы, кино, трейлеры, фильмы, мультфильмы, онлайн, рутьюб, рутуб": true,
+      "видео, поделиться, телефон с камерой, телефон с видео, бесплатно, загрузить": true,
+    };
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 // Функция для обновления tableData
     const updateTableData = (linkInfoParsed, linkData) => {
       if (!linkInfoParsed || !linkData) {
@@ -257,7 +260,7 @@ export default {
           data.keywords = []; // Устанавливаем пустой массив, если нет ключевых слов
         }
 
-        console.log('Полученные данные:', data);
+        console.log('Полученные данные из ЗАГОЛОВКОВ / HEAD:', data);
         return data;
       } catch (error) {
         console.error('Ошибка при получении информации (getPageInfo) о странице:', error);
@@ -316,9 +319,9 @@ export default {
     const fetchData = async (fetchFunction, finalData) => {
       try {
         const data = await fetchFunction(url.value);
-        console.log('Данные:', data);
+        // console.log('Данные:', data);
         // Логирование перед обновлением
-        console.log('Текущее состояние finalData перед обновлением:', finalData);
+        // console.log('Текущее состояние finalData перед обновлением:', finalData);
         updateFinalData(data, finalData);
         return data;
       } catch (error) {
@@ -361,18 +364,6 @@ export default {
         rss:'',
         error: null,
       };
-
-      // Получаем информацию о странице
-      // await fetchData(getPageInfo, finalData);
-      // Проверяем, был ли получен title
-      // if (finalData.title) {
-      //   console.log('Title получен:', finalData.title);
-      //   // Если title получен, прекращаем выполнение
-      //   linkInfo.value = JSON.stringify(finalData, null, 2);
-      //   console.log('Финальная информация:', finalData);
-      //   return;
-      // }
-
       // Массив функций для выполнения
       const fetchFunctions = [getPageInfo,fetchMetaSerp];
       // const fetchFunctions = [getPageInfo,fetchMetaSerp, fetchMetaData, getPuppeteerData];
@@ -383,9 +374,9 @@ export default {
         await fetchData(fetchFunction, finalData);
         // Проверяем, был ли получен title после каждого запроса
         if (finalData.title) {
-          console.log('Title получен после запроса:', finalData.title);
+          // console.log('Title получен после запроса:', finalData.title);
           linkInfo.value = JSON.stringify(finalData, null, 2);
-          console.log('Финальная информация:', finalData);
+          // console.log('Финальная информация:', finalData);
           return;
         }
       }
@@ -424,26 +415,11 @@ export default {
         showSnackbar('Ссылка не ссылка!!!');
         return;
       }
-
-      // Генерация url_hash на основе URL
-      const urlHash = await hashString(url.value);
-
-      // Проверка существования url_hash в таблице links
-      const { data: existingLinks, error: checkError } = await supabase
-          .from('links')
-          .select('url_hash')
-          .eq('url_hash', urlHash);
-
-      if (existingLinks.length > 0) {
-        console.log('Такая ссылка в базе уже есть!');
-        showSnackbar('Такая ссылка в базе уже есть!');
-        clearFields();
-        return;
-      }
-      if (checkError) {
-        console.error('Ошибка при проверке url_hash:', checkError);
-        showSnackbar('Не удалось проверить существование ссылки. Попробуйте снова.');
-        return;
+      if (url.value) {
+        const urlCheckResult = await checkUrlExistence(url.value);
+        if (urlCheckResult.exists) {
+          return; // Прекращаем выполнение, если URL уже существует
+        }
       }
 
       // Если URL валиден, продолжаем выполнение основной логики
@@ -463,85 +439,8 @@ export default {
 
       try {
         showSnackbar('Отправка URL в Supabase...');
-
-        // Генерация favicon_name на основе доменного имени
-        const faviconName = getDomainName(linkInfoParsed.value.url);
-
-        // Генерация favicon_hash на основе favicon_name
-        const faviconHash = await hashString(faviconName);
-
-        // Проверка существования favicon_hash в таблице favicons
-        const { data: existingFavicons, error: checkFaviconError } = await supabase
-            .from('favicons')
-            .select('favicon_hash')
-            .eq('favicon_hash', faviconHash);
-
-        if (checkFaviconError) {
-          console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
-          showSnackbar('Не удалось проверить существование фавикона. Попробуйте снова.');
-          return;
-        }
-
-        if (existingFavicons.length > 0) {
-          console.log('Такой фавикон уже существует в базе!');
-          showSnackbar('Такой фавикон уже существует в базе!');
-        } else {
-          const faviconData = {
-            favicon_hash: faviconHash,
-            favicon_name: faviconName,
-            fav_url: linkInfoParsed.value.favicon || null,
-            storage_path: '',
-            user_id: userIdValue,
-          };
-          const { error: faviconError } = await supabase
-              .from('favicons')
-              .insert([faviconData]);
-
-          if (faviconError) {
-            console.error('Ошибка при отправке данных в таблицу favicons:', faviconError);
-            showSnackbar('Не удалось отправить данные фавикона. Попробуйте снова.');
-            return;
-          }
-        }
-
-        // Подготовка данных для таблицы links
-        const linkData = {
-          date: new Date().toISOString(),
-          url_hash: urlHash,
-          favicon_name: faviconName,
-          url: linkInfoParsed.value.url,
-          title: linkInfoParsed.value.title,
-          description: linkInfoParsed.value.description.trim(),
-          title_translation: '',
-          keywords: (Array.isArray(linkInfoParsed.value.keywords) && linkInfoParsed.value.keywords.length > 0)
-              ? linkInfoParsed.value.keywords.join(', ') // Преобразуем массив в строку
-              : '',
-          lang: linkInfoParsed.value.lang,
-          rss: linkInfoParsed.value.rss,
-          ai_tag: '',
-          favicon_hash: faviconHash,
-          user_id: userIdValue,
-          dir_hash: '',
-          subdir_hash: '',
-        };
-
-        // Обновляем tableData перед отправкой в Supabase
-        updateTableData(linkInfoParsed.value, linkData);
-        await delay(2000);
-
-        console.log('Link Data:', linkData);
-
-        const { error: linkError } = await supabase
-            .from('links')
-            .insert([linkData]);
-        if (linkError) {
-          console.error('Ошибка при отправке данных в Supabase:', linkError);
-          showSnackbar('Не удалось отправить данные. Попробуйте снова.');
-        } else {
-          console.log('Данные успешно отправлены!');
-          showSnackbar('Данные успешно отправлены!');
-
-        }
+        // console.log("Данные отправляемые на ДОПОДГОТОВКУ",linkInfoParsed.value)
+        await processLinkData(linkInfoParsed.value);
       } catch (error) {
         console.error('Произошла ошибка:', error);
         showSnackbar('Произошла ошибка. Попробуйте снова.');
@@ -615,10 +514,9 @@ export default {
     const buttonColorClass = computed(() => {
       return props.buttonColor === 'purple' ? 'purple-button' : 'red-button';
     });
-
     function mergeUniqueLists(list1, list2) {
-      console.log("Список 1:", list1);
-      console.log("Список 2:", list2);
+      // console.log("Список 1:", list1);
+      // console.log("Список 2:", list2);
       // Проверка пустоты списков
       if (list1.length === 0 && list2.length === 0) {
         return "";
@@ -638,34 +536,29 @@ export default {
       console.log("Объединенный список:", mergedList);
       return mergedList.join(", "); // Возвращаем объединённый список в виде строки
     }
-
-
     async function generateTags(title, description, keywords = "") {
-      console.log("Отправка данных на сервер:", { title, description, keywords });
+      console.log("Отправка данных LLM для получения AITAG:", { title, description, keywords });
       try {
         const response = await axios.post('http://localhost:3000/generate-tags', {
           title,
           description,
           keywords,
         });
-        console.log("Ответ от сервера:", response.data);
+        console.log("Ответ от сервера - список AITAG:", response.data);
         return response.data.tags;
       } catch (error) {
         console.error("Ошибка при вызове сервера:", error.response ? error.response.data : error.message);
         return "";
       }
     }
-    const keywordsToNull = {
-      "RUTUBE, видео, клипы, сериалы, кино, трейлеры, фильмы, мультфильмы, онлайн, рутьюб, рутуб": true,
-      "видео, поделиться, телефон с камерой, телефон с видео, бесплатно, загрузить": true,
-    };
+
     async function processLinkData(data) {
       const userIdValue = userId.value;
       const faviconName = getDomainName(data.url);
       const faviconHash = await hashString(faviconName);
       const title = data.title.trim();
       const resultStr = data.keywords.join(', ').trim();
-      console.log(resultStr);
+      // console.log(resultStr);
 
 
       function setKeywords() {
@@ -679,16 +572,16 @@ export default {
       }
 
       const keywords = setKeywords();
-      console.log("После обработки и удаления всякого хлама по умолчанию -------", keywords);
+      // console.log("После обработки и удаления всякого хлама по умолчанию -------", keywords);
 
       const description = data.description ? data.description.trim() : null;
       const aiTag = (title === '' || title === null) && (description === '' || description === null) ? null : await generateTags(title, description);
-      console.log("aiTag", aiTag);
+      // console.log("aiTag", aiTag);
 
       const aiKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0)) ? aiTag : keywords;
 
       const finalKeywords = mergeUniqueLists(aiKeywords, aiTag);
-      console.log("ФИНальнНы список", finalKeywords);
+      console.log("KEYWORDS FINAL", finalKeywords);
 
       const linkData = {
         date: new Date().toISOString(),
@@ -709,7 +602,7 @@ export default {
       };
 
       updateTableData(linkInfoParsed.value, linkData);
-      console.log('Link Data:', linkData);
+      // console.log('Link Data:', linkData);
 
       const { error: linkError } = await supabase
           .from('links')
@@ -719,6 +612,7 @@ export default {
         console.error('Ошибка при отправке данных в Supabase:', linkError);
         showSnackbar('Не удалось отправить данные. Попробуйте снова.');
       } else {
+        console.log("Данные отправляемые в SUPABASE LINKS",linkData)
         console.log('Данные успешно отправлены!');
         showSnackbar('Данные успешно отправлены!');
       }
@@ -782,20 +676,17 @@ export default {
       ws.onopen = () => {
         console.log('WebSocket соединение установлено');
       };
-
       ws.onmessage = async (event) => {
         const data = JSON.parse(event.data);
         if (!data.url || !data.title || !data.description) {
           console.error('Invalid WebSocket data:', data);
           return;
         }
-
         if (data.url) {
           const urlCheckResult = await checkUrlExistence(data.url);
           if (urlCheckResult.exists) {
             return; // Прекращаем выполнение, если URL уже существует
           }
-
           // Вызываем новую функцию для обработки данных
           await processLinkData(data);
         }
