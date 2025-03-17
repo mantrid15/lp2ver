@@ -94,6 +94,7 @@
               'strike-through': link.id === activeLinkId,
               'dragging': draggedLink && link.id === draggedLink.id
             }"
+
             draggable="true"
             @dragstart="onDragStart(link)"
             @dragend="onDragEnd"
@@ -215,16 +216,16 @@ export default {
     const deleteIconTimer = ref(null);
     const activeLinkId = ref(null);
     const draggedLink = ref(null); // Объявляем draggedLink здесь
-
     const isCtrlPressed = ref(false); // Состояние клавиши Ctrl
     const showTooltip = ref(false); // Видимость tooltip
     const tooltipContent = ref(''); // Содержимое tooltip
     const tooltipStyle = ref({}); // Стили для позиционирования tooltip
-
     const filter = ref(''); // Фильтр для поиска по заголовку
     const isFocused = ref(false); // Состояние фокуса на фильтре
     const folders = ref([]);
     const showAllDirs = ref(false);
+    const faviconUrl = ref('');
+
 
     const dateColumnLabel = computed(() => {
       return showAllDirs.value ? 'Folder' : 'Date';
@@ -385,23 +386,19 @@ export default {
 
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
-
       // Если ключ сортировки — 'dir_name', сортируем по названию папки
       if (key === 'dir_name') {
         const aFolder = folders.value.find(f => f.dir_hash === a.dir_hash);
         const bFolder = folders.value.find(f => f.dir_hash === b.dir_hash);
         const aValue = aFolder ? aFolder.dir_name : '';
         const bValue = bFolder ? bFolder.dir_name : '';
-
         // Пустые значения идут после непустых
         if (aValue === '' && bValue !== '') return 1; // a идет после b
         if (bValue === '' && aValue !== '') return -1; // a идет перед b
         if (aValue === '' && bValue === '') return 0; // a и b равны
-
         // Сортировка по значению
         return (aValue > bValue ? 1 : -1) * modifier;
       }
-
       // Для остальных ключей сортировки (включая 'date')
       const aValue = a[key] !== null ? a[key].toString() : '';
       const bValue = b[key] !== null ? b[key].toString() : '';
@@ -429,18 +426,15 @@ export default {
       } else {
         // Если чекбокс включен и ключ сортировки — 'date', меняем его на 'dir_name'
         const sortKey = showAllDirs.value && key === 'date' ? 'dir_name' : key;
-
         if (currentSortKey.value === sortKey) {
           currentSortOrder.value = currentSortOrder.value === 'asc' ? 'desc' : 'asc';
         } else {
           currentSortOrder.value = 'asc';
         }
-
         currentSortKey.value = sortKey;
         emit('sort', sortKey, currentSortOrder.value);
       }
     };
-
     const formatDate = (dateString) => {
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('ru-RU').format(date);
@@ -456,16 +450,26 @@ export default {
     const getSortIcon = (key) => {
       // Если чекбокс включен и ключ — 'date', используем 'dir_name' для проверки
       const sortKey = showAllDirs.value && key === 'date' ? 'dir_name' : key;
-
       if (currentSortKey.value === sortKey) {
         return currentSortOrder.value === 'asc' ? SORT_ASC_ICON : SORT_DESC_ICON;
       }
       return '';
     };
     const getFaviconUrl = (faviconHash) => {
+      // Ищем favicon по его хешу
       const favicon = props.favicons.find(f => f.favicon_hash === faviconHash);
-      return favicon ? favicon.fav_url : '/lpicon.png';
+      // Возвращаем путь по умолчанию, если favicon не найден
+      if (!favicon) {
+        return '/lpicon.png';
+      }
+      // Базовый путь для хранения favicon
+      const pathBase = 'https://wfofanoqnvqnxtmpkpqz.supabase.co/storage/v1/object/public/favibucket//';
+      const path = `${pathBase}${favicon.storage_path}`;
+
+      // Если путь совпадает с базовым, возвращаем URL фавикона
+      return path === pathBase ? favicon.fav_url : path;
     };
+
     const handleFavClick = (link) => {
       // Сбрасываем предыдущую активную ссылку
       if (activeLinkId.value === link.id) {

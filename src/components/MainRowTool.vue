@@ -125,7 +125,50 @@ export default {
       "видео, поделиться, телефон с камерой, телефон с видео, бесплатно, загрузить": true,
     };
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-// Функция для обновления tableData
+
+    // Функция для загрузки изображения в Supabase Storage
+    // Main.vue
+    const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash) => {
+      try {
+        // Используем прокси-сервер для загрузки изображения
+        const response = await axios.get(`http://localhost:3000/proxy-image?url=${encodeURIComponent(faviconUrl)}`, {
+          responseType: 'arraybuffer',
+        });
+
+        // Изменяем faviconName: делаем символ перед точкой заглавным и убираем точку
+        const parts = faviconName.split('.');
+        if (parts.length > 1) {
+          parts[0] = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+        }
+        const modifiedFaviconName = parts.join('');
+
+        // Извлекаем расширение из faviconUrl
+        const urlParts = faviconUrl.split('/').pop(); // Берем последнюю часть URL (например, "favicon.ico")
+        const fileExtension = urlParts.split('.').pop(); // Берем расширение (например, "ico")
+
+        // Формируем путь к файлу с расширением из URL
+        const filePath = `${modifiedFaviconName}.${fileExtension}`;
+        console.log('Путь к файлу:', filePath)
+
+        // Загружаем файл в Supabase Storage
+        const { data: storageData, error: storageError } = await supabase
+            .storage
+            .from('favibucket')
+            .upload(filePath, response.data, {
+              contentType: `image/${fileExtension}`, // Динамически определяем MIME-тип
+              upsert: true,
+            });
+
+        if (storageError) throw storageError;
+
+        console.log('Файл успешно загружен в Supabase Storage:', filePath);
+        return filePath; // Возвращаем только путь к файлу
+      } catch (error) {
+        console.error('Ошибка при загрузке фавикона:', error);
+        return null;
+      }
+    };
+
     const updateTableData = (linkData) => {
       if (!linkData) {
         console.error('Invalid data provided to updateTableData');
@@ -133,7 +176,6 @@ export default {
       }
       tableData.value = getTableData(linkData);
     };
-
     const getTableData = (lnkDt) => {
       return {
         title: lnkDt.title || '',
@@ -558,6 +600,7 @@ export default {
       const faviconHash = await hashString(faviconName);
       const title = data.title.trim();
       const resultStr = data.keywords.join(', ').trim();
+
       function setKeywords() {
         let keywords;
         if (keywordsToNull[resultStr]) {
@@ -569,14 +612,9 @@ export default {
       }
 
       const keywords = setKeywords();
-      // console.log("После обработки и удаления всякого хлама по умолчанию -------", keywords);
-
       const description = data.description ? data.description.trim() : null;
       const aiTag = (title === '' || title === null) && (description === '' || description === null) ? null : await generateTags(title, description);
-      // console.log("aiTag", aiTag);
-
       const aiKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0)) ? aiTag : keywords;
-
       const finalKeywords = mergeUniqueLists(aiKeywords, aiTag);
       console.log("KEYWORDS FINAL", finalKeywords);
 
@@ -599,7 +637,6 @@ export default {
       };
 
       updateTableData(linkData);
-      // console.log('Link Data:', linkData);
 
       const { error: linkError } = await supabase
           .from('links')
@@ -609,7 +646,7 @@ export default {
         console.error('Ошибка при отправке данных в Supabase:', linkError);
         showSnackbar('Не удалось отправить данные. Попробуйте снова.');
       } else {
-        console.log("Данные отправляемые в SUPABASE LINKS",linkData)
+        console.log("Данные отправляемые в SUPABASE LINKS", linkData);
         console.log('Данные успешно отправлены!');
         showSnackbar('Данные успешно отправлены!');
       }
@@ -619,26 +656,22 @@ export default {
           .select('favicon_hash')
           .eq('favicon_hash', faviconHash);
 
-      await delay(2000);
-      await clearFields();
-
       if (checkFaviconError) {
         console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
-      } else {
-        console.log('Результат проверки favicon_hash:', existingFavicons.length > 0 ? 'Не уникален' : 'Уникален');
-
-        if (existingFavicons.length === 0) {
+      } else if (existingFavicons.length === 0) {
+        const storagePath = await uploadFaviconToSupabase(data.favicon, faviconName, faviconHash);
+        if (storagePath) {
           const faviconData = {
             favicon_hash: faviconHash,
             favicon_name: faviconName,
             fav_url: data.favicon,
-            storage_path: '',
+            storage_path: storagePath,
             user_id: userIdValue,
           };
+
           const { error: insertError } = await supabase
               .from('favicons')
               .insert([faviconData]);
-          console.log('faviconData:', faviconData);
 
           if (insertError) {
             console.error('Ошибка при вставке favicon_hash в favicons:', insertError);
@@ -647,6 +680,9 @@ export default {
           }
         }
       }
+
+      await delay(2000);
+      await clearFields();
     }
     async function checkUrlExistence(url) {
       const urlHash = await hashString(url);

@@ -116,7 +116,7 @@ export default {
       try {
         const { data, error } = await supabase
           .from('favicons')
-          .select('favicon_hash, fav_url');
+          .select('favicon_hash, fav_url, storage_path');
         if (error) {
           console.error('Error fetching favicons:', error);
         } else {
