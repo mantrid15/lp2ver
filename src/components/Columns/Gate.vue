@@ -105,6 +105,7 @@
                             :src="getFaviconUrl(link.favicon_hash)"
                             alt="Favicon"
                             class="favicon"
+                            :loading="'lazy'"
                         />
             <span v-if="link.id === activeLinkId" class="delete-icon" @click.stop="deleteLink(link)">{{ DELETE_ICON }}</span>
           </td>
@@ -225,7 +226,6 @@ export default {
     const folders = ref([]);
     const showAllDirs = ref(false);
     const faviconUrl = ref('');
-
 
     const dateColumnLabel = computed(() => {
       return showAllDirs.value ? 'Folder' : 'Date';
@@ -455,19 +455,18 @@ export default {
       }
       return '';
     };
+
     const getFaviconUrl = (faviconHash) => {
-      // Ищем favicon по его хешу
       const favicon = props.favicons.find(f => f.favicon_hash === faviconHash);
-      // Возвращаем путь по умолчанию, если favicon не найден
       if (!favicon) {
         return '/lpicon.png';
       }
-      // Базовый путь для хранения favicon
-      const pathBase = 'https://wfofanoqnvqnxtmpkpqz.supabase.co/storage/v1/object/public/favibucket//';
+      const pathBase = 'https://wfofanoqnvqnxtmpkpqz.supabase.co/storage/v1/object/public/favibucket/';
       const path = `${pathBase}${favicon.storage_path}`;
-
-      // Если путь совпадает с базовым, возвращаем URL фавикона
+      // Используем прокси-сервер для загрузки изображений с кэшированием
+      const fullPath = ""
       return path === pathBase ? favicon.fav_url : path;
+      // return path === pathBase ?`/proxy-favicon?url=${encodeURIComponent(favicon.fav_url)}`: `/proxy-favicon?url=${encodeURIComponent(path)}`;
     };
 
     const handleFavClick = (link) => {

@@ -149,6 +149,29 @@ app.get('/fetch-metadata', async (req, res) => {
     }
 });
 
+app.get('/proxy-favicon', async (req, res) => {
+    const faviconUrl = req.query.url;
+
+    if (!faviconUrl) {
+        return res.status(400).json({ error: 'URL изображения не указан' });
+    }
+
+    try {
+        const response = await axios.get(faviconUrl, { responseType: 'arraybuffer' });
+        console.log('Изображение успешно загружено', faviconUrl);
+
+        // Устанавливаем заголовки для кэширования на 1 год
+        res.set('Cache-Control', 'public, max-age=31536000');
+        res.set('Expires', new Date(Date.now() + 31536000000).toUTCString());
+        res.set('Content-Type', response.headers['content-type']);
+        res.send(response.data);
+        console.log('Изображение успешно загружено и закэшировано', faviconUrl);
+    } catch (error) {
+        console.error('Ошибка при загрузке изображения:', error);
+        res.status(500).json({ error: 'Ошибка при загрузке изображения' });
+    }
+});
+
 // Функция для извлечения метаданных с помощью Puppeteer
 async function puppeteerMetaData(url) {
     const browser = await puppeteer.launch({ headless: true });

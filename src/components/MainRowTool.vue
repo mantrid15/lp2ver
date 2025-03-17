@@ -131,6 +131,7 @@ export default {
     const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash) => {
       try {
         // Используем прокси-сервер для загрузки изображения
+        console.log('Попытка загрузки фавикона:', faviconUrl);
         const response = await axios.get(`http://localhost:3000/proxy-image?url=${encodeURIComponent(faviconUrl)}`, {
           responseType: 'arraybuffer',
         });
@@ -148,6 +149,7 @@ export default {
 
         // Формируем путь к файлу с расширением из URL
         const filePath = `${modifiedFaviconName}.${fileExtension}`;
+
         console.log('Путь к файлу:', filePath)
 
         // Загружаем файл в Supabase Storage
