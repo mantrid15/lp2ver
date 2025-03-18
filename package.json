@@ -28,6 +28,7 @@
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "request": "^2.88.2",
     "sharp": "^0.33.5",
+    "stopword": "^3.1.4",
     "translate-google": "^1.5.0",
     "url-metadata": "^4.1.1",
     "vue": "^3.5.13",

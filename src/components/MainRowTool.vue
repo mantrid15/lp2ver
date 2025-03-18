@@ -84,7 +84,10 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { supabase } from "@/clients/supabase";
 import { useStore } from 'vuex';
-
+import nlp from 'compromise';
+// import dotenv from 'dotenv';
+// import stopword from 'stopword';
+// import natural from 'natural';
 export default {
   name: 'MainRowTool',
   props: {
@@ -126,50 +129,103 @@ export default {
     };
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+
+
+// dotenv.config({ path: '.env.local' });
+    async function generateTagsNlp(title, description, keywords = []) {
+      // Функция для фильтрации общеупотребительных терминов
+      const isCommonTerm = (term) => {
+        const commonTerms = [
+          'и', 'в', 'на', 'с', 'по', 'для', 'это', 'что', 'как', 'we', 'to', 'you', 'your', '!',
+          'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'simplify',
+          'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing',
+          'if', 'then', 'else', 'but', 'or', 'because', 'since', 'until',
+          'while', 'for', 'in', 'of', 'about', 'at', 'as', 'by', 'with',
+          'from', 'to', 'up', 'down', 'over', 'under', 'after', 'before',
+          'between', 'among', 'within', 'without', 'through', 'during',
+          'along', 'across', 'against', 'around', 'near', 'about', 'above',
+          'below', 'beyond', 'outside', 'inside', 'usage'
+        ];
+        return commonTerms.includes(term.toLowerCase());
+      };
+      // Функция для фильтрации существительных
+      const filterTermsAndNouns = (words) => {
+        const filteredTerms = [];
+        words.forEach(word => {
+          const doc = nlp(word);
+          if (doc.nouns().length > 0) {
+            filteredTerms.push(word);
+          }
+        });
+        return filteredTerms;
+      };
+      // Преобразуем keywords в строку, если это массив
+      if (Array.isArray(keywords)) {
+        keywords = keywords.join(' ');
+      }
+      // Убираем лишние пробелы
+      keywords = keywords.trim();
+      // Объединяем title, description и keywords в одну строку
+      let combinedText = `${title} ${description} ${keywords}`;
+      // Заменяем запятые на пробелы и преобразуем в нижний регистр
+      combinedText = combinedText.replace(/,/g, ' ').toLowerCase();
+      const wordsArray = combinedText.split(/\s+/);
+
+      // Удаляем дубликаты и фильтруем существительные
+      const uniqueWords = [...new Set(filterTermsAndNouns(wordsArray))].filter(word => !isCommonTerm(word));
+      const cleanedArray = uniqueWords.map(item =>
+          item.replace(/[^А-Яа-яЁёA-Za-z0-9\s]/g, '')
+      );
+
+      // Ограничиваем количество тегов до трех
+      return cleanedArray.slice(0, 3);
+    }
+
+
     // Функция для загрузки изображения в Supabase Storage
     // Main.vue
-    const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash) => {
-      try {
-        // Используем прокси-сервер для загрузки изображения
-        console.log('Попытка загрузки фавикона:', faviconUrl);
-        const response = await axios.get(`http://localhost:3000/proxy-image?url=${encodeURIComponent(faviconUrl)}`, {
-          responseType: 'arraybuffer',
-        });
-
-        // Изменяем faviconName: делаем символ перед точкой заглавным и убираем точку
-        const parts = faviconName.split('.');
-        if (parts.length > 1) {
-          parts[0] = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-        }
-        const modifiedFaviconName = parts.join('');
-
-        // Извлекаем расширение из faviconUrl
-        const urlParts = faviconUrl.split('/').pop(); // Берем последнюю часть URL (например, "favicon.ico")
-        const fileExtension = urlParts.split('.').pop(); // Берем расширение (например, "ico")
-
-        // Формируем путь к файлу с расширением из URL
-        const filePath = `${modifiedFaviconName}.${fileExtension}`;
-
-        console.log('Путь к файлу:', filePath)
-
-        // Загружаем файл в Supabase Storage
-        const { data: storageData, error: storageError } = await supabase
-            .storage
-            .from('favibucket')
-            .upload(filePath, response.data, {
-              contentType: `image/${fileExtension}`, // Динамически определяем MIME-тип
-              upsert: true,
-            });
-
-        if (storageError) throw storageError;
-
-        console.log('Файл успешно загружен в Supabase Storage:', filePath);
-        return filePath; // Возвращаем только путь к файлу
-      } catch (error) {
-        console.error('Ошибка при загрузке фавикона:', error);
-        return null;
-      }
-    };
+    // const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash) => {
+    //   try {
+    //     // Используем прокси-сервер для загрузки изображения
+    //     console.log('Попытка загрузки фавикона:', faviconUrl);
+    //     const response = await axios.get(`http://localhost:3000/proxy-image?url=${encodeURIComponent(faviconUrl)}`, {
+    //       responseType: 'arraybuffer',
+    //     });
+    //
+    //     // Изменяем faviconName: делаем символ перед точкой заглавным и убираем точку
+    //     const parts = faviconName.split('.');
+    //     if (parts.length > 1) {
+    //       parts[0] = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+    //     }
+    //     const modifiedFaviconName = parts.join('');
+    //
+    //     // Извлекаем расширение из faviconUrl
+    //     const urlParts = faviconUrl.split('/').pop(); // Берем последнюю часть URL (например, "favicon.ico")
+    //     const fileExtension = urlParts.split('.').pop(); // Берем расширение (например, "ico")
+    //
+    //     // Формируем путь к файлу с расширением из URL
+    //     const filePath = `${modifiedFaviconName}.${fileExtension}`;
+    //
+    //     console.log('Путь к файлу:', filePath)
+    //
+    //     // Загружаем файл в Supabase Storage
+    //     const { data: storageData, error: storageError } = await supabase
+    //         .storage
+    //         .from('favibucket')
+    //         .upload(filePath, response.data, {
+    //           contentType: `image/${fileExtension}`, // Динамически определяем MIME-тип
+    //           upsert: true,
+    //         });
+    //
+    //     if (storageError) throw storageError;
+    //
+    //     console.log('Файл успешно загружен в Supabase Storage:', filePath);
+    //     return filePath; // Возвращаем только путь к файлу
+    //   } catch (error) {
+    //     console.error('Ошибка при загрузке фавикона:', error);
+    //     return null;
+    //   }
+    // };
 
     const updateTableData = (linkData) => {
       if (!linkData) {
@@ -612,10 +668,24 @@ export default {
         }
         return keywords;
       }
-
       const keywords = setKeywords();
       const description = data.description ? data.description.trim() : null;
-      const aiTag = (title === '' || title === null) && (description === '' || description === null) ? null : await generateTags(title, description);
+
+      let aiTag = null;
+      if (title === '' || title === null || description === '' || description === null) {
+        aiTag = null;
+      } else {
+        try {
+          aiTag = await generateTagsNlp(title, description);
+        } catch (error) {
+          // Логируем ошибку или обрабатываем её по своему усмотрению
+          console.error('Ошибка при вызове generateTags с await:', error);
+          // Вызываем функцию без await
+          aiTag = generateTags(title, description);
+        }
+      }
+
+      // const aiTag = (title === '' || title === null) && (description === '' || description === null) ? null : await generateTags(title, description);
       const aiKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0)) ? aiTag : keywords;
       const finalKeywords = mergeUniqueLists(aiKeywords, aiTag);
       console.log("KEYWORDS FINAL", finalKeywords);
@@ -660,17 +730,27 @@ export default {
 
       if (checkFaviconError) {
         console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
-      } else if (existingFavicons.length === 0) {
-        const storagePath = await uploadFaviconToSupabase(data.favicon, faviconName, faviconHash);
-        if (storagePath) {
+      // } else if (existingFavicons.length === 0) {
+      //   const storagePath = await uploadFaviconToSupabase(data.favicon, faviconName, faviconHash);
+      //   if (storagePath) {
+      //     const faviconData = {
+      //       favicon_hash: faviconHash,
+      //       favicon_name: faviconName,
+      //       fav_url: data.favicon,
+      //       storage_path: storagePath,
+      //       user_id: userIdValue,
+      //     };
+      } else {
+        console.log('Результат проверки favicon_hash:', existingFavicons.length > 0 ? 'Не уникален' : 'Уникален');
+
+        if (existingFavicons.length === 0) {
           const faviconData = {
             favicon_hash: faviconHash,
             favicon_name: faviconName,
             fav_url: data.favicon,
-            storage_path: storagePath,
+            storage_path: '',
             user_id: userIdValue,
           };
-
           const { error: insertError } = await supabase
               .from('favicons')
               .insert([faviconData]);
@@ -715,22 +795,6 @@ export default {
         const data = JSON.parse(event.data);
         console.log('Data received from WebSocket:', data)
 
-        // if (!data.url || !data.title || !data.description) {
-        //   console.error('Invalid WebSocket data:', data);
-        //
-        //   // Вывод недействительных данных в консоль
-        //   if (!data.url) {
-        //     console.error('Missing URL:', data.url);
-        //   }
-        //   if (!data.title) {
-        //     console.error('Missing Title:', data.title);
-        //   }
-        //   if (!data.description) {
-        //     console.error('Missing Description:', data.description);
-        //   }
-        //
-        //   return;
-        // }
         if (data.url) {
           const urlCheckResult = await checkUrlExistence(data.url);
           if (urlCheckResult.exists) {

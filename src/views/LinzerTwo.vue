@@ -34,6 +34,8 @@ import { supabase } from '@/clients/supabase.js';
 import Left from '@/components/Columns/Left.vue';
 import Right from '@/components/Columns/Right.vue';
 import Gate from '@/components/Columns/Gate.vue';
+import { useStore } from 'vuex';
+
 
 export default {
   name: 'LinzerTwo',
@@ -45,8 +47,9 @@ export default {
   },
 
   setup() {
+    const store = useStore();
+    const userId = computed(() => store.state.userId); // Получите userId из Vuex
     const selectedFolderHash = ref(null); // Состояние для хранения dir_hash выбранной папки
-
     const handleFolderSelected = (dirHash) => {
       selectedFolderHash.value = dirHash;
     };
