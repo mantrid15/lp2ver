@@ -127,16 +127,14 @@ export default {
       "RUTUBE, видео, клипы, сериалы, кино, трейлеры, фильмы, мультфильмы, онлайн, рутьюб, рутуб": true,
       "видео, поделиться, телефон с камерой, телефон с видео, бесплатно, загрузить": true,
     };
+
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-
-
 // dotenv.config({ path: '.env.local' });
     async function generateTagsNlp(title, description, keywords = []) {
       // Функция для фильтрации общеупотребительных терминов
       const isCommonTerm = (term) => {
         const commonTerms = [
-          'и', 'в', 'на', 'с', 'по', 'для', 'это', 'что', 'как', 'we', 'to', 'you', 'your', '!',
+          'и', 'в', 'на', 'с', 'из', 'по', 'для', 'это', 'что', 'как', 'we', 'to', 'you', 'your', '!',
           'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'simplify',
           'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing',
           'if', 'then', 'else', 'but', 'or', 'because', 'since', 'until',
@@ -181,51 +179,74 @@ export default {
       return cleanedArray.slice(0, 3);
     }
 
-
     // Функция для загрузки изображения в Supabase Storage
     // Main.vue
-    // const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash) => {
-    //   try {
-    //     // Используем прокси-сервер для загрузки изображения
-    //     console.log('Попытка загрузки фавикона:', faviconUrl);
-    //     const response = await axios.get(`http://localhost:3000/proxy-image?url=${encodeURIComponent(faviconUrl)}`, {
-    //       responseType: 'arraybuffer',
-    //     });
-    //
-    //     // Изменяем faviconName: делаем символ перед точкой заглавным и убираем точку
-    //     const parts = faviconName.split('.');
-    //     if (parts.length > 1) {
-    //       parts[0] = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-    //     }
-    //     const modifiedFaviconName = parts.join('');
-    //
-    //     // Извлекаем расширение из faviconUrl
-    //     const urlParts = faviconUrl.split('/').pop(); // Берем последнюю часть URL (например, "favicon.ico")
-    //     const fileExtension = urlParts.split('.').pop(); // Берем расширение (например, "ico")
-    //
-    //     // Формируем путь к файлу с расширением из URL
-    //     const filePath = `${modifiedFaviconName}.${fileExtension}`;
-    //
-    //     console.log('Путь к файлу:', filePath)
-    //
-    //     // Загружаем файл в Supabase Storage
-    //     const { data: storageData, error: storageError } = await supabase
-    //         .storage
-    //         .from('favibucket')
-    //         .upload(filePath, response.data, {
-    //           contentType: `image/${fileExtension}`, // Динамически определяем MIME-тип
-    //           upsert: true,
-    //         });
-    //
-    //     if (storageError) throw storageError;
-    //
-    //     console.log('Файл успешно загружен в Supabase Storage:', filePath);
-    //     return filePath; // Возвращаем только путь к файлу
-    //   } catch (error) {
-    //     console.error('Ошибка при загрузке фавикона:', error);
-    //     return null;
-    //   }
-    // };
+    const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash=null) => {
+      try {
+        // Разбиваем имя по точкам и делаем первую букву каждой части заглавной
+        const parts = faviconName.split('.');
+        const modifiedFaviconName = parts
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1)) // Заглавная буква для каждой части
+            .join(''); // Объединяем части
+
+        // Извлекаем расширение из faviconUrl
+        const urlParts = faviconUrl.split('/').pop(); // Берем последнюю часть URL (например, "favicon.ico")
+        const fileExtension = urlParts.split('.').pop(); // Берем расширение (например, "ico")
+
+        // Формируем путь к файлу с расширением из URL
+        const extensionLength = fileExtension.length > 3 ? 3 : fileExtension.length; // Ограничиваем длину до 3 символов
+        const trimmedFileExtension = fileExtension.substring(0, extensionLength); // Обрезаем лишние символы
+        const filePath = `${modifiedFaviconName}.${trimmedFileExtension}`;
+
+        console.log('1. Путь к файлу:', filePath); // Должен возвращать "MytishchiHhRu.ico"
+
+        // Получаем изображение по URL
+        const response = await fetch(faviconUrl);
+        const blob = await response.blob(); // Преобразуем ответ в Blob
+        console.log('2. Файл будет сохранен с именем:', filePath);
+
+        // Создаем объект File
+        const file = new File([blob], filePath, { type: `image/${trimmedFileExtension}` });
+        console.log('3. Файл будет с именем:', filePath);
+
+        // Сохраняем файл локально
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filePath;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Освобождаем память
+        URL.revokeObjectURL(url);
+        console.log('Файл успешно сохранен локально');
+
+
+
+        // Загружаем файл в Supabase Storage
+        const { data: data, error: storageError } = await supabase
+            .storage
+            .from('favibucket')
+            .upload(filePath, file, {
+              contentType: `image/${trimmedFileExtension}`, // Динамически определяем MIME-тип
+              upsert: true,
+            });
+
+        console.log('4. Файл успешно загружен в Supabase Storage:', filePath);
+        if (storageError) {
+          console.error('Ошибка при загрузке файла:', storageError);
+          return null;
+
+        }
+        console.log('storageData:', data);
+
+        return filePath; // Возвращаем только путь к файлу
+      } catch (error) {
+        console.error('Ошибка при загрузке фавикона:', error);
+        return null;
+      }
+    };
+
 
     const updateTableData = (linkData) => {
       if (!linkData) {
@@ -234,6 +255,7 @@ export default {
       }
       tableData.value = getTableData(linkData);
     };
+
     const getTableData = (lnkDt) => {
       return {
         title: lnkDt.title || '',
@@ -614,6 +636,7 @@ export default {
     const buttonColorClass = computed(() => {
       return props.buttonColor === 'purple' ? 'purple-button' : 'red-button';
     });
+
     function mergeUniqueLists(list1, list2) {
       // console.log("Список 1:", list1);
       // console.log("Список 2:", list2);
@@ -636,6 +659,7 @@ export default {
       console.log("Объединенный список:", mergedList);
       return mergedList.join(", "); // Возвращаем объединённый список в виде строки
     }
+
     async function generateTags(title, description, keywords = "") {
       console.log("Отправка данных LLM для получения AITAG:", { title, description, keywords });
       try {
@@ -730,28 +754,30 @@ export default {
 
       if (checkFaviconError) {
         console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
-      // } else if (existingFavicons.length === 0) {
-      //   const storagePath = await uploadFaviconToSupabase(data.favicon, faviconName, faviconHash);
-      //   if (storagePath) {
-      //     const faviconData = {
-      //       favicon_hash: faviconHash,
-      //       favicon_name: faviconName,
-      //       fav_url: data.favicon,
-      //       storage_path: storagePath,
-      //       user_id: userIdValue,
-      //     };
       } else {
         console.log('Результат проверки favicon_hash:', existingFavicons.length > 0 ? 'Не уникален' : 'Уникален');
-
+        // } else if (existingFavicons.length === 0) {
+        const storagePath = await uploadFaviconToSupabase(data.favicon, faviconName, faviconHash);
+        //   if (storagePath) {
+        //     const faviconData = {
+        //       favicon_hash: faviconHash,
+        //       favicon_name: faviconName,
+        //       fav_url: data.favicon,
+        //       storage_path: storagePath,
+        //       user_id: userIdValue,
+        //     };
         if (existingFavicons.length === 0) {
           const faviconData = {
             favicon_hash: faviconHash,
             favicon_name: faviconName,
             fav_url: data.favicon,
-            storage_path: '',
+            storage_path: storagePath,
             user_id: userIdValue,
           };
-          const { error: insertError } = await supabase
+          console.log('Данные для отправки в favicons:', faviconData);
+
+
+          const {error: insertError} = await supabase
               .from('favicons')
               .insert([faviconData]);
 
@@ -848,6 +874,7 @@ export default {
     }
 
     return {
+      uploadFaviconToSupabase,
       keywordsToNull,
       tableData,
       updateTableData,
