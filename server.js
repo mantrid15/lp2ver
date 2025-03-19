@@ -4,6 +4,8 @@ import axios from 'axios';
 import puppeteer from 'puppeteer';
 import { WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 
 // Загружаем переменные окружения
 dotenv.config({ path: '.env.local' });
@@ -26,6 +28,61 @@ const wss = new WebSocketServer({ server });
 const clients = new Set();
 const clientLastData = new Map();
 
+// Эндпоинт для загрузки фавиконов
+app.post('/upload-favicon', async (req, res) => {
+    const { faviconUrl, faviconName } = req.body;
+
+    if (!faviconUrl || !faviconName) {
+        return res.status(400).json({ error: 'URL фавикона или имя не указаны' });
+    }
+
+    try {
+        // Получаем изображение по URL
+        const response = await axios.get(faviconUrl, { responseType: 'arraybuffer' });
+        const blob = response.data;
+
+        // Сохраняем файл локально
+        const filePath = path.join(__dirname, 'storage_fav', faviconName); // Путь к локальной папке
+        fs.writeFileSync(filePath, blob);
+        console.log('Файл успешно сохранен локально:', filePath);
+
+        // Загружаем файл в Supabase Storage
+        const file = new File([blob], faviconName, { type: 'image/png' }); // Укажите правильный MIME-тип
+        const { data, error: storageError } = await supabase
+            .storage
+            .from('favibucket')
+            .upload(faviconName, file, {
+                contentType: 'image/png', // Динамически определяем MIME-тип
+                upsert: true,
+            });
+
+        if (storageError) {
+            console.error('Ошибка при загрузке файла в Supabase:', storageError);
+            return res.status(500).json({ error: 'Ошибка при загрузке файла в Supabase' });
+        }
+
+        console.log('Файл успешно загружен в Supabase Storage:', faviconName);
+        res.json({ status: 'Фавикон успешно загружен', filePath });
+    } catch (error) {
+        console.error('Ошибка при загрузке фавикона:', error);
+        res.status(500).json({ error: 'Ошибка при загрузке фавикона' });
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 wss.on('connection', (ws) => {
     console.log('Новое подключение WebSocket');
     clients.add(ws);
@@ -41,7 +98,7 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Эндпоинт для загрузки изображений через прокси
+// НЕРАБОЧИЭндпоинт для загрузки изображений через прокси
 app.get('/proxy-image', async (req, res) => {
   const imageUrl = req.query.url;
   console.log(imageUrl, 'Получен запрос на /proxy-image');

@@ -85,6 +85,8 @@ import * as cheerio from 'cheerio';
 import { supabase } from "@/clients/supabase";
 import { useStore } from 'vuex';
 import nlp from 'compromise';
+import fs from 'fs';
+import path from 'path';
 // import dotenv from 'dotenv';
 // import stopword from 'stopword';
 // import natural from 'natural';
@@ -181,6 +183,8 @@ export default {
 
     // Функция для загрузки изображения в Supabase Storage
     // Main.vue
+
+
     const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash=null) => {
       try {
         // Разбиваем имя по точкам и делаем первую букву каждой части заглавной
@@ -188,11 +192,9 @@ export default {
         const modifiedFaviconName = parts
             .map(part => part.charAt(0).toUpperCase() + part.slice(1)) // Заглавная буква для каждой части
             .join(''); // Объединяем части
-
         // Извлекаем расширение из faviconUrl
         const urlParts = faviconUrl.split('/').pop(); // Берем последнюю часть URL (например, "favicon.ico")
         const fileExtension = urlParts.split('.').pop(); // Берем расширение (например, "ico")
-
         // Формируем путь к файлу с расширением из URL
         const extensionLength = fileExtension.length > 3 ? 3 : fileExtension.length; // Ограничиваем длину до 3 символов
         const trimmedFileExtension = fileExtension.substring(0, extensionLength); // Обрезаем лишние символы
@@ -209,19 +211,13 @@ export default {
         const file = new File([blob], filePath, { type: `image/${trimmedFileExtension}` });
         console.log('3. Файл будет с именем:', filePath);
 
-        // Сохраняем файл локально
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filePath;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        // Освобождаем память
-        URL.revokeObjectURL(url);
-        console.log('Файл успешно сохранен локально');
+    // Сохраняем файл локально
+    const localPath = `${filePath}`; // Путь к локальной папке
+    const fileStream = fs.createWriteStream(localPath); // Используем fs для записи файла
+    fileStream.write(await blob.arrayBuffer());
+    fileStream.end();
 
-
+    console.log('4. Файл успешно сохранен локально');
 
         // Загружаем файл в Supabase Storage
         const { data: data, error: storageError } = await supabase
@@ -236,7 +232,6 @@ export default {
         if (storageError) {
           console.error('Ошибка при загрузке файла:', storageError);
           return null;
-
         }
         console.log('storageData:', data);
 
@@ -246,6 +241,8 @@ export default {
         return null;
       }
     };
+
+
 
 
     const updateTableData = (linkData) => {
