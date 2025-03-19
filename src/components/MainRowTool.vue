@@ -82,7 +82,9 @@
 import {ref, onMounted, computed, nextTick} from 'vue';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+// import { supabase } from "./src/clients/supabase"
 import { supabase } from "@/clients/supabase";
+
 import { useStore } from 'vuex';
 import nlp from 'compromise';
 import fs from 'fs';
@@ -185,64 +187,25 @@ export default {
     // Main.vue
 
 
-    const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash=null) => {
+    const uploadFaviconToSupabase = async (faviconUrl, faviconName) => {
       try {
-        // Разбиваем имя по точкам и делаем первую букву каждой части заглавной
-        const parts = faviconName.split('.');
-        const modifiedFaviconName = parts
-            .map(part => part.charAt(0).toUpperCase() + part.slice(1)) // Заглавная буква для каждой части
-            .join(''); // Объединяем части
-        // Извлекаем расширение из faviconUrl
-        const urlParts = faviconUrl.split('/').pop(); // Берем последнюю часть URL (например, "favicon.ico")
-        const fileExtension = urlParts.split('.').pop(); // Берем расширение (например, "ico")
-        // Формируем путь к файлу с расширением из URL
-        const extensionLength = fileExtension.length > 3 ? 3 : fileExtension.length; // Ограничиваем длину до 3 символов
-        const trimmedFileExtension = fileExtension.substring(0, extensionLength); // Обрезаем лишние символы
-        const filePath = `${modifiedFaviconName}.${trimmedFileExtension}`;
+        const response = await axios.post('http://localhost:3000/upload-favicon', {
+          faviconUrl,
+          faviconName,
+        });
 
-        console.log('1. Путь к файлу:', filePath); // Должен возвращать "MytishchiHhRu.ico"
-
-        // Получаем изображение по URL
-        const response = await fetch(faviconUrl);
-        const blob = await response.blob(); // Преобразуем ответ в Blob
-        console.log('2. Файл будет сохранен с именем:', filePath);
-
-        // Создаем объект File
-        const file = new File([blob], filePath, { type: `image/${trimmedFileExtension}` });
-        console.log('3. Файл будет с именем:', filePath);
-
-    // Сохраняем файл локально
-    const localPath = `${filePath}`; // Путь к локальной папке
-    const fileStream = fs.createWriteStream(localPath); // Используем fs для записи файла
-    fileStream.write(await blob.arrayBuffer());
-    fileStream.end();
-
-    console.log('4. Файл успешно сохранен локально');
-
-        // Загружаем файл в Supabase Storage
-        const { data: data, error: storageError } = await supabase
-            .storage
-            .from('favibucket')
-            .upload(filePath, file, {
-              contentType: `image/${trimmedFileExtension}`, // Динамически определяем MIME-тип
-              upsert: true,
-            });
-
-        console.log('4. Файл успешно загружен в Supabase Storage:', filePath);
-        if (storageError) {
-          console.error('Ошибка при загрузке файла:', storageError);
+        if (response.data.status === 'Фавикон успешно загружен') {
+          console.log('Фавикон успешно загружен на сервер:', response.data.filePath);
+          return response.data.filePath;
+        } else {
+          console.error('Ошибка при загрузке фавикона:', response.data.error);
           return null;
         }
-        console.log('storageData:', data);
-
-        return filePath; // Возвращаем только путь к файлу
       } catch (error) {
-        console.error('Ошибка при загрузке фавикона:', error);
+        console.error('Ошибка при отправке данных на сервер:', error);
         return null;
       }
     };
-
-
 
 
     const updateTableData = (linkData) => {

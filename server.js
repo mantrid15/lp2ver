@@ -1,11 +1,20 @@
+import 'module-alias/register';
 import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
 import puppeteer from 'puppeteer';
 import { WebSocketServer } from 'ws';
+import { supabase } from "@/clients/supabase";
+
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname} from 'path';
+
+// Получаем __dirname в ES-модулях
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Загружаем переменные окружения
 dotenv.config({ path: '.env.local' });
@@ -29,23 +38,20 @@ const clients = new Set();
 const clientLastData = new Map();
 
 // Эндпоинт для загрузки фавиконов
+// Эндпоинт для загрузки фавиконов
 app.post('/upload-favicon', async (req, res) => {
     const { faviconUrl, faviconName } = req.body;
-
     if (!faviconUrl || !faviconName) {
         return res.status(400).json({ error: 'URL фавикона или имя не указаны' });
     }
-
     try {
         // Получаем изображение по URL
         const response = await axios.get(faviconUrl, { responseType: 'arraybuffer' });
         const blob = response.data;
-
         // Сохраняем файл локально
         const filePath = path.join(__dirname, 'storage_fav', faviconName); // Путь к локальной папке
         fs.writeFileSync(filePath, blob);
         console.log('Файл успешно сохранен локально:', filePath);
-
         // Загружаем файл в Supabase Storage
         const file = new File([blob], faviconName, { type: 'image/png' }); // Укажите правильный MIME-тип
         const { data, error: storageError } = await supabase
@@ -55,12 +61,10 @@ app.post('/upload-favicon', async (req, res) => {
                 contentType: 'image/png', // Динамически определяем MIME-тип
                 upsert: true,
             });
-
         if (storageError) {
             console.error('Ошибка при загрузке файла в Supabase:', storageError);
             return res.status(500).json({ error: 'Ошибка при загрузке файла в Supabase' });
         }
-
         console.log('Файл успешно загружен в Supabase Storage:', faviconName);
         res.json({ status: 'Фавикон успешно загружен', filePath });
     } catch (error) {
@@ -68,20 +72,6 @@ app.post('/upload-favicon', async (req, res) => {
         res.status(500).json({ error: 'Ошибка при загрузке фавикона' });
     }
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 wss.on('connection', (ws) => {
     console.log('Новое подключение WebSocket');
@@ -97,7 +87,6 @@ wss.on('connection', (ws) => {
         console.error('Ошибка WebSocket:', error);
     });
 });
-
 // НЕРАБОЧИЭндпоинт для загрузки изображений через прокси
 app.get('/proxy-image', async (req, res) => {
   const imageUrl = req.query.url;
@@ -117,7 +106,6 @@ app.get('/proxy-image', async (req, res) => {
     res.status(500).json({ error: 'Ошибка при загрузке изображения' });
   }
 });
-
 // Эндпоинт для генерации тегов
 app.post('/generate-tags', async (req, res) => {
     const { title, description, keywords } = req.body;
@@ -159,7 +147,6 @@ app.post('/generate-tags', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-
 // Маршрут для приема URL от расширения Chrome
 app.post('/api/send-url', async (req, res) => {
     const data = req.body;
@@ -171,15 +158,12 @@ app.post('/api/send-url', async (req, res) => {
     broadcastUrl(data);
     res.json({ status: 'Data received', data });
 });
-
 // Маршрут для прокси-запросов
 app.get('/proxy', async (req, res) => {
     const url = req.query.url;
-
     if (!url) {
         return res.status(400).json({ error: 'URL не указан' });
     }
-
     try {
         const response = await axios.get(url);
         res.set('Content-Type', response.headers['content-type']);
@@ -188,7 +172,6 @@ app.get('/proxy', async (req, res) => {
         res.status(500).json({ error: 'Ошибка при запросе к URL' });
     }
 });
-
 // Маршрут для извлечения метаданных с помощью Puppeteer
 app.get('/fetch-metadata', async (req, res) => {
     const url = req.query.url;
@@ -228,7 +211,6 @@ app.get('/proxy-favicon', async (req, res) => {
         res.status(500).json({ error: 'Ошибка при загрузке изображения' });
     }
 });
-
 // Функция для извлечения метаданных с помощью Puppeteer
 async function puppeteerMetaData(url) {
     const browser = await puppeteer.launch({ headless: true });
@@ -257,7 +239,6 @@ async function puppeteerMetaData(url) {
         await browser.close();
     }
 }
-
 // Функция для отправки данных всем подключенным клиентам WebSocket
 const broadcastUrl = (data) => {
     console.log('Broadcasting data to clients:', data);
