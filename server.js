@@ -1,20 +1,9 @@
-import 'module-alias/register';
 import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
 import puppeteer from 'puppeteer';
 import { WebSocketServer } from 'ws';
-import { supabase } from "@/clients/supabase";
-
 import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname} from 'path';
-
-// Получаем __dirname в ES-модулях
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Загружаем переменные окружения
 dotenv.config({ path: '.env.local' });
@@ -100,7 +89,7 @@ app.get('/proxy-image', async (req, res) => {
     const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
     res.set('Content-Type', response.headers['content-type']);
     res.send(response.data);
-    console.log('Изображение успешно загружено', imageUrl);
+console.log('Изображение успешно загружено', imageUrl);
   } catch (error) {
     console.error('Ошибка при загрузке изображения:', error);
     res.status(500).json({ error: 'Ошибка при загрузке изображения' });

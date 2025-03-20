@@ -316,7 +316,6 @@ export default {
       }
       return chunks.join('<br>'); // Добавляем <br> для переноса строк
     };
-
     // Обработчик наведения на ячейку
     const handleMouseEnter = (event, content) => {
       if (isCtrlPressed.value && content) {
@@ -333,12 +332,10 @@ export default {
         };
       }
     };
-
     // Обработчик ухода мыши с ячейки
     const handleMouseLeave = () => {
       showTooltip.value = false;
     };
-
     // Обработчик нажатия клавиши Ctrl
     const handleKeyDown = (event) => {
       if (event.ctrlKey) {
@@ -456,17 +453,49 @@ export default {
       return '';
     };
 
+    // const getFaviconUrl = (faviconHash) => {
+    //   const favicon = props.favicons.find(f => f.favicon_hash === faviconHash);
+    //   if (!favicon) {
+    //     return '/lpicon.png';
+    //   }
+    //   const pathBase = 'https://wfofanoqnvqnxtmpkpqz.supabase.co/storage/v1/object/public/favibucket/';
+    //   const path = `${pathBase}${favicon.storage_path}`;
+    //   // Используем прокси-сервер для загрузки изображений с кэшированием
+    //   const fullPath = ""
+    //   return path === pathBase ? favicon.fav_url : path;
+    //   // return path === pathBase ?`/proxy-favicon?url=${encodeURIComponent(favicon.fav_url)}`: `/proxy-favicon?url=${encodeURIComponent(path)}`;
+    // };
+
+    async function checkImageUrl(primaryUrl, fallbackUrl) {
+      try {
+        const response = await fetch(primaryUrl, { method: 'HEAD' });
+
+        // Проверяем статус ответа
+        if (response.ok) {
+          return primaryUrl; // Изображение существует
+        } else {
+          return fallbackUrl; // Изображение отсутствует
+        }
+      } catch (error) {
+        return fallbackUrl; // В случае ошибки вернем запасной URL
+      }
+    }
+
     const getFaviconUrl = (faviconHash) => {
       const favicon = props.favicons.find(f => f.favicon_hash === faviconHash);
       if (!favicon) {
-        return '/lpicon.png';
+        return '/lpicon.png'; // Возвращаем дефолтную иконку, если фавикон не найден
       }
+
       const pathBase = 'https://wfofanoqnvqnxtmpkpqz.supabase.co/storage/v1/object/public/favibucket/';
       const path = `${pathBase}${favicon.storage_path}`;
-      // Используем прокси-сервер для загрузки изображений с кэшированием
-      const fullPath = ""
-      return path === pathBase ? favicon.fav_url : path;
-      // return path === pathBase ?`/proxy-favicon?url=${encodeURIComponent(favicon.fav_url)}`: `/proxy-favicon?url=${encodeURIComponent(path)}`;
+
+      // Проверяем, что path не равен pathBase (т.е. storage_path не пустой)
+      if (path === pathBase || !favicon.storage_path) {
+        return favicon.fav_url || '/lpicon.png'; // Возвращаем fav_url или fallback
+      }
+
+      return path; // Возвращаем path, если он сформирован корректно
     };
 
     const handleFavClick = (link) => {

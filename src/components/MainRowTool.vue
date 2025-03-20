@@ -30,38 +30,38 @@
                density="compact"
                fixed-header>
         <tbody>
-          <tr>
-            <td class="divider" style="width: 300px; border: 1px solid white; padding: 0;">
-              <input ref="urlInput" v-model="url" class="url-input" type="text" placeholder="Введите URL" @keydown.enter="handleEnter" style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;" />
-            </td>
-            <td class="divider"
-                style="width: 30px; border: 1px solid white; display: flex; justify-content: center; align-items: center; padding: 0;">
-              <div class="favicon-container">
-                <img src="/lpicon.png"
-                     alt="Favicon"
-                     width="18"
-                     height="18" />
-              </div>
-            </td>
-            <td class="divider" style="width: 400px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        <tr>
+          <td class="divider" style="width: 300px; border: 1px solid white; padding: 0;">
+            <input ref="urlInput" v-model="url" class="url-input" type="text" placeholder="Введите URL" @keydown.enter="handleEnter" style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;" />
+          </td>
+          <td class="divider"
+              style="width: 30px; border: 1px solid white; display: flex; justify-content: center; align-items: center; padding: 0;">
+            <div class="favicon-container">
+              <img src="/lpicon.png"
+                   alt="Favicon"
+                   width="18"
+                   height="18" />
+            </div>
+          </td>
+          <td class="divider" style="width: 400px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
   <span class="scrolling-text" v-tooltip="Array.isArray(tableData?.title) ? tableData.title.join(', ') : tableData?.title || ''">
     <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.title ? truncateText(tableData.title, 30).truncated : '' }}</span>
   </span>
-            </td>
-            <td class="divider" style="width: 200px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
+          </td>
+          <td class="divider" style="width: 200px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
   <span class="scrolling-text" v-tooltip="Array.isArray(tableData?.description) ? tableData.description.join(', ') : tableData?.description || ''">
     <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.description ? truncateText(tableData.description, 20).truncated : '' }}</span>
   </span>
-            </td>
-            <td class="divider" style="width: 150px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
+          </td>
+          <td class="divider" style="width: 150px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0;">
   <span class="scrolling-text" v-tooltip="Array.isArray(tableData?.keywords) ? tableData.keywords.join(', ') : tableData?.keywords || ''">
     <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.keywords ? truncateText(tableData.keywords, 20).truncated : '' }}</span>
   </span>
-            </td>
-            <td class="divider" v-tooltip="tableData?.date || ''" style="width: 100px; border: 1px solid white; padding-left: 10px;">
-              {{ tableData?.date ? new Date(tableData.date).toLocaleDateString() : new Date().toLocaleDateString() }}
-            </td>
-          </tr>
+          </td>
+          <td class="divider" v-tooltip="tableData?.date || ''" style="width: 100px; border: 1px solid white; padding-left: 10px;">
+            {{ tableData?.date ? new Date(tableData.date).toLocaleDateString() : new Date().toLocaleDateString() }}
+          </td>
+        </tr>
         </tbody>
       </v-table>
     </div>
@@ -82,13 +82,12 @@
 import {ref, onMounted, computed, nextTick} from 'vue';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-// import { supabase } from "./src/clients/supabase"
-import { supabase } from "@/clients/supabase";
-
-import { useStore } from 'vuex';
+import {supabase} from "@/clients/supabase";
+import {useStore} from 'vuex';
 import nlp from 'compromise';
 import fs from 'fs';
-import path from 'path';
+// import path from 'path';
+import { Buffer } from 'buffer';
 // import dotenv from 'dotenv';
 // import stopword from 'stopword';
 // import natural from 'natural';
@@ -100,7 +99,7 @@ export default {
       default: 'red',
     },
   },
-  setup(props, { emit }) {
+  setup(props, {emit}) {
     const store = useStore();
     const userId = computed(() => store.state.userId); // Получите userId из Vuex
     const isFetching = ref(false);
@@ -131,14 +130,14 @@ export default {
       "RUTUBE, видео, клипы, сериалы, кино, трейлеры, фильмы, мультфильмы, онлайн, рутьюб, рутуб": true,
       "видео, поделиться, телефон с камерой, телефон с видео, бесплатно, загрузить": true,
     };
-
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-// dotenv.config({ path: '.env.local' });
+
+    // dotenv.config({ path: '.env.local' });
     async function generateTagsNlp(title, description, keywords = []) {
       // Функция для фильтрации общеупотребительных терминов
       const isCommonTerm = (term) => {
         const commonTerms = [
-          'и', 'в', 'на', 'с', 'из', 'по', 'для', 'это', 'что', 'как', 'we', 'to', 'you', 'your', '!',
+          'и', 'в', 'на', 'с', 'по', 'для', 'это', 'что', 'как', 'we', 'to', 'you', 'your', '!',
           'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'simplify',
           'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing',
           'if', 'then', 'else', 'but', 'or', 'because', 'since', 'until',
@@ -185,28 +184,70 @@ export default {
 
     // Функция для загрузки изображения в Supabase Storage
     // Main.vue
-
-
-    const uploadFaviconToSupabase = async (faviconUrl, faviconName) => {
+    const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash) => {
       try {
-        const response = await axios.post('http://localhost:3000/upload-favicon', {
-          faviconUrl,
-          faviconName,
+        // Используем прокси-сервер для загрузки изображения
+        console.log('Попытка загрузки фавикона:', faviconUrl);
+        const response = await axios.get(`http://localhost:3000/proxy-image?url=${encodeURIComponent(faviconUrl)}`, {
+          responseType: 'arraybuffer',
         });
+        console.log('Загрузка фавикона:', response.data);
 
-        if (response.data.status === 'Фавикон успешно загружен') {
-          console.log('Фавикон успешно загружен на сервер:', response.data.filePath);
-          return response.data.filePath;
-        } else {
-          console.error('Ошибка при загрузке фавикона:', response.data.error);
-          return null;
+        const imageBuffer = Buffer.from(response.data, 'binary');
+        console.log('Буфер изображения:', imageBuffer);
+
+        // Изменяем faviconName: делаем символ перед точкой заглавным и убираем точку
+        const parts = faviconName.split('.');
+        const modifiedFaviconName = parts
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1)) // Заглавная буква для каждой части
+            .join(''); // Объединяем части
+
+        // Извлекаем расширение из faviconUrl
+        const urlParts = faviconUrl.split('/').pop(); // Берем последнюю часть URL (например, "favicon.ico")
+        const fileExtension = urlParts.split('.').pop(); // Берем расширение (например, "ico")
+
+        // Формируем путь к файлу с расширением из URL
+        const extensionLength = fileExtension.length > 3 ? 3 : fileExtension.length; // Ограничиваем длину до 3 символов
+        const trimmedFileExtension = fileExtension.substring(0, extensionLength); // Обрезаем лишние символы
+        const filePath = `${modifiedFaviconName}.${trimmedFileExtension}`;
+
+        console.log('1. Путь к файлу:', filePath); // Должен возвращать "MytishchiHhRu.ico"
+        // const documentsPath = `${process.env.HOME || process.env.USERPROFILE}/Documents/fav`;
+
+        // console.log('2. Путь к папке:', documentsPath); // Должен возвращать "C:\Users\<User>\Documents\fav"
+
+        // Создаём папку, если она не существует
+        // if (!fs.existsSync(documentsPath)) {
+        //   fs.mkdirSync(documentsPath, { recursive: true });
+        // }
+        // Записываем изображение в файл
+        // fs.writeFileSync(path.join(documentsPath, filePath), imageBuffer);
+        // console.log('Фавикон успешно сохранён:', path.join(documentsPath, filePath));
+        // const filePath = path.join(documentsPath, `${faviconName}-${faviconHash}.png`);
+                // Загружаем файл в Supabase Storage
+        const { data: data, error: storageError } = await supabase
+            .storage
+            .from('favibucket')
+            .upload(filePath, imageBuffer, {
+              contentType: `image/${fileExtension}`, // Динамически определяем MIME-тип
+              upsert: true,
+            });
+        console.log('4. Файл успешно загружен в Supabase Storage:', filePath);
+        if (storageError) {
+          console.error('Ошибка при загрузке файла:', storageError);
+          return filePath;
         }
+        //
+        // if (storageError) throw storageError;
+        // fs.writeFileSync(filePath, imageBuffer);
+        console.log('Фавикон успешно сохранён:', filePath);
+        console.log('Файл успешно загружен в Supabase Storage:', filePath);
+        return filePath; // Возвращаем только путь к файлу
       } catch (error) {
-        console.error('Ошибка при отправке данных на сервер:', error);
+        console.error('Ошибка при загрузке фавикона:', error);
         return null;
       }
     };
-
 
     const updateTableData = (linkData) => {
       if (!linkData) {
@@ -215,7 +256,6 @@ export default {
       }
       tableData.value = getTableData(linkData);
     };
-
     const getTableData = (lnkDt) => {
       return {
         title: lnkDt.title || '',
@@ -282,7 +322,7 @@ export default {
           const sizes = $(el).attr('sizes');
           const rel = $(el).attr('rel');
           if (href) {
-            icons.push({ href, sizes, rel });
+            icons.push({href, sizes, rel});
           }
         });
 
@@ -346,7 +386,7 @@ export default {
         return data;
       } catch (error) {
         console.error('Ошибка при получении информации (getPageInfo) о странице:', error);
-        return { error: 'Ошибка при получении информации (getPageInfo)' };
+        return {error: 'Ошибка при получении информации (getPageInfo)'};
       }
     };
 
@@ -356,7 +396,7 @@ export default {
         return response.data;
       } catch (error) {
         console.error('Ошибка при получении данных: (fetchMetadata)', error);
-        return { error: 'Ошибка при получении информации (fetchMetadata)' };
+        return {error: 'Ошибка при получении информации (fetchMetadata)'};
       }
     };
 
@@ -364,7 +404,7 @@ export default {
       try {
         const response = await axios.get(`http://localhost:3000/fetch-metadata?url=${encodeURIComponent(url)}`);
         console.log('Полученные мета-данные: (getPuppeteerData)', response.data);
-        return  response.data;
+        return response.data;
       } catch (error) {
         console.error('Ошибка при получении мета-данных: (getPuppeteerData)', error);
       }
@@ -378,7 +418,7 @@ export default {
             'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,tr;q=0.6',
             'content-type': 'application/json;charset=UTF-8',
           },
-          body: JSON.stringify({ links: [url] }),
+          body: JSON.stringify({links: [url]}),
         });
         if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
         const data = await response.json();
@@ -394,7 +434,7 @@ export default {
         };
       } catch (error) {
         console.error('Ошибка при выполнении запроса: (fetchMetaSerp)', error);
-        return { error: 'Ошибка при получении информации (fetchMetaSerp)' };
+        return {error: 'Ошибка при получении информации (fetchMetaSerp)'};
       }
     };
 
@@ -442,12 +482,12 @@ export default {
         title: '',
         description: '',
         keywords: '',
-        lang:'',
-        rss:'',
+        lang: '',
+        rss: '',
         error: null,
       };
       // Массив функций для выполнения
-      const fetchFunctions = [getPageInfo,fetchMetaSerp];
+      const fetchFunctions = [getPageInfo, fetchMetaSerp];
       // const fetchFunctions = [getPageInfo,fetchMetaSerp, fetchMetaData, getPuppeteerData];
 
       // Цикл по функциям
@@ -621,7 +661,7 @@ export default {
     }
 
     async function generateTags(title, description, keywords = "") {
-      console.log("Отправка данных LLM для получения AITAG:", { title, description, keywords });
+      console.log("Отправка данных LLM для получения AITAG:", {title, description, keywords});
       try {
         const response = await axios.post('http://localhost:3000/generate-tags', {
           title,
@@ -652,6 +692,7 @@ export default {
         }
         return keywords;
       }
+
       const keywords = setKeywords();
       const description = data.description ? data.description.trim() : null;
 
@@ -694,7 +735,7 @@ export default {
 
       updateTableData(linkData);
 
-      const { error: linkError } = await supabase
+      const {error: linkError} = await supabase
           .from('links')
           .insert([linkData]);
 
@@ -707,17 +748,14 @@ export default {
         showSnackbar('Данные успешно отправлены!');
       }
 
-      const { data: existingFavicons, error: checkFaviconError } = await supabase
+      const {data: existingFavicons, error: checkFaviconError} = await supabase
           .from('favicons')
           .select('favicon_hash')
           .eq('favicon_hash', faviconHash);
 
       if (checkFaviconError) {
         console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
-      } else {
-        console.log('Результат проверки favicon_hash:', existingFavicons.length > 0 ? 'Не уникален' : 'Уникален');
         // } else if (existingFavicons.length === 0) {
-        const storagePath = await uploadFaviconToSupabase(data.favicon, faviconName, faviconHash);
         //   if (storagePath) {
         //     const faviconData = {
         //       favicon_hash: faviconHash,
@@ -726,6 +764,10 @@ export default {
         //       storage_path: storagePath,
         //       user_id: userIdValue,
         //     };
+      } else {
+        console.log('Результат проверки favicon_hash:', existingFavicons.length > 0 ? 'Не уникален' : 'Уникален');
+        const storagePath = await uploadFaviconToSupabase(data.favicon, faviconName, faviconHash);
+
         if (existingFavicons.length === 0) {
           const faviconData = {
             favicon_hash: faviconHash,
@@ -734,9 +776,6 @@ export default {
             storage_path: storagePath,
             user_id: userIdValue,
           };
-          console.log('Данные для отправки в favicons:', faviconData);
-
-
           const {error: insertError} = await supabase
               .from('favicons')
               .insert([faviconData]);
@@ -752,26 +791,28 @@ export default {
       await delay(2000);
       await clearFields();
     }
+
     async function checkUrlExistence(url) {
       const urlHash = await hashString(url);
-      const { data: existingLinks, error: checkError } = await supabase
+      const {data: existingLinks, error: checkError} = await supabase
           .from('links')
           .select('url_hash')
           .eq('url_hash', urlHash);
 
       if (checkError) {
         console.error('Ошибка при проверке url_hash:', checkError);
-        return { exists: false, error: checkError };
+        return {exists: false, error: checkError};
       }
 
       if (existingLinks.length > 0) {
         console.log('URL уже существует в базе данных.');
         showSnackbar('URL уже существует в базе данных.');
-        return { exists: true };
+        return {exists: true};
       }
 
-      return { exists: false };
+      return {exists: false};
     }
+
     onMounted(() => {
       const ws = new WebSocket('ws://localhost:3000');
       ws.onopen = () => {
@@ -799,7 +840,7 @@ export default {
       };
       // Прослушивание события, диспатченного в content.js, для отображения уведомления через showSnackbar
       window.addEventListener("extensionPopup", (event) => {
-        const { status, message } = event.detail;
+        const {status, message} = event.detail;
         showSnackbar(message);
       });
       window.addEventListener('changeButtonColor', (event) => changeButtonColor(event.detail));
@@ -811,15 +852,15 @@ export default {
 
     const truncateText = (text, length = 30) => {
       if (text.length <= length) {
-        return { truncated: text, remainder: '' };
+        return {truncated: text, remainder: ''};
       }
       const truncated = text.slice(0, length) + '...';
       const remainder = text.slice(length);
-      return { truncated, remainder };
+      return {truncated, remainder};
     };
 
     function generateUid() {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         const r = Math.random() * 16 | 0;
         const v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
@@ -834,7 +875,6 @@ export default {
     }
 
     return {
-      uploadFaviconToSupabase,
       keywordsToNull,
       tableData,
       updateTableData,
@@ -874,6 +914,7 @@ export default {
   background-color: transparent; /* Прозрачный фон для таблицы */
   border: none; /* Убираем границу */
 }
+
 .custom-snackbar {
   color: black !important;
   position: inherit;
@@ -881,17 +922,20 @@ export default {
   right: 20px;
   z-index: 200;
 }
+
 .text-ellipsis {
   white-space: nowrap; /* Запрет на перенос строк */
   overflow: hidden; /* Скрытие переполненного текста */
   text-overflow: ellipsis; /* Добавление многоточия в конце переполненного текста */
 }
+
 .favicon-container {
   background-color: white;
   display: flex;
   justify-content: center;
   align-items: center;
 }
+
 .url-input {
   margin-right: 20px;
   color: black;
@@ -900,19 +944,24 @@ export default {
   transition: border-color 0.3s;
   width: 300px;
 }
+
 .url-input:hover {
   border-color: green;
 }
+
 .url-input:focus {
   border-color: green;
 }
+
 .red-button {
   background-color: red;
   color: white;
 }
+
 .purple-button {
   background-color: purple; /* Цвет для фиолетовой кнопки */
 }
+
 .fixed-size-button {
   width: 120px;
   height: 20px;
@@ -922,12 +971,15 @@ export default {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .clear-button {
   color: white;
 }
+
 .divider {
   border-right: 1px solid white; /* Добавляем белую границу справа для разделителей */
 }
+
 .divider:last-child {
   border-right: none; /* Убираем границу у последнего столбца */
 }

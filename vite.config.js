@@ -16,6 +16,7 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)), // Указывает на папку src
       'moduls': path.resolve(__dirname, 'moduls'), // Указывает на папку moduls
+      buffer: 'buffer/',
     },
   },
   server: {
