@@ -188,13 +188,13 @@ export default {
       try {
         // Используем прокси-сервер для загрузки изображения
         console.log('Попытка загрузки фавикона:', faviconUrl);
-        const response = await axios.get(`http://localhost:3000/proxy-image?url=${encodeURIComponent(faviconUrl)}`, {
+       /* const response = await axios.get(`http://localhost:3000/proxy-image?url=${encodeURIComponent(faviconUrl)}`, {
           responseType: 'arraybuffer',
         });
         console.log('Загрузка фавикона:', response.data);
 
         const imageBuffer = Buffer.from(response.data, 'binary');
-        console.log('Буфер изображения:', imageBuffer);
+        console.log('Буфер изображения:', imageBuffer);*/
 
         // Изменяем faviconName: делаем символ перед точкой заглавным и убираем точку
         const parts = faviconName.split('.');
@@ -216,6 +216,29 @@ export default {
 
         // console.log('2. Путь к папке:', documentsPath); // Должен возвращать "C:\Users\<User>\Documents\fav"
 
+        // Получаем изображение по URL
+        const response = await fetch(faviconUrl);
+        const blob = await response.blob(); // Преобразуем ответ в Blob
+        console.log('2. Файл будет сохранен с именем:', filePath);
+
+        // Создаем объект File
+        const file = new File([blob], filePath, { type: `image/${trimmedFileExtension}` });
+        console.log('3. Файл будет с именем:', filePath);
+        // Сохраняем файл локально
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filePath;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Освобождаем память
+        URL.revokeObjectURL(url);
+        console.log('Файл успешно сохранен локально');
+
+
+
+
         // Создаём папку, если она не существует
         // if (!fs.existsSync(documentsPath)) {
         //   fs.mkdirSync(documentsPath, { recursive: true });
@@ -225,18 +248,18 @@ export default {
         // console.log('Фавикон успешно сохранён:', path.join(documentsPath, filePath));
         // const filePath = path.join(documentsPath, `${faviconName}-${faviconHash}.png`);
                 // Загружаем файл в Supabase Storage
-        const { data: data, error: storageError } = await supabase
-            .storage
-            .from('favibucket')
-            .upload(filePath, imageBuffer, {
-              contentType: `image/${fileExtension}`, // Динамически определяем MIME-тип
-              upsert: true,
-            });
-        console.log('4. Файл успешно загружен в Supabase Storage:', filePath);
-        if (storageError) {
-          console.error('Ошибка при загрузке файла:', storageError);
-          return filePath;
-        }
+        // const { data: data, error: storageError } = await supabase
+        //     .storage
+        //     .from('favibucket')
+        //     .upload(filePath, imageBuffer, {
+        //       contentType: `image/${fileExtension}`, // Динамически определяем MIME-тип
+        //       upsert: true,
+        //     });
+        // console.log('4. Файл успешно загружен в Supabase Storage:', filePath);
+        // if (storageError) {
+        //   console.error('Ошибка при загрузке файла:', storageError);
+        //   return filePath;
+        // }
         //
         // if (storageError) throw storageError;
         // fs.writeFileSync(filePath, imageBuffer);
