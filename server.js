@@ -13,7 +13,10 @@ const HF_TOKEN = process.env.VUE_APP_HF_TOKEN_AI;
 const app = express();
 app.use(cors({ origin: '*' })); // Разрешаем запросы с любого домена
 app.use(express.json());
-
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*"); // Разрешает все источники
+    next();
+});
 // Создаем HTTP-сервер
 const server = app.listen(3000, () => {
     console.log('Сервер запущен на порту 3000');
