@@ -84,15 +84,17 @@ wss.on('connection', (ws) => {
 });
 // НЕРАБОЧИЭндпоинт для загрузки изображений через прокси
 app.get('/proxy-image', async (req, res) => {
-    const imageUrl = req.query.url;
+    // const imageUrl = req.query.url;
+    const { imageUrl } = req.query;
     console.log(imageUrl, 'Получен запрос на /proxy-image');
     if (!imageUrl) {
         return res.status(400).json({ error: 'URL изображения не указан' });
     }
     try {
-        // Увеличиваем лимит перенаправлений до 10
-        const response = await axios.get(imageUrl, { responseType: 'arraybuffer', maxRedirects: 10 });
+        // Увеличиваем лимит перенаправлений до 2
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer', maxRedirects: 2 });
 
+        res.set('Access-Control-Allow-Origin', '*');
         res.set('Content-Type', response.headers['content-type']);
         res.send(response.data);
         console.log('Изображение успешно загружено', imageUrl);

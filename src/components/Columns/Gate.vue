@@ -483,19 +483,28 @@ export default {
 
     const getFaviconUrl = (faviconHash) => {
       const favicon = props.favicons.find(f => f.favicon_hash === faviconHash);
-      if (!favicon) {
-        return '/lpicon.png'; // Возвращаем дефолтную иконку, если фавикон не найден
+      if (!favicon) return '/lpicon.png';
+
+      // Если это прямой URL SVG
+      if (favicon.fav_url && favicon.fav_url.endsWith('.svg') || (favicon.storage_path == null || favicon.storage_path ==='no image'&& favicon.fav_url != null)) {
+        return favicon.fav_url;
+      }
+/*      if (favicon.storage_path == null || favicon.storage_path ==='no image'&& favicon.fav_url != null)
+        return favicon.fav_url;*/
+        // console.log(favicon.storage_path, favicon.fav_url
+      // Если есть storage_path
+      if (favicon.storage_path) {
+        const pathBase = 'https://wfofanoqnvqnxtmpkpqz.supabase.co/storage/v1/object/public/favibucket/';
+        const path = `${pathBase}${favicon.storage_path}`;
+
+        // Для SVG добавляем параметр запроса
+        if (favicon.storage_path.endsWith('.svg')) {
+          return `${path}?t=${new Date().getTime()}`;
+        }
+        return path;
       }
 
-      const pathBase = 'https://wfofanoqnvqnxtmpkpqz.supabase.co/storage/v1/object/public/favibucket/';
-      const path = `${pathBase}${favicon.storage_path}`;
-
-      // Проверяем, что path не равен pathBase (т.е. storage_path не пустой)
-      if (path === pathBase || !favicon.storage_path) {
-        return favicon.fav_url || '/lpicon.png'; // Возвращаем fav_url или fallback
-      }
-
-      return path; // Возвращаем path, если он сформирован корректно
+      return favicon.fav_url || '/lpicon.png';
     };
 
     const handleFavClick = (link) => {
