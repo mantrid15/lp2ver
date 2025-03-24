@@ -185,63 +185,100 @@ export default {
     // Функция для загрузки изображения в Supabase Storage
     // Main.vue
     const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash) => {
-      let filePath; // Объявляем переменную filePath заранее
-
       try {
-        console.log('Попытка загрузки фавикона:', faviconUrl);
+        // Используем прокси-сервер для загрузки изображения
+        console.log('LOCAL: Попытка загрузки фавикона:', faviconUrl);
+       /* const response = await axios.get(`http://localhost:3000/proxy-image?url=${encodeURIComponent(faviconUrl)}`, {
+          responseType: 'arraybuffer',
+        });
+        console.log('Загрузка фавикона:', response.data);
+
+        const imageBuffer = Buffer.from(response.data, 'binary');
+        console.log('Буфер изображения:', imageBuffer);*/
 
         // Изменяем faviconName: делаем символ перед точкой заглавным и убираем точку
         const parts = faviconName.split('.');
         const modifiedFaviconName = parts
-            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-            .join('');
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1)) // Заглавная буква для каждой части
+            .join(''); // Объединяем части
 
         // Извлекаем расширение из faviconUrl
-        const urlParts = faviconUrl.split('/').pop();
-        const fileExtension = urlParts.split('.').pop();
-        const trimmedFileExtension = fileExtension.length > 3 ? fileExtension.substring(0, 3) : fileExtension;
+        const urlParts = faviconUrl.split('/').pop(); // Берем последнюю часть URL (например, "favicon.ico")
+        const fileExtension = urlParts.split('.').pop(); // Берем расширение (например, "ico")
 
-        // Формируем путь к файлу
-        filePath = `${modifiedFaviconName}.${trimmedFileExtension}`;
-        console.log('1. Путь к файлу:', filePath);
+        // Формируем путь к файлу с расширением из URL
+        const extensionLength = fileExtension.length > 3 ? 3 : fileExtension.length; // Ограничиваем длину до 3 символов
+        const trimmedFileExtension = fileExtension.substring(0, extensionLength); // Обрезаем лишние символы
+        const filePath = `${modifiedFaviconName}.${trimmedFileExtension}`;
+
+        console.log('LOCAL: 1. Путь к файлу:', filePath); // Должен возвращать "MytishchiHhRu.ico"
+        // const documentsPath = `${process.env.HOME || process.env.USERPROFILE}/Documents/fav`;
+
+        // console.log('2. Путь к папке:', documentsPath); // Должен возвращать "C:\Users\<User>\Documents\fav"
 
         // Получаем изображение по URL
-        const response = await fetch(faviconUrl, { mode: 'no-cors' });
-        const blob = await response.blob();
-        console.log('2. Файл будет сохранен с именем:', filePath);
+        const response = await fetch(faviconUrl);
+        const blob = await response.blob(); // Преобразуем ответ в Blob
+        console.log('LOCAL: 2. Файл будет сохранен с именем:', filePath);
 
         // Создаем объект File
         const file = new File([blob], filePath, { type: `image/${trimmedFileExtension}` });
-        console.log('3. Файл будет с именем:', filePath);
+        console.log('LOCAL: 3. Файл будет с именем:', filePath);
+        // Сохраняем файл локально
+        // const url = URL.createObjectURL(file);
+        // const a = document.createElement('a');
+        // a.href = url;
+        // a.download = filePath;
+        // document.body.appendChild(a);
+        // a.click();
+        // document.body.removeChild(a);
+        // // Освобождаем память
+        // URL.revokeObjectURL(url);
 
-        // Загружаем файл в Supabase
-        const { data, error } = await supabase
+        console.log('LOCAL: Файл успешно сохранен локально');
+        const { data, error: storageError } = await supabase
             .storage
             .from('favibucket')
-            .upload(filePath, file);
-
-        // Обработка ошибок загрузки
-        if (error) {
-          const status = error.status || 'unknown'; // Проверка на наличие status
-          if (status === 403) {
-            console.error('Ошибка 403: Доступ запрещен. Проверьте права доступа к бакету.');
-          } else if (status === 404) {
-            console.error('Ошибка 404: Бакет не найден. Проверьте имя бакета.');
-          } else if (status === 409) {
-            console.error('Ошибка 409: Ресурс уже существует. Попробуйте использовать другое имя файла.');
-          } else {
-            console.error('Ошибка при загрузке файла в Supabase:', error);
-          }
-
-          return filePath; // Возвращаем filePath при ошибке
-        } else {
-          console.log('Файл успешно загружен в Supabase:', data);
+            .upload(filePath, file, {
+              contentType: 'image/png', // Динамически определяем MIME-тип
+              upsert: true,
+            });
+        if (storageError) {
+          console.error('SERVER: Ошибка при загрузке файла в Supabase:', storageError);
+          return res.status(500).json({ error: 'SERVER: Ошибка при загрузке файла в Supabase' });
         }
 
-        return filePath; // Возвращаем путь к файлу
+
+        // // Создаём папку, если она не существует
+        // // if (!fs.existsSync(documentsPath)) {
+        // //   fs.mkdirSync(documentsPath, { recursive: true });
+        // // }
+        // // Записываем изображение в файл
+        // // fs.writeFileSync(path.join(documentsPath, filePath), imageBuffer);
+        // // console.log('Фавикон успешно сохранён:', path.join(documentsPath, filePath));
+        // // const filePath = path.join(documentsPath, `${faviconName}-${faviconHash}.png`);
+        //         // Загружаем файл в Supabase Storage
+        // // const { data: data, error: storageError } = await supabase
+        // //     .storage
+        // //     .from('favibucket')
+        // //     .upload(filePath, imageBuffer, {
+        // //       contentType: `image/${fileExtension}`, // Динамически определяем MIME-тип
+        // //       upsert: true,
+        // //     });
+        // // console.log('4. Файл успешно загружен в Supabase Storage:', filePath);
+        // // if (storageError) {
+        // //   console.error('Ошибка при загрузке файла:', storageError);
+        // //   return filePath;
+        // // }
+        // //
+        // // if (storageError) throw storageError;
+        // // fs.writeFileSync(filePath, imageBuffer);
+        // console.log('Фавикон успешно сохранён:', filePath);
+        // console.log('Файл успешно загружен в Supabase Storage:', filePath);
+        return filePath; // Возвращаем только путь к файлу
       } catch (error) {
         console.error('Ошибка при загрузке фавикона:', error);
-        return filePath; // Возвращаем filePath при исключении
+        return null;
       }
     };
 
