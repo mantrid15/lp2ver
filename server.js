@@ -4,7 +4,9 @@ import axios from 'axios';
 import puppeteer from 'puppeteer';
 import { WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
-
+import mime from 'mime-types';
+import path from "path";
+import fs from "fs"; // Добавьте эту библиотеку
 // Загружаем переменные окружения
 dotenv.config({ path: '.env.local' });
 const HF_TOKEN = process.env.VUE_APP_HF_TOKEN_AI;
@@ -40,28 +42,50 @@ app.post('/upload-favicon', async (req, res) => {
         // Получаем изображение по URL
         const response = await axios.get(faviconUrl, { responseType: 'arraybuffer' });
         const blob = response.data;
+
+        // Определяем реальный MIME-тип файла
+        const mimeType = mime.lookup(faviconName) || 'application/octet-stream';
+
+        // Создаем локальную директорию, если она не существует
+        const storageDir = path.join(__dirname, 'storage_fav');
+        if (!fs.existsSync(storageDir)) {
+            fs.mkdirSync(storageDir, { recursive: true });
+        }
+
         // Сохраняем файл локально
-        const filePath = path.join(__dirname, 'storage_fav', faviconName); // Путь к локальной папке
+        const filePath = path.join(storageDir, faviconName);
         fs.writeFileSync(filePath, blob);
         console.log('Файл успешно сохранен локально:', filePath);
+
+        // Создаем File объект с корректным MIME-типом
+        const file = new File([blob], faviconName, { type: mimeType });
+
         // Загружаем файл в Supabase Storage
-        const file = new File([blob], faviconName, { type: 'image/png' }); // Укажите правильный MIME-тип
         const { data, error: storageError } = await supabase
             .storage
             .from('favibucket')
             .upload(faviconName, file, {
-                contentType: 'image/png', // Динамически определяем MIME-тип
+                contentType: mimeType,
                 upsert: true,
             });
+
         if (storageError) {
             console.error('Ошибка при загрузке файла в Supabase:', storageError);
-            return res.status(500).json({ error: 'Ошибка при загрузке файла в Supabase' });
+            return res.status(500).json({ error: 'Ошибка при загрузке файла в Supabase', details: storageError });
         }
+
         console.log('Файл успешно загружен в Supabase Storage:', faviconName);
-        res.json({ status: 'Фавикон успешно загружен', filePath });
+        res.json({
+            status: 'Фавикон успешно загружен',
+            filePath,
+            mimeType
+        });
     } catch (error) {
         console.error('Ошибка при загрузке фавикона:', error);
-        res.status(500).json({ error: 'Ошибка при загрузке фавикона' });
+        res.status(500).json({
+            error: 'Ошибка при загрузке фавикона',
+            details: error.message
+        });
     }
 });
 

@@ -637,6 +637,9 @@ export default {
       // console.log("Список 1:", list1);
       // console.log("Список 2:", list2);
       // Проверка пустоты списков
+      if (list1 === null || list2 === null) {
+        return "";
+      }
       if (list1.length === 0 && list2.length === 0) {
         return "";
       }
@@ -751,17 +754,14 @@ export default {
 
       if (checkFaviconError) {
         console.error('Ошибка при проверке favicon_hash:', checkFaviconError);
-        // } else if (existingFavicons.length === 0) {
-        //   if (storagePath) {
-        //     const faviconData = {
-        //       favicon_hash: faviconHash,
-        //       favicon_name: faviconName,
-        //       fav_url: data.favicon,
-        //       storage_path: storagePath,
-        //       user_id: userIdValue,
-        //     };
       } else {
         console.log('Результат проверки favicon_hash:', existingFavicons.length > 0 ? 'Не уникален' : 'Уникален');
+
+        // Если favicon не уникален, завершаем выполнение функции
+        if (existingFavicons.length > 0) {
+          return; // Выход из функции
+        }
+
         const storagePath = await uploadFaviconToSupabase(data.favicon, faviconName, faviconHash);
 
         if (existingFavicons.length === 0) {

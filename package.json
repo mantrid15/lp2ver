@@ -24,6 +24,7 @@
     "express": "^4.21.1",
     "follow-redirects": "^1.15.9",
     "jsdom": "^25.0.1",
+    "mime-types": "^2.1.35",
     "module-alias": "^2.2.3",
     "natural": "^8.0.1",
     "node-fetch": "^3.3.2",
