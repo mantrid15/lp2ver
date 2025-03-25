@@ -85,12 +85,7 @@ import * as cheerio from 'cheerio';
 import {supabase} from "@/clients/supabase";
 import {useStore} from 'vuex';
 import nlp from 'compromise';
-import fs from 'fs';
-// import path from 'path';
-import { Buffer } from 'buffer';
-// import dotenv from 'dotenv';
-// import stopword from 'stopword';
-// import natural from 'natural';
+import translate from 'translate-google';
 export default {
   name: 'MainRowTool',
   props: {
@@ -131,7 +126,6 @@ export default {
       "видео, поделиться, телефон с камерой, телефон с видео, бесплатно, загрузить": true,
     };
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
     // dotenv.config({ path: '.env.local' });
     async function generateTagsNlp(title, description, keywords = []) {
       // Функция для фильтрации общеупотребительных терминов
@@ -322,6 +316,7 @@ export default {
           description: info.description || '',
           keywords: Array.isArray(info.keywords) && info.keywords.length > 0 ? info.keywords : [], // Проверка на null, пустую строку и отсутствие данных
           favicon: info.favicon || '',
+          // descript_translate: '',
           rss: info.rss || '',
           lang: info.lang || ''
         };
@@ -513,6 +508,7 @@ export default {
         title: '',
         description: '',
         keywords: '',
+        // descript_translate: '',
         lang: '',
         rss: '',
         error: null,
@@ -669,9 +665,6 @@ export default {
     });
 
     function mergeUniqueLists(list1, list2) {
-      // console.log("Список 1:", list1);
-      // console.log("Список 2:", list2);
-      // Проверка пустоты списков
       if (list1 === null || list2 === null) {
         return "";
       }
@@ -710,12 +703,34 @@ export default {
       }
     }
 
+    const translateText = async (text) => {
+      try {
+        // const res = await translate(text, { to: 'ru' });
+        // console.log(res); // Вывод переведенного текста
+        return await translate(text, { to: 'ru' });
+      } catch (err) {
+        // console.error(err);
+        return 'Without translate'
+      }
+    };
+
     async function processLinkData(data) {
       const userIdValue = userId.value;
       const faviconName = getDomainName(data.url);
       const faviconHash = await hashString(faviconName);
       const title = data.title.trim();
       const resultStr = data.keywords.join(', ').trim();
+      const description = data.description ? data.description.trim() : null;
+      let lang = (data.lang ?? "").toLowerCase();
+      if (lang.includes("ru")) {
+        lang = "ru"; // Если строка содержит "ru", устанавливаем "ru"
+      } else if (lang.includes("en")) {
+        lang = "en"; // Если строка содержит "en", устанавливаем "en"
+      }
+      let descriptTranslate;
+      if (lang === 'en') {
+        descriptTranslate = await translateText(data.description.trim());
+      }
 
       function setKeywords() {
         let keywords;
@@ -728,9 +743,8 @@ export default {
       }
 
       const keywords = setKeywords();
-      const description = data.description ? data.description.trim() : null;
 
-      let aiTag = null;
+      let aiTag;
       if (title === '' || title === null || description === '' || description === null) {
         aiTag = null;
       } else {
@@ -756,7 +770,8 @@ export default {
         url_hash: await hashString(data.url),
         description: description,
         keywords: finalKeywords,
-        lang: data.lang || null,
+        descript_translate: description !== null ? await descriptTranslate : '',
+        lang: lang,
         rss: data.rss || null,
         favicon_hash: faviconHash,
         favicon_name: faviconName,
@@ -823,8 +838,6 @@ export default {
       await delay(2000);
       await clearFields();
     }
-
-
 
     async function checkUrlExistence(url) {
       const urlHash = await hashString(url);
