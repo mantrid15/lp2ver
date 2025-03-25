@@ -182,15 +182,53 @@ export default {
       return cleanedArray.slice(0, 3);
     }
 
-    // Функция для загрузки изображения в Supabase Storage
+    async function convertBlobToPng(blob) {
+      // Читаем содержимое Blob как текст
+      const svgString = await blob.text();
+      // Извлекаем размеры width и height из SVG
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgString, "image/svg+xml");
+      const svgElement = svgDoc.documentElement;
+      const width = svgElement.getAttribute('width');
+      const height = svgElement.getAttribute('height');
+      if (!width || !height) {
+        throw new Error('SVG должен содержать атрибуты width и height.');
+      }
+      // Создаем изображение из SVG
+      const img = new Image();
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      return new Promise((resolve, reject) => {
+        img.onload = async () => {
+          // Создаем canvas и устанавливаем его размеры
+          const canvas = document.createElement('canvas');
+          canvas.width = parseInt(width);
+          canvas.height = parseInt(height);
+          const ctx = canvas.getContext('2d');
+          // Рисуем изображение на canvas
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          // Конвертируем canvas в PNG
+          const pngDataUrl = canvas.toDataURL('image/png');
+          URL.revokeObjectURL(url); // Освобождаем URL
+          // Создаем PNG Blob
+          const pngBlob = await fetch(pngDataUrl).then(res => res.blob());
+          resolve(pngBlob); // Возвращаем Blob без расширения
+        };
+        img.onerror = (error) => {
+          reject(error);
+        };
+        // Устанавливаем источник изображения
+        img.src = url;
+      });
+    }
+
+       // Функция для загрузки изображения в Supabase Storage
     // Main.vue
     const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash) => {
       try {
         // Используем прокси-сервер для загрузки изображения
         console.log('LOCAL: Попытка загрузки фавикона:', faviconUrl);
-
         let response;
-
         // Попытка загрузки изображения напрямую
         try {
           response = await fetch(faviconUrl);
@@ -199,51 +237,41 @@ export default {
           // Повторный вызов через прокси
           response = await fetch(`http://localhost:3000/proxy-image?url=${encodeURIComponent(faviconUrl)}`);
         }
-
         // Проверяем, успешно ли получен ответ
         if (!response || !response.ok) {
           console.error('Ошибка при получении изображения:', response ? response.statusText : 'Нет ответа');
           return null; // Возвращаем null, если изображение не получено
         }
-
         const blob = await response.blob(); // Преобразуем ответ в Blob
         console.log('LOCAL: 2. Файл будет сохранен с именем:', faviconName);
-
         // Изменяем faviconName: делаем символ перед точкой заглавным и убираем точку
-        const parts = faviconName.split('.');
-        const modifiedFaviconName = parts
-            .map(part => part.charAt(0).toUpperCase() + part.slice(1)) // Заглавная буква для каждой части
-            .join(''); // Объединяем части
-
+        const modifiedFaviconName = faviconName.split('.')
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+            .join('');
         // Извлекаем расширение из faviconUrl
-        const urlParts = faviconUrl.split('/').pop(); // Берем последнюю часть URL (например, "favicon.ico")
-        const fileExtension = urlParts.split('.').pop(); // Берем расширение (например, "ico")
-
-        // Формируем путь к файлу с расширением из URL
-        const extensionLength = fileExtension.length > 3 ? 3 : fileExtension.length; // Ограничиваем длину до 3 символов
-        const trimmedFileExtension = fileExtension.substring(0, extensionLength); // Обрезаем лишние символы
-        const filePath = `${modifiedFaviconName}.${trimmedFileExtension}`;
-
-        console.log('LOCAL: 1. Путь к файлу:', filePath); // Должен возвращать "MytishchiHhRu.ico"
-
+        const fileExtension = faviconUrl.split('/').pop().split('.').pop();
+        const trimmedFileExtension = fileExtension.substring(0, Math.min(3, fileExtension.length));
+        const filePath = trimmedFileExtension === 'svg'
+            ? `${modifiedFaviconName}.png`
+            : `${modifiedFaviconName}.${trimmedFileExtension}`;
         // Создаем объект File
-        const file = new File([blob], filePath, { type: `image/${trimmedFileExtension}` });
-        console.log('LOCAL: 3. Файл будет с именем:', filePath);
-
+        const file = trimmedFileExtension === 'svg'
+            ? new File([await convertBlobToPng(blob)], filePath, { type: 'image/png' })
+            : new File([blob], filePath, { type: `image/${trimmedFileExtension}` });
+        console.log('LOCAL: 1. Путь к файлу:', filePath); // Логируем путь к файлу
         // Загружаем файл в Supabase Storage
         const { data, error: storageError } = await supabase
             .storage
             .from('favibucket')
             .upload(filePath, file, {
-              contentType: `image/${trimmedFileExtension}`, // Динамически определяем MIME-тип
+              contentType: trimmedFileExtension === 'svg' ? 'image/png' : `image/${trimmedFileExtension}`,
               upsert: true,
             });
-
         if (storageError) {
           console.error('SERVER: Ошибка при загрузке файла в Supabase:', storageError);
           return null; // Возвращаем null при ошибке
         }
-
+        console.log('LOCAL: 3. Файл будет с именем:', filePath);
         console.log('Фавикон успешно загружен в Supabase Storage:', filePath);
         return filePath; // Возвращаем только путь к файлу
       } catch (error) {
@@ -795,6 +823,8 @@ export default {
       await delay(2000);
       await clearFields();
     }
+
+
 
     async function checkUrlExistence(url) {
       const urlHash = await hashString(url);

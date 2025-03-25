@@ -453,6 +453,9 @@ export default {
       return '';
     };
 
+
+
+
     // const getFaviconUrl = (faviconHash) => {
     //   const favicon = props.favicons.find(f => f.favicon_hash === faviconHash);
     //   if (!favicon) {
@@ -466,20 +469,20 @@ export default {
     //   // return path === pathBase ?`/proxy-favicon?url=${encodeURIComponent(favicon.fav_url)}`: `/proxy-favicon?url=${encodeURIComponent(path)}`;
     // };
 
-    async function checkImageUrl(primaryUrl, fallbackUrl) {
-      try {
-        const response = await fetch(primaryUrl, { method: 'HEAD' });
-
-        // Проверяем статус ответа
-        if (response.ok) {
-          return primaryUrl; // Изображение существует
-        } else {
-          return fallbackUrl; // Изображение отсутствует
-        }
-      } catch (error) {
-        return fallbackUrl; // В случае ошибки вернем запасной URL
-      }
-    }
+    // async function checkImageUrl(primaryUrl, fallbackUrl) {
+    //   try {
+    //     const response = await fetch(primaryUrl, { method: 'HEAD' });
+    //
+    //     // Проверяем статус ответа
+    //     if (response.ok) {
+    //       return primaryUrl; // Изображение существует
+    //     } else {
+    //       return fallbackUrl; // Изображение отсутствует
+    //     }
+    //   } catch (error) {
+    //     return fallbackUrl; // В случае ошибки вернем запасной URL
+    //   }
+    // }
 
     const getFaviconUrl = (faviconHash) => {
       const favicon = props.favicons.find(f => f.favicon_hash === faviconHash);
