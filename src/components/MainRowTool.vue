@@ -85,7 +85,9 @@ import * as cheerio from 'cheerio';
 import {supabase} from "@/clients/supabase";
 import {useStore} from 'vuex';
 import nlp from 'compromise';
-import translate from 'translate-google';
+// @ts-ignore
+// import translateText from 'text_processor'; // Импортируйте функцию перевода
+// import translate from 'translate-google';
 export default {
   name: 'MainRowTool',
   props: {
@@ -215,9 +217,7 @@ export default {
         img.src = url;
       });
     }
-
        // Функция для загрузки изображения в Supabase Storage
-    // Main.vue
     const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash) => {
       try {
         // Используем прокси-сервер для загрузки изображения
@@ -922,6 +922,7 @@ export default {
     }
 
     return {
+      translateText,
       keywordsToNull,
       tableData,
       updateTableData,
