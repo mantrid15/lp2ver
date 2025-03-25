@@ -84,6 +84,9 @@
                 <span class="link-counter">
                   {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
                 </span>
+                <span class="range-counter">
+        {{ folder.range }}
+      </span>
               </v-card-title>
             </v-card>
           </v-col>
@@ -723,6 +726,17 @@ export default {
 </script>
 
 <style scoped>
+
+.range-counter {
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  font-size: 10px;
+  color: black;
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 2px 5px;
+  border-radius: 3px;
+}
 .scrollable-content {
   max-height: 400px;
   overflow-y: auto;
@@ -871,7 +885,7 @@ export default {
   position: absolute;
   top: 5px;
   right: 5px;
-  font-size: 12px;
+  font-size: 16px;
   color: black;
 }
 @media (max-width: 768px) {
