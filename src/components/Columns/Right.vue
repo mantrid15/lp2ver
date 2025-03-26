@@ -17,7 +17,7 @@
         <!-- Синий модуль с фильтром и сортировкой -->
         <div :class="['blue-box', { 'blue-box-small': columnSize === 1, 'blue-box-margin': columnSize === 6 }]">
           <div class="blue-content">
-            <div style="position: relative; width: '80%';">
+            <div style="position: relative; width: 80%;">
               <v-icon
                   v-if="filter"
                   @click="filter = ''"
@@ -76,10 +76,12 @@
                     @drop="handleDrop($event, folder)"
                     @dragleave="handleDragLeave">
               <v-card-title class="folder-title">
-                <v-icon class="folder-icon"
-                        :style="{ background: getFolderColor(folder), WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }">
-                  mdi-folder
-                </v-icon>
+                <div class="icon-container">
+                  <v-icon class="folder-icon"
+                          :style="{ background: getFolderColor(folder), WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }">
+                    mdi-folder
+                  </v-icon>
+                </div>
                 <span class="folder-name" :style="{ fontSize: getFontSize(folder.dir_name) }">
                   {{ folder.dir_name }}
                 </span>
@@ -87,8 +89,8 @@
                   {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
                 </span>
                 <span class="range-counter">
-        {{ folder.range }}
-      </span>
+                  {{ folder.range }}
+                </span>
               </v-card-title>
             </v-card>
           </v-col>
@@ -161,7 +163,7 @@ export default {
     const getFontSize = (folderName) => {
       const words = folderName.split(' ');
       const hasMultipleWords = words.length > 1;
-      const isLong = folderName.length > 14;
+      const isLong = folderName.length > 13;
 
       if (hasMultipleWords && isLong) {
         if (folderName.length > 27) { // Если очень длинное - уменьшаем на 20%
@@ -435,7 +437,8 @@ export default {
                   user_id: userId.value,
                   range: newRange
                 }
-              ]);
+              ])
+              .select(); // Добавьте .select() чтобы получить вставленные данные
           if (error) {
             errorMessage.value = 'Ошибка при создании директории!';
             setTimeout(() => {
@@ -743,6 +746,17 @@ export default {
 </script>
 
 <style scoped>
+.icon-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: -20px; /* Поднимаем иконку еще выше */
+  .icon-container {
+    margin-top: 0; /* Уберите отрицательный margin */
+    align-items: flex-start; /* Выравнивание по верхнему краю */
+  }
+}
+
 .range-counter {
   position: absolute;
   bottom: 5px;
@@ -868,7 +882,7 @@ export default {
   background-color: #fff;
   border: 2px solid #000000;
   border-radius: 4px;
-  padding: 24px;
+  padding: 5px; /* Уменьшенный padding */
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -883,6 +897,12 @@ export default {
   align-items: center;
   justify-content: center;
   margin: 0;
+  /*
+  align-items: flex-start; !* Выравнивание по верхнему краю *!
+  */
+  /*
+  padding-top: 0; !* Уберите верхний padding *!
+  */
 }
 .folder-name {
   font-size: calc(1rem + (100% - 200px) * 0.5 / 300);
@@ -897,8 +917,11 @@ export default {
   -webkit-box-orient: vertical;
   overflow: hidden;
   width: 150%;
+  flex-grow: 1; /* Позволяет названию занимать доступное пространство */
 }
 .folder-icon {
+  margin-top: 0; /* Уберите лишние отступы */
+
   font-size: calc(5rem + (100% - 200px) * 5 / 300);
   color: transparent;
   background: linear-gradient(to bottom, #f0e68c, #d2b48c);
@@ -916,6 +939,9 @@ export default {
 @media (max-width: 768px) {
   .folder-card {
     height: 150px;
+    padding-top: 5px;
+    padding-left: 10px;
+    padding-right: 10px;
   }
   .folder-name {
     font-size: calc(0.8rem + (100% - 150px) * 0.5 / 300);
