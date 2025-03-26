@@ -3,6 +3,10 @@
     <div v-if="userId && account?.data?.session?.user?.email" class="user-info">
       Account: {{ maskedEmail }}
     </div>
+    <div>Правила использования:</div>
+    <div>Ctrl + перетягивание границы красного цвета</div>
+    <div>Ctrl + перетаскивание папок с правой стороны для изменения порядка</div>
+    <div>Клик на желтом поле - возврат в базовую папку - LIMBO </div>
   </div>
 </template>
 

@@ -80,7 +80,9 @@
                         :style="{ background: getFolderColor(folder), WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }">
                   mdi-folder
                 </v-icon>
-                <span class="folder-name">{{ folder.dir_name }}</span>
+                <span class="folder-name" :style="{ fontSize: getFontSize(folder.dir_name) }">
+                  {{ folder.dir_name }}
+                </span>
                 <span class="link-counter">
                   {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
                 </span>
@@ -93,7 +95,6 @@
         </v-row>
       </v-container>
     </v-main>
-
     <CreateDirView :visible="dialog"
                    @update:visible="dialog = $event"
                    :newFolderName="newFolderName"
@@ -102,7 +103,6 @@
                    @close="closeDialog"
                    @create="createDirectory"
                    @update:newFolderName="newFolderName = $event" />
-
     <EditDirView :visible="folderListDialog"
                  :folders="folders"
                  :linkCounts="linkCounts"
@@ -157,6 +157,22 @@ export default {
   setup(props, { emit }) {
     let realtimeChannel = null;
     const draggedFolder = ref(null);
+
+    const getFontSize = (folderName) => {
+      const words = folderName.split(' ');
+      const hasMultipleWords = words.length > 1;
+      const isLong = folderName.length > 14;
+
+      if (hasMultipleWords && isLong) {
+        if (folderName.length > 27) { // Если очень длинное - уменьшаем на 20%
+          return '80%';
+        } else { // Если просто длинное - уменьшаем на 10%
+          return '90%';
+        }
+      }
+      return '100%'; // Стандартный размер
+    };
+
     const handleDragStart = (event, folder) => {
       draggedFolder.value = folder;
       event.dataTransfer.setData('text/plain', folder.dir_hash);
@@ -675,6 +691,7 @@ export default {
     };
 
     return {
+      getFontSize,
       draggedFolder,
       openDialog,
       handleDragLeave,
@@ -726,7 +743,6 @@ export default {
 </script>
 
 <style scoped>
-
 .range-counter {
   position: absolute;
   bottom: 5px;
@@ -872,6 +888,15 @@ export default {
   font-size: calc(1rem + (100% - 200px) * 0.5 / 300);
   margin-bottom: 15px;
   transition: font-size 0.3s ease;
+  word-break: break-word;
+  text-align: center;
+  white-space: pre-line;
+  line-height: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  width: 150%;
 }
 .folder-icon {
   font-size: calc(5rem + (100% - 200px) * 5 / 300);
