@@ -37,7 +37,7 @@
           <td class="divider"
               style="width: 30px; border: 1px solid white; display: flex; justify-content: center; align-items: center; padding: 0;">
             <div class="favicon-container">
-              <img src="/lpicon.png"
+              <img src="/src/assets/images/lpicon.png"
                    alt="Favicon"
                    width="18"
                    height="18" />
@@ -133,7 +133,7 @@ export default {
       // Функция для фильтрации общеупотребительных терминов
       const isCommonTerm = (term) => {
         const commonTerms = [
-          'и', 'в', 'на', 'с', 'по', 'для', 'это', 'что', 'как', 'we', 'to', 'you', 'your', '!',
+          'и', ' и','в', 'на', 'с', 'по', 'для', 'это', 'что', 'как', 'we', 'to', 'you', 'your', '!',
           'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'simplify',
           'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing',
           'if', 'then', 'else', 'but', 'or', 'because', 'since', 'until',
@@ -185,11 +185,21 @@ export default {
       const parser = new DOMParser();
       const svgDoc = parser.parseFromString(svgString, "image/svg+xml");
       const svgElement = svgDoc.documentElement;
-      const width = svgElement.getAttribute('width');
-      const height = svgElement.getAttribute('height');
+      let width = svgElement.getAttribute('width');
+      let height = svgElement.getAttribute('height');
+
+      // Если width и height отсутствуют, вычисляем их
       if (!width || !height) {
-        throw new Error('SVG должен содержать атрибуты width и height.');
+        const viewBox = svgElement.getAttribute('viewBox');
+        if (viewBox) {
+          const viewBoxValues = viewBox.split(' ');
+          width = viewBoxValues[2]; // Ширина из viewBox
+          height = viewBoxValues[3]; // Высота из viewBox
+        } else {
+          throw new Error('SVG должен содержать атрибуты width и height или viewBox.');
+        }
       }
+
       // Создаем изображение из SVG
       const img = new Image();
       const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
@@ -217,7 +227,8 @@ export default {
         img.src = url;
       });
     }
-       // Функция для загрузки изображения в Supabase Storage
+
+    // Функция для загрузки изображения в Supabase Storage
     const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash) => {
       try {
         // Используем прокси-сервер для загрузки изображения
@@ -237,7 +248,6 @@ export default {
           return null; // Возвращаем null, если изображение не получено
         }
         const blob = await response.blob(); // Преобразуем ответ в Blob
-        console.log('LOCAL: 2. Файл будет сохранен с именем:', faviconName);
         // Изменяем faviconName: делаем символ перед точкой заглавным и убираем точку
         const modifiedFaviconName = faviconName.split('.')
             .map(part => part.charAt(0).toUpperCase() + part.slice(1))
@@ -248,6 +258,7 @@ export default {
         const filePath = trimmedFileExtension === 'svg'
             ? `${modifiedFaviconName}.png`
             : `${modifiedFaviconName}.${trimmedFileExtension}`;
+        console.log('LOCAL: 2. Файл будет сохранен с именем:', filePath);
         // Создаем объект File
         const file = trimmedFileExtension === 'svg'
             ? new File([await convertBlobToPng(blob)], filePath, { type: 'image/png' })

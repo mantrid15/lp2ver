@@ -1,16 +1,25 @@
-import { fileURLToPath, URL } from 'node:url';
-import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
-import vueDevTools from 'vite-plugin-vue-devtools';
-import vuetify from 'vite-plugin-vuetify'; // Импортируем плагин Vuetify
-import path from 'path'; // Импортируем path
+import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import vueDevTools from 'vite-plugin-vue-devtools'
+import vuetify from 'vite-plugin-vuetify'
+import path from 'path'
+import { viteStaticCopy } from 'vite-plugin-static-copy' // Для копирования статики
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
-    vuetify({ autoImport: true }), // Добавляем плагин Vuetify с автоимпортом
-    // vueDevTools(), // Раскомментируйте, если хотите использовать Vue DevTools
+    vuetify({ autoImport: true }),
+    // vueDevTools(), // Раскомментируйте, если нужно
+    viteStaticCopy({ // Кэширование статических изображений
+      targets: [
+        {
+          src: 'src/assets/images/*.{jpg,jpeg,png,gif,svg,webp,ico}',
+          dest: 'assets/images',
+        },
+      ],
+    }),
   ],
   resolve: {
     alias: {
@@ -32,6 +41,16 @@ export default defineConfig({
     }
   },
   build: {
-    sourcemap: true // Включение source maps для отладки
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        // Хеширование имён файлов для кэширования
+        assetFileNames: 'assets/[name].[hash].[ext]',
+        chunkFileNames: 'assets/[name].[hash].js',
+        entryFileNames: 'assets/[name].[hash].js',
+      },
+    },
+    // Оптимизация chunk-файлов
+    chunkSizeWarningLimit: 1600,
   },
-});
+})

@@ -103,9 +103,10 @@
                         <img
                             v-if="link.favicon_hash"
                             :src="getFaviconUrl(link.favicon_hash)"
-                            alt="Favicon"
+                            alt="F"
                             class="favicon"
                             :loading="'lazy'"
+
                         />
             <span v-if="link.id === activeLinkId" class="delete-icon" @click.stop="deleteLink(link)">{{ DELETE_ICON }}</span>
           </td>
@@ -455,7 +456,7 @@ export default {
 
     const getFaviconUrl = (faviconHash) => {
       const favicon = props.favicons.find(f => f.favicon_hash === faviconHash);
-      if (!favicon) return '/lpicon.png';
+      if (!favicon) return 'src/assets/images/lpicon.png';
       if (favicon.fav_url) {
           return favicon.fav_url;
       }
@@ -463,7 +464,7 @@ export default {
         const pathBase = 'https://wfofanoqnvqnxtmpkpqz.supabase.co/storage/v1/object/public/favibucket/';
         return `${pathBase}${favicon.storage_path}`;
       }
-      return favicon.fav_url || '/lpicon.png';
+      return favicon.fav_url || 'src/assets/images/lpicon.png';
     };
 
     const handleFavClick = (link) => {
