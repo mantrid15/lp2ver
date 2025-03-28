@@ -34,7 +34,7 @@
           <td class="divider" style="width: 300px; border: 1px solid white; padding: 0;">
             <input ref="urlInput" v-model="url" class="url-input" type="text" placeholder="Введите URL" @keydown.enter="handleEnter" style="text-align: left; width: 100%; height: 100%; border: none; padding: 0; margin: 0;" />
           </td>
-          <td class="divider"
+<!--          <td class="divider"
               style="width: 30px; border: 1px solid white; display: flex; justify-content: center; align-items: center; padding: 0;">
             <div class="favicon-container">
               <img src="/src/assets/images/lpicon.png"
@@ -42,7 +42,7 @@
                    width="18"
                    height="18" />
             </div>
-          </td>
+          </td>-->
           <td class="divider" style="width: 400px; border: 1px solid white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
   <span class="scrolling-text" v-tooltip="Array.isArray(tableData?.title) ? tableData.title.join(', ') : tableData?.title || ''">
     <span class="text-ellipsis" style="margin-left: 5px">{{ tableData?.title ? truncateText(tableData.title, 30).truncated : '' }}</span>
@@ -119,7 +119,7 @@ export default {
     const tableData = ref({
       title: '',
       description: '',
-      keywords: [],
+      keywords: '',
       date: '',
     });
     // определение совокупности ключевых слов, которые нужно заменить на null

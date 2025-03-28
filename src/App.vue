@@ -27,7 +27,9 @@
         </v-toolbar-title>
         <v-spacer></v-spacer>
         <div class="row-tool-container">
-          <RowTool :buttonColor="buttonColor"
+          <NewTask v-if="$route.path === '/todo'" @task-added="fetchTasks" />
+          <RowTool v-else
+                   :buttonColor="buttonColor"
                    @change-button-color="changeButtonColorHandler"
                    :userId="userId"></RowTool>
         </div>
@@ -39,8 +41,10 @@
           <v-fade-transition>
             <component
                 :is="Component"
-                @changeButtonColor="changeButtonColorHandler"
-                :buttonColor="buttonColor"
+                v-bind="{
+        ...($route.meta.requiresAuth ? { buttonColor } : {}),
+        ...($route.meta.requiresAuth ? { onChangeButtonColor: changeButtonColorHandler } : {})
+      }"
             />
           </v-fade-transition>
         </router-view>
@@ -57,11 +61,14 @@
 </template>
 <script setup>
 import { ref, computed } from 'vue';
+import { useRoute } from 'vue-router'; // Добавленный импорт
 import RowTool from "@/components/MainRowTool.vue";
 import { supabase } from "@/clients/supabase";
 import { useStore } from 'vuex';
+import NewTask from '@/components/ToDo/NewTask.vue';
 
-const drawer = ref(false); // Управляет открытием/закрытием меню
+const route = useRoute();
+const drawer = ref(false);
 const store = useStore();
 const userId = computed(() => store.state.userId);
 const buttonColor = ref('red');
@@ -86,6 +93,54 @@ const handleLoginStateChange = (isLoggedIn) => {
     buttonColor.value = 'red';
   }
 };
+
+async function fetchTasks() {
+  try {
+    const {data, error} = await supabase
+        .from('todolist')
+        .select('*')
+        .order('created_at', {ascending: true});
+
+    if (error) throw error;
+
+    tasks.value = (data || []).map(task => ({
+      ...task,
+      due_date_edit: formatDateForInput(task.due_date) || '',
+      due_date: formatDateForDisplay(task.due_date) || '',
+      editing: false,
+      editingField: null,
+      originalValue: ''
+    }));
+  } catch (error) {
+    console.error('Ошибка при загрузке задач:', error);
+  }
+};
+
+function formatDateForDisplay(dateString) {
+  if (!dateString) return '';
+
+  if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
+    return dateString;
+  }
+
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}.${month}.${year}`;
+}
+
+function formatDateForInput(dateString) {
+  if (!dateString) return '';
+
+  if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
+    const [day, month, year] = dateString.split('.');
+    return `${year}-${month}-${day}`;
+  }
+
+  const date = new Date(dateString);
+  return date.toISOString().split('T')[0];
+}
 </script>
 <style scoped>
 .text-decoration-none {

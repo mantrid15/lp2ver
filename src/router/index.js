@@ -16,6 +16,7 @@ const router = createRouter({
 			path: "/",
 			name: "home",
 			component: HomeView,
+			meta: { requiresProps: true }
 		},
 		{
 			path: "/linzer",

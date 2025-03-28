@@ -110,7 +110,6 @@ export default {
 
 <style scoped>
 .input-group {
-  margin-bottom: 20px;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -123,6 +122,7 @@ export default {
   margin-right: 10px;
   border: 1px solid black;
   border-radius: 4px;
+  background: white;
 }
 
 .input-group button {

@@ -51,6 +51,31 @@ export default {
         console.error('Ошибка при загрузке задач:', error);
       }
     };
+    function formatDateForDisplay(dateString) {
+      if (!dateString) return '';
+
+      if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
+        return dateString;
+      }
+
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}.${month}.${year}`;
+    }
+
+    function formatDateForInput(dateString) {
+      if (!dateString) return '';
+
+      if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
+        const [day, month, year] = dateString.split('.');
+        return `${year}-${month}-${day}`;
+      }
+
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    }
 
     async function getSession() {
       try {

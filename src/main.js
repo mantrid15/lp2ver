@@ -8,6 +8,13 @@ import cors from 'cors';
 
 const app = createApp(App)
 
+
+// Регистрируем директиву v-focus
+app.directive('focus', {
+    mounted(el) {
+        el.focus()
+    }
+})
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
