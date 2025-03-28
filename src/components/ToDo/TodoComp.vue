@@ -1,12 +1,11 @@
 <template>
   <div class="todo-container">
-<!--    <NewTask @task-added="fetchTasks" />-->
-
     <table class="todo-table">
       <thead>
       <tr class="table-header">
         <th style="width: 20%;">Задача</th>
-        <th style="width: 40%;">Описание</th>
+        <th style="width: 30%;">Описание</th>
+        <th style="width: 10%;">Объект</th>
         <th style="width: 6%;">Статус</th>
         <th style="width: 6%;">Тег важности</th>
         <th style="width: 5%;">Дата создания</th>
@@ -15,7 +14,13 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="task in tasks" :key="task.id" :class="{'completed-task': task.status === 'выполнено'}">
+      <tr v-for="task in filteredTasks" :key="task.id"
+           :class="{
+      'completed-task': task.status === 'выполнено',
+      'status-completed': task.status === 'выполнено',
+      'status-in-progress': task.status === 'выполняется',
+      'status-not-started': task.status === 'не выполнено'
+    }">
         <td class="task-title" @dblclick="!isTaskCompleted(task) && startEditing(task, 'title')">
           <input
               v-if="task.editing && task.editingField === 'title'"
@@ -40,7 +45,21 @@
           />
           <span v-else>{{ task.description }}</span>
         </td>
-        <td class="status-cell">
+        <td @dblclick="!isTaskCompleted(task) && startEditing(task, 'object')">
+          <input
+              v-if="task.editing && task.editingField === 'object'"
+              v-model="task.object"
+              @keyup.enter="finishEditing(task)"
+              @blur="finishEditing(task)"
+              v-focus
+              class="task-input"
+              :disabled="isTaskCompleted(task)"
+          />
+          <span v-else>{{ task.object }}</span>
+        </td>
+
+
+        <td class="status-cell" :data-status="task.status">
           <select v-model="task.status" @change="updateTask(task)">
             <option value="не выполнено">Не выполнено</option>
             <option value="выполнено">Выполнено</option>
@@ -75,7 +94,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { supabase } from '@/clients/supabase.js';
 import NewTask from './NewTask.vue';
 
@@ -89,6 +108,10 @@ export default {
   setup() {
     const tasks = ref([]);
     const subscription = ref(null);
+
+    const filteredTasks = computed(() => {
+      return tasks.value.filter(task => !task.deleted);
+    });
 
     function isTaskCompleted(task) {
       return task.status === 'выполнено';
@@ -114,6 +137,7 @@ export default {
         const { data, error } = await supabase
             .from('todolist')
             .select('*')
+            .or('deleted.is.false,deleted.is.null')
             .order('created_at', { ascending: true });
 
         if (error) throw error;
@@ -137,7 +161,8 @@ export default {
           title: task.title,
           description: task.description,
           importance_tag: task.importance_tag,
-          status: task.status
+          status: task.status,
+          object: task.object
         };
 
         const { error } = await supabase
@@ -184,6 +209,24 @@ export default {
       }
     }
 
+    async function deleteTask(id) {
+      try {
+        const { error } = await supabase
+            .from('todolist')
+            .update({ deleted: true })
+            .match({ id });
+
+        if (error) throw error;
+
+        // Обновляем локальное состояние
+        tasks.value = tasks.value.map(task =>
+          task.id === id ? { ...task, deleted: true } : task
+        );
+      } catch (error) {
+        console.error('Ошибка при пометке задачи как удаленной:', error);
+      }
+    }
+
     function formatDate(dateString) {
       if (!dateString) return '';
       const date = new Date(dateString);
@@ -216,21 +259,6 @@ export default {
       return date.toISOString().split('T')[0];
     }
 
-    async function deleteTask(id) {
-      try {
-        const { error } = await supabase
-            .from('todolist')
-            .delete()
-            .match({ id });
-
-        if (error) throw error;
-
-        tasks.value = tasks.value.filter(task => task.id !== id);
-      } catch (error) {
-        console.error('Ошибка при удалении задачи:', error);
-      }
-    }
-
     function setupRealtimeUpdates() {
       subscription.value = supabase
           .channel('todolist_changes')
@@ -261,6 +289,7 @@ export default {
 
     return {
       tasks,
+      filteredTasks,
       isTaskCompleted,
       startEditing,
       finishEditing,
@@ -276,6 +305,27 @@ export default {
 </script>
 
 <style scoped>
+.completed-task td:not(.status-cell):not(.delete-cell) {
+  position: relative;
+}
+
+.completed-task td:not(.status-cell):not(.delete-cell)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: red;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+/* Убедимся, что статус и кнопка удаления не зачеркнуты */
+.status-cell, .delete-cell {
+  position: relative;
+  z-index: 3; /* Выше линии зачеркивания */
+}
 .todo-container {
   background-color: #e6e6fa;
   padding: 10px;
@@ -328,7 +378,9 @@ export default {
 
 .todo-table th {
   background-color: #4CAF50;
+  /*
   color: white;
+  */
   font-weight: bold;
   padding: 8px;
   text-align: left;
@@ -345,18 +397,88 @@ export default {
   text-overflow: ellipsis;
   cursor: default;
   height: 20px;
+  position: relative;
 }
 
 .todo-table tr:hover td {
   background-color: #ffe4b5;
 }
 
-.todo-table select {
+/* Стили для ячейки статуса */
+.status-cell {
+  padding: 0 !important;
+}
+
+.status-cell select {
   width: 100%;
+  height: 100%;
   padding: 4px;
-  border: 1px solid black;
-  border-radius: 3px;
+  border: none;
+  border-radius: 0;
   font-size: 0.9em;
+  color: black;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: transparent;
+}
+
+/* Цвета для разных статусов в ячейке */
+.status-cell[data-status="выполнено"] {
+  background-color: #ff4444 !important;
+  color: white;
+}
+
+.status-cell[data-status="выполнено"] select {
+  color: white !important;
+}
+
+.status-cell[data-status="выполняется"] {
+  background-color: #4CAF50 !important;
+  color: black;
+}
+
+.status-cell[data-status="не выполнено"] {
+  background-color: #add8e6 !important;
+  color: black;
+}
+
+/* Зачеркивание для выполненных задач */
+.completed-task td:not(.status-cell):not(.delete-cell)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: red;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+/* Стили для выпадающего списка */
+.status-cell select option {
+  background-color: white;
+  color: black; /* Черный текст в выпадающем списке */
+}
+
+/* Стиль для option "выполнено" в выпадающем списке */
+.status-cell select option[value="выполнено"] {
+  background-color: #ff4444;
+  color: white !important;
+}
+
+/* Стиль для option "выполняется" в выпадающем списке */
+.status-cell select option[value="выполняется"] {
+  background-color: #4CAF50;
+  color: white;
+}
+
+/* Стиль для option "не выполнено" в выпадающем списке */
+.status-cell select option[value="не выполнено"] {
+  background-color: #add8e6;
+  color: black;
 }
 
 .todo-table select:disabled {
@@ -384,24 +506,14 @@ export default {
   padding: 2px 4px !important;
 }
 
-.completed-task td {
-  position: relative;
-}
-
-.completed-task td:not(.status-cell):not(.delete-cell)::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background-color: red;
-  transform: translateY(-50%);
-}
-
-.status-cell, .delete-cell {
-  position: relative;
-  z-index: 1;
+.delete-cell {
   background-color: #fffacd !important;
+  position: relative;
+  z-index: 2;
+}
+
+.status-cell {
+  position: relative;
+  z-index: 2;
 }
 </style>
