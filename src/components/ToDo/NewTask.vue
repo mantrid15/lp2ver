@@ -18,58 +18,59 @@
 </template>
 
 <script>
+import { ref } from 'vue';
 import { supabase } from '@/clients/supabase.js';
 
 export default {
-  data() {
-    return {
-      newTask: {
-        title: '',
-        description: '',
-        importance_tag: 'средняя',
-        due_date: '',
-        status: 'не выполнено'
-      },
-      internalDate: null
-    };
-  },
-  methods: {
-    getCurrentDate() {
+  name: 'NewTask',
+
+  setup(props, { emit }) {
+    const newTask = ref({
+      title: '',
+      description: '',
+      importance_tag: 'средняя',
+      due_date: '',
+      status: 'не выполнено'
+    });
+
+    const internalDate = ref(null);
+
+    function getCurrentDate() {
       const today = new Date();
       return today.toISOString().split('T')[0];
-    },
+    }
 
-    handleDateChange() {
-      if (!this.internalDate) {
-        this.newTask.due_date = '';
+    function handleDateChange() {
+      if (!internalDate.value) {
+        newTask.value.due_date = '';
         return;
       }
-      const date = new Date(this.internalDate);
+      const date = new Date(internalDate.value);
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
-      this.newTask.due_date = `${day}.${month}.${year}`;
-    },
+      newTask.value.due_date = `${day}.${month}.${year}`;
+    }
 
-    async addTask() {
+    async function addTask() {
       try {
-        if (!this.newTask.title) {
+        if (!newTask.value.title) {
           alert('Название задачи обязательно');
           return;
         }
 
         let dueDateISO = null;
-        if (this.newTask.due_date) {
-          const [day, month, year] = this.newTask.due_date.split('.');
+        if (newTask.value.due_date) {
+          const [day, month, year] = newTask.value.due_date.split('.');
           dueDateISO = `${year}-${month}-${day}`;
         }
 
         const taskToAdd = {
-          title: this.newTask.title,
-          description: this.newTask.description,
-          importance_tag: this.newTask.importance_tag,
+          title: newTask.value.title,
+          description: newTask.value.description,
+          importance_tag: newTask.value.importance_tag,
           due_date: dueDateISO,
-          status: this.newTask.status,
+          status: newTask.value.status,
           created_at: new Date().toISOString()
         };
 
@@ -80,22 +81,29 @@ export default {
         if (error) throw error;
 
         // Сбрасываем форму
-        this.newTask = {
+        newTask.value = {
           title: '',
           description: '',
           importance_tag: 'средняя',
           due_date: '',
           status: 'не выполнено'
         };
-        this.internalDate = null;
+        internalDate.value = null;
 
-        // Генерируем событие о добавлении новой задачи
-        this.$emit('task-added');
+        emit('task-added');
 
       } catch (error) {
         console.error('Ошибка при добавлении задачи:', error);
       }
     }
+
+    return {
+      newTask,
+      internalDate,
+      getCurrentDate,
+      handleDateChange,
+      addTask
+    };
   }
 };
 </script>

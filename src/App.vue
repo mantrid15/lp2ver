@@ -9,7 +9,6 @@
               <v-list-item to="/" title="Home" prepend-icon="mdi-home"></v-list-item>
               <!-- Linzer -->
               <v-list-item to="/linzer" title="LinZer" prepend-icon="mdi-cookie"></v-list-item>
-
               <!-- Todo -->
               <v-list-item to="/todo" title="ToDo" prepend-icon="mdi-format-list-checks"></v-list-item>
             </v-list>

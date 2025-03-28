@@ -75,47 +75,41 @@
 </template>
 
 <script>
+import { ref, onMounted, onUnmounted } from 'vue';
 import { supabase } from '@/clients/supabase.js';
 import NewTask from './NewTask.vue';
 
 export default {
+  name: 'TodoComp',
+
   components: {
     NewTask
   },
-  directives: {
-    focus: {
-      inserted(el) {
-        el.focus();
-      }
-    }
-  },
-  data() {
-    return {
-      tasks: [],
-      subscription: null
-    };
-  },
-  methods: {
-    isTaskCompleted(task) {
-      return task.status === 'выполнено';
-    },
 
-    startEditing(task, field) {
-      if (this.isTaskCompleted(task)) return;
+  setup() {
+    const tasks = ref([]);
+    const subscription = ref(null);
+
+    function isTaskCompleted(task) {
+      return task.status === 'выполнено';
+    }
+
+    function startEditing(task, field) {
+      if (isTaskCompleted(task)) return;
       task.editing = true;
       task.editingField = field;
       task.originalValue = task[field];
-    },
+    }
 
-    finishEditing(task) {
+    function finishEditing(task) {
       if (task.editing) {
         task.editing = false;
         task.editingField = null;
-        this.updateTask(task);
+        updateTask(task);
       }
-    },
+    }
 
-    async fetchTasks() {
+    async function fetchTasks() {
       try {
         const { data, error } = await supabase
             .from('todolist')
@@ -124,10 +118,10 @@ export default {
 
         if (error) throw error;
 
-        this.tasks = (data || []).map(task => ({
+        tasks.value = (data || []).map(task => ({
           ...task,
-          due_date_edit: this.formatDateForInput(task.due_date) || '',
-          due_date: this.formatDateForDisplay(task.due_date) || '',
+          due_date_edit: formatDateForInput(task.due_date) || '',
+          due_date: formatDateForDisplay(task.due_date) || '',
           editing: false,
           editingField: null,
           originalValue: ''
@@ -135,9 +129,9 @@ export default {
       } catch (error) {
         console.error('Ошибка при загрузке задач:', error);
       }
-    },
+    }
 
-    async updateTask(task) {
+    async function updateTask(task) {
       try {
         const taskToUpdate = {
           title: task.title,
@@ -158,11 +152,11 @@ export default {
           task[task.editingField] = task.originalValue;
         }
       }
-    },
+    }
 
-    async updateDueDate(task) {
+    async function updateDueDate(task) {
       try {
-        if (!task.due_date_edit || this.isTaskCompleted(task)) {
+        if (!task.due_date_edit || isTaskCompleted(task)) {
           return;
         }
 
@@ -171,11 +165,11 @@ export default {
 
         if (dueDate < createdDate) {
           alert('Дата выполнения не может быть раньше даты создания');
-          task.due_date_edit = this.formatDateForInput(task.due_date);
+          task.due_date_edit = formatDateForInput(task.due_date);
           return;
         }
 
-        const formattedDueDate = this.formatDateForDisplay(task.due_date_edit);
+        const formattedDueDate = formatDateForDisplay(task.due_date_edit);
 
         const { error } = await supabase
             .from('todolist')
@@ -188,15 +182,15 @@ export default {
       } catch (error) {
         console.error('Ошибка при обновлении даты выполнения:', error);
       }
-    },
+    }
 
-    formatDate(dateString) {
+    function formatDate(dateString) {
       if (!dateString) return '';
       const date = new Date(dateString);
       return date.toLocaleDateString();
-    },
+    }
 
-    formatDateForDisplay(dateString) {
+    function formatDateForDisplay(dateString) {
       if (!dateString) return '';
 
       if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
@@ -208,9 +202,9 @@ export default {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
       return `${day}.${month}.${year}`;
-    },
+    }
 
-    formatDateForInput(dateString) {
+    function formatDateForInput(dateString) {
       if (!dateString) return '';
 
       if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
@@ -220,9 +214,9 @@ export default {
 
       const date = new Date(dateString);
       return date.toISOString().split('T')[0];
-    },
+    }
 
-    async deleteTask(id) {
+    async function deleteTask(id) {
       try {
         const { error } = await supabase
             .from('todolist')
@@ -231,35 +225,52 @@ export default {
 
         if (error) throw error;
 
-        this.tasks = this.tasks.filter(task => task.id !== id);
+        tasks.value = tasks.value.filter(task => task.id !== id);
       } catch (error) {
         console.error('Ошибка при удалении задачи:', error);
       }
-    },
+    }
 
-    setupRealtimeUpdates() {
-      this.subscription = supabase
+    function setupRealtimeUpdates() {
+      subscription.value = supabase
           .channel('todolist_changes')
           .on('postgres_changes', {
             event: '*',
             schema: 'public',
             table: 'todolist'
           }, () => {
-            this.fetchTasks();
+            fetchTasks();
           })
           .subscribe();
     }
-  },
 
-  mounted() {
-    this.fetchTasks();
-    this.setupRealtimeUpdates();
-  },
-
-  beforeUnmount() {
-    if (this.subscription) {
-      supabase.removeChannel(this.subscription);
+    function unsubscribeFromRealtimeChanges() {
+      if (subscription.value) {
+        supabase.removeChannel(subscription.value);
+      }
     }
+
+    onMounted(() => {
+      fetchTasks();
+      setupRealtimeUpdates();
+    });
+
+    onUnmounted(() => {
+      unsubscribeFromRealtimeChanges();
+    });
+
+    return {
+      tasks,
+      isTaskCompleted,
+      startEditing,
+      finishEditing,
+      updateTask,
+      updateDueDate,
+      deleteTask,
+      formatDate,
+      formatDateForDisplay,
+      formatDateForInput
+    };
   }
 };
 </script>
@@ -267,8 +278,11 @@ export default {
 <style scoped>
 .todo-container {
   background-color: #e6e6fa;
-  padding: 20px;
+  padding: 10px;
   min-height: 100vh;
+  /*
+  margin-top: 4px; !* Добавляем отступ сверху *!
+  */
 }
 
 .task-title {
