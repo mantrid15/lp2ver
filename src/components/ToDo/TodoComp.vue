@@ -3,7 +3,17 @@
     <table class="todo-table">
       <thead>
       <tr class="table-header">
-        <th style="width: 20%;">Задача</th>
+        <th style="width: 20%;">
+          <div style="display: flex; align-items: center;">
+            <input
+                type="checkbox"
+                v-model="showDeletedTasks"
+                @change="handleShowDeletedChange"
+                style="margin-right: 8px;"
+            >
+            Задача
+          </div>
+        </th>
         <th style="width: 30%;">Описание</th>
         <th style="width: 10%;">Объект</th>
         <th style="width: 6%;">Статус</th>
@@ -14,8 +24,9 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="task in filteredTasks" :key="task.id"
-           :class="{
+      <tr v-for="task in displayedTasks"
+          :key="task.id"
+          :class="{
       'completed-task': task.status === 'выполнено',
       'status-completed': task.status === 'выполнено',
       'status-in-progress': task.status === 'выполняется',
@@ -57,8 +68,6 @@
           />
           <span v-else>{{ task.object }}</span>
         </td>
-
-
         <td class="status-cell" :data-status="task.status">
           <select v-model="task.status" @change="updateTask(task)">
             <option value="не выполнено">Не выполнено</option>
@@ -108,37 +117,22 @@ export default {
   setup() {
     const tasks = ref([]);
     const subscription = ref(null);
+    const showDeletedTasks = ref(false);
 
-    const filteredTasks = computed(() => {
-      return tasks.value.filter(task => !task.deleted);
+    // Реактивное свойство для отображаемых задач
+    const displayedTasks = computed(() => {
+      return showDeletedTasks.value
+        ? tasks.value
+        : tasks.value.filter(task => !task.deleted);
     });
 
-    function isTaskCompleted(task) {
-      return task.status === 'выполнено';
-    }
-
-    function startEditing(task, field) {
-      if (isTaskCompleted(task)) return;
-      task.editing = true;
-      task.editingField = field;
-      task.originalValue = task[field];
-    }
-
-    function finishEditing(task) {
-      if (task.editing) {
-        task.editing = false;
-        task.editingField = null;
-        updateTask(task);
-      }
-    }
-
-    async function fetchTasks() {
+    // Загрузка всех задач без фильтрации
+    const fetchAllTasks = async () => {
       try {
         const { data, error } = await supabase
-            .from('todolist')
-            .select('*')
-            .or('deleted.is.false,deleted.is.null')
-            .order('created_at', { ascending: true });
+          .from('todolist')
+          .select('*')
+          .order('created_at', { ascending: true });
 
         if (error) throw error;
 
@@ -153,9 +147,31 @@ export default {
       } catch (error) {
         console.error('Ошибка при загрузке задач:', error);
       }
-    }
+    };
 
-    async function updateTask(task) {
+    // Проверка статуса задачи
+    const isTaskCompleted = (task) => {
+      return task.status === 'выполнено';
+    };
+
+    // Редактирование задачи
+    const startEditing = (task, field) => {
+      if (isTaskCompleted(task)) return;
+      task.editing = true;
+      task.editingField = field;
+      task.originalValue = task[field];
+    };
+
+    const finishEditing = (task) => {
+      if (task.editing) {
+        task.editing = false;
+        task.editingField = null;
+        updateTask(task);
+      }
+    };
+
+    // Обновление задачи
+    const updateTask = async (task) => {
       try {
         const taskToUpdate = {
           title: task.title,
@@ -166,9 +182,9 @@ export default {
         };
 
         const { error } = await supabase
-            .from('todolist')
-            .update(taskToUpdate)
-            .match({ id: task.id });
+          .from('todolist')
+          .update(taskToUpdate)
+          .match({ id: task.id });
 
         if (error) throw error;
       } catch (error) {
@@ -177,13 +193,12 @@ export default {
           task[task.editingField] = task.originalValue;
         }
       }
-    }
+    };
 
-    async function updateDueDate(task) {
+    // Обновление даты выполнения
+    const updateDueDate = async (task) => {
       try {
-        if (!task.due_date_edit || isTaskCompleted(task)) {
-          return;
-        }
+        if (!task.due_date_edit || isTaskCompleted(task)) return;
 
         const createdDate = new Date(task.created_at);
         const dueDate = new Date(task.due_date_edit);
@@ -197,9 +212,9 @@ export default {
         const formattedDueDate = formatDateForDisplay(task.due_date_edit);
 
         const { error } = await supabase
-            .from('todolist')
-            .update({ due_date: formattedDueDate })
-            .match({ id: task.id });
+          .from('todolist')
+          .update({ due_date: formattedDueDate })
+          .match({ id: task.id });
 
         if (error) throw error;
 
@@ -207,14 +222,15 @@ export default {
       } catch (error) {
         console.error('Ошибка при обновлении даты выполнения:', error);
       }
-    }
+    };
 
-    async function deleteTask(id) {
+    // Удаление задачи
+    const deleteTask = async (id) => {
       try {
         const { error } = await supabase
-            .from('todolist')
-            .update({ deleted: true })
-            .match({ id });
+          .from('todolist')
+          .update({ deleted: true })
+          .match({ id });
 
         if (error) throw error;
 
@@ -225,31 +241,28 @@ export default {
       } catch (error) {
         console.error('Ошибка при пометке задачи как удаленной:', error);
       }
-    }
+    };
 
-    function formatDate(dateString) {
+    // Форматирование дат
+    const formatDate = (dateString) => {
       if (!dateString) return '';
       const date = new Date(dateString);
       return date.toLocaleDateString();
-    }
+    };
 
-    function formatDateForDisplay(dateString) {
+    const formatDateForDisplay = (dateString) => {
       if (!dateString) return '';
-
-      if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
-        return dateString;
-      }
+      if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) return dateString;
 
       const date = new Date(dateString);
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
       return `${day}.${month}.${year}`;
-    }
+    };
 
-    function formatDateForInput(dateString) {
+    const formatDateForInput = (dateString) => {
       if (!dateString) return '';
-
       if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
         const [day, month, year] = dateString.split('.');
         return `${year}-${month}-${day}`;
@@ -257,29 +270,31 @@ export default {
 
       const date = new Date(dateString);
       return date.toISOString().split('T')[0];
-    }
+    };
 
-    function setupRealtimeUpdates() {
+    // Real-time подписка
+    const setupRealtimeUpdates = () => {
       subscription.value = supabase
-          .channel('todolist_changes')
-          .on('postgres_changes', {
-            event: '*',
-            schema: 'public',
-            table: 'todolist'
-          }, () => {
-            fetchTasks();
-          })
-          .subscribe();
-    }
+        .channel('todolist_changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'todolist'
+        }, () => {
+          fetchAllTasks();
+        })
+        .subscribe();
+    };
 
-    function unsubscribeFromRealtimeChanges() {
+    const unsubscribeFromRealtimeChanges = () => {
       if (subscription.value) {
         supabase.removeChannel(subscription.value);
       }
-    }
+    };
 
+    // Хуки жизненного цикла
     onMounted(() => {
-      fetchTasks();
+      fetchAllTasks();
       setupRealtimeUpdates();
     });
 
@@ -289,7 +304,8 @@ export default {
 
     return {
       tasks,
-      filteredTasks,
+      showDeletedTasks,
+      displayedTasks,
       isTaskCompleted,
       startEditing,
       finishEditing,
