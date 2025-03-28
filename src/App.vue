@@ -11,6 +11,14 @@
               <v-list-item to="/linzer" title="LinZer" prepend-icon="mdi-cookie"></v-list-item>
               <!-- Todo -->
               <v-list-item to="/todo" title="ToDo" prepend-icon="mdi-format-list-checks"></v-list-item>
+              <!-- Login/Logout -->
+              <v-list-item
+                to="/login"
+                :title="loginButtonText"
+                :prepend-icon="isLoggedIn ? 'mdi-logout' : 'mdi-login'"
+                @click="isLoggedIn ? handleLoginStateChange(false) : null"
+                :class="isLoggedIn ? 'bg-purple' : 'bg-red'"
+              ></v-list-item>
             </v-list>
           </v-navigation-drawer>
          <v-toolbar-title>
@@ -23,23 +31,6 @@
                    @change-button-color="changeButtonColorHandler"
                    :userId="userId"></RowTool>
         </div>
-        <v-btn to="/login"
-               variant="flat"
-               :color="loginButtonColor"
-               class="fixed-size-button"
-               style="padding: 5px;"
-               @click="isLoggedIn ? handleLoginStateChange(false) : null"
-        ><span style="margin-right: 10px">
-{{ loginButtonText }}
-</span>
-          <v-img
-              src="/lpicon.png"
-              alt="Login Icon"
-              width="20"
-              height="20"
-              class="mr-2 ml-2"
-              :color="loginButtonColor" />
-        </v-btn>
       </v-toolbar>
     </header>
     <v-main class="main-with-margin">
@@ -112,28 +103,23 @@ const handleLoginStateChange = (isLoggedIn) => {
   overflow: hidden; /* Убираем прокрутку */
 }
 .content {
-  padding-top: 20px; /* Отступ для содержимого */
-}
-.fixed-size-button {
-  width: 120px;
-  height: 20px;
-  min-width: 120px;
-  min-height: 40px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding-top: 20px;
 }
 .row-tool-container {
   display: flex;
   align-items: center;
   margin-right: 10px;
 }
-.red-button {
-  background-color: red;
-  color: white;
+.bg-purple {
+  background-color: rgba(128, 0, 128, 0.2) !important;
 }
-.purple-button {
-  background-color: purple;
-  color: white;
+.bg-purple:hover {
+  background-color: rgba(100, 4, 100, 0.4) !important;
+}
+.bg-red {
+  background-color: rgba(255, 0, 0, 0.2) !important;
+}
+.bg-red:hover {
+  background-color: rgba(255, 0, 0, 0.4) !important;
 }
 </style>
