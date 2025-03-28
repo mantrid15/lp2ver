@@ -49,17 +49,18 @@ export default {
   setup() {
     const store = useStore();
     const userId = computed(() => store.state.userId); // Получите userId из Vuex
+    const account = ref(null);
+
     const selectedFolderHash = ref(null); // Состояние для хранения dir_hash выбранной папки
     const handleFolderSelected = (dirHash) => {
       selectedFolderHash.value = dirHash;
-    };
 
+    };
     const handleResetFolderSelection = () => {
       selectedFolderHash.value = null; // Сбрасываем состояние выбранной папки
-    };
 
+    };
     // Управление сессией
-    const account = ref(null);
     const draggedLink = ref(null); // Объявляем draggedLink
     const favicons = ref([]); // Реактивная переменная для хранения данных из favicons
     // Data and sorting
@@ -81,23 +82,18 @@ export default {
     const leftColumnWidth = ref(localStorage.getItem('leftColumnWidth') || '30%');
     const middleColumnWidth = ref(localStorage.getItem('middleColumnWidth') || '40%');
     const rightColumnWidth = ref(localStorage.getItem('rightColumnWidth') || '30%');
-
     // Resize state
     const isResizing = ref(false);
     let initialMouseX = 0;
     let containerWidth = 0;
     let currentColumn = 0;
     let ctrlPressed = false;
-
     // Column width constraints
     const MIN_SIDE_COLUMN_WIDTH = 10;
     const MAX_SIDE_COLUMN_WIDTH = 30;
     const MIN_MIDDLE_COLUMN_WIDTH = 40;
     const MAX_MIDDLE_COLUMN_WIDTH = 80;
-
-
     let realtimeChannel;
-
     // Methods
     const fetchLinks = async () => {
       try {
@@ -223,7 +219,6 @@ export default {
     const updateDraggedLink = (link) => {
       draggedLink.value = link;
     };
-
     // Realtime subscription
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
@@ -288,7 +283,6 @@ export default {
     onMounted(async () => {
       await getSession();
       // console.log('Account after session fetch:', account.value);
-
       // Подписка на изменения авторизации
       supabase.auth.onAuthStateChange((event, session) => {
         account.value = { data: { session } };

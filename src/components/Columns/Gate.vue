@@ -99,11 +99,15 @@
             @dragstart="onDragStart(link)"
             @dragend="onDragEnd"
         >
-          <td class="content-padding fav-column" @click="handleFavClick(link)">
+            <!--
+                            :alt="getFaviconUrl(link.favicon_hash)"
+-->
+
+            <td class="content-padding fav-column" @click="handleFavClick(link)">
                         <img
                             v-if="link.favicon_hash"
                             :src="getFaviconUrl(link.favicon_hash)"
-                            alt="F"
+                            :title="getFaviconUrl(link.favicon_hash)"
                             class="favicon"
                             :loading="'lazy'"
 
@@ -457,13 +461,14 @@ export default {
     const getFaviconUrl = (faviconHash) => {
       const favicon = props.favicons.find(f => f.favicon_hash === faviconHash);
       if (!favicon) return 'src/assets/images/lpicon.png';
-      if (favicon.fav_url) {
-          return favicon.fav_url;
-      }
       if (favicon.storage_path.includes('.')) {
         const pathBase = 'https://wfofanoqnvqnxtmpkpqz.supabase.co/storage/v1/object/public/favibucket/';
         return `${pathBase}${favicon.storage_path}`;
       }
+      if (favicon.fav_url) {
+          return favicon.fav_url;
+      }
+
       return favicon.fav_url || 'src/assets/images/lpicon.png';
     };
 

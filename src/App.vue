@@ -2,10 +2,21 @@
   <v-app>
     <header>
       <v-toolbar density="default" dark color="primary" app class="fixed-toolbar">
-        <v-app-bar-nav-icon></v-app-bar-nav-icon>
-        <v-toolbar-title>
+        <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
+          <v-navigation-drawer v-model="drawer" temporary>
+            <v-list>
+              <!-- Главная -->
+              <v-list-item to="/" title="Home" prepend-icon="mdi-home"></v-list-item>
+              <!-- Linzer -->
+              <v-list-item to="/linzer" title="LinZer" prepend-icon="mdi-cookie"></v-list-item>
+
+              <!-- Todo -->
+              <v-list-item to="/todo" title="ToDo" prepend-icon="mdi-format-list-checks"></v-list-item>
+            </v-list>
+          </v-navigation-drawer>
+         <v-toolbar-title>
           <RouterLink to="/">Home</RouterLink>
-          <RouterLink to="/linzer">About</RouterLink>
+<!--          <RouterLink to="/linzer">About</RouterLink>-->
         </v-toolbar-title>
         <v-spacer></v-spacer>
         <div class="row-tool-container">
@@ -54,12 +65,13 @@
     </v-footer>
   </v-app>
 </template>
-
 <script setup>
 import { ref, computed } from 'vue';
 import RowTool from "@/components/MainRowTool.vue";
 import { supabase } from "@/clients/supabase";
 import { useStore } from 'vuex';
+
+const drawer = ref(false); // Управляет открытием/закрытием меню
 const store = useStore();
 const userId = computed(() => store.state.userId);
 const buttonColor = ref('red');
@@ -86,6 +98,9 @@ const handleLoginStateChange = (isLoggedIn) => {
 };
 </script>
 <style scoped>
+.text-decoration-none {
+  text-decoration: none;
+}
 .fixed-toolbar {
   position: fixed;
   top: 0;

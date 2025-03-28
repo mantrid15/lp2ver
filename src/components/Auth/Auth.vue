@@ -125,7 +125,7 @@ export default {
         }
 
         emit('login-state-change', true);
-        router.push('/linzer');
+        router.push('/todo');
       }
     }
 

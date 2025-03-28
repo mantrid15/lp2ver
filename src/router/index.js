@@ -1,12 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '@/views/HomeView.vue';
 import { supabase } from '@/clients/supabase'
-import LoginVue from '../views/LoginView.vue'
 import UnauthorizedView from '../views/UnauthorizedView.vue'
 import LoginView from "@/views/LoginView.vue";
 import Info from '@/views/InfoView.vue';
 import LinzerView from '@/views/LinzerTwo.vue';
-// import LinzerView from '@/views/LinzerView.vue';
+import ToDo from '@/views/TodoView.vue';
 import { useStore } from 'vuex';
 
 
@@ -20,8 +19,14 @@ const router = createRouter({
 		},
 		{
 			path: "/linzer",
-			name: "linzer",
+			name: "LinZer",
 			component: LinzerView,
+			meta: { requiresAuth: true }
+		},
+		{
+			path: "/todo",
+			name: "ToDo",
+			component: ToDo,
 			meta: { requiresAuth: true }
 		},
 		{

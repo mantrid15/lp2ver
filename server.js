@@ -84,30 +84,29 @@ wss.on('connection', (ws) => {
 });
 // НЕРАБОЧИЭндпоинт для загрузки изображений через прокси
 app.get('/proxy-image', async (req, res) => {
-    // const imageUrl = req.query.url;
-    const { imageUrl } = req.query;
-    console.log(imageUrl, 'Получен запрос на /proxy-image');
-    if (!imageUrl) {
+    const { url } = req.query; // Изменено с imageUrl на url
+    console.log(url, 'Получен запрос на /proxy-image');
+
+    if (!url) {
         return res.status(400).json({ error: 'URL изображения не указан' });
     }
-    try {
-        // Увеличиваем лимит перенаправлений до 2
-        const response = await axios.get(imageUrl, { responseType: 'arraybuffer', maxRedirects: 2 });
 
-        res.set('Access-Control-Allow-Origin', '*');
+    try {
+        const response = await axios.get(url, {
+            responseType: 'arraybuffer',
+            maxRedirects: 2
+        });
+
+        // Устанавливаем заголовки для CORS
+        res.set('Access-Control-Allow-Origin', '*'); // Разрешаем запросы с любого источника
         res.set('Content-Type', response.headers['content-type']);
         res.send(response.data);
-        console.log('Изображение успешно загружено', imageUrl);
+        console.log('Изображение успешно загружено', url);
     } catch (error) {
         console.error('Ошибка при загрузке изображения:', error);
-        // Обработка ошибок перенаправления
-        if (error.code === 'ERR_FR_TOO_MANY_REDIRECTS') {
-            return res.status(500).json({ error: 'Слишком много перенаправлений' });
-        }
         res.status(500).json({ error: 'Ошибка при загрузке изображения' });
     }
-});
-// Эндпоинт для генерации тегов
+});// Эндпоинт для генерации тегов
 app.post('/generate-tags', async (req, res) => {
     const { title, description, keywords } = req.body;
     console.log('Получен запрос на /generate-tags:', req.body);
