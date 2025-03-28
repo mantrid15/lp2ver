@@ -33,8 +33,8 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="task in tasks" :key="task.id">
-        <td class="task-title" @dblclick="startEditing(task, 'title')">
+      <tr v-for="task in tasks" :key="task.id" :class="{'completed-task': task.status === 'выполнено'}">
+        <td class="task-title" @dblclick="!isTaskCompleted(task) && startEditing(task, 'title')">
           <input
             v-if="task.editing && task.editingField === 'title'"
             v-model="task.title"
@@ -42,10 +42,11 @@
             @blur="finishEditing(task)"
             v-focus
             class="task-input"
+            :disabled="isTaskCompleted(task)"
           />
           <span v-else>{{ task.title }}</span>
         </td>
-        <td @dblclick="startEditing(task, 'description')">
+        <td @dblclick="!isTaskCompleted(task) && startEditing(task, 'description')">
           <input
             v-if="task.editing && task.editingField === 'description'"
             v-model="task.description"
@@ -53,10 +54,11 @@
             @blur="finishEditing(task)"
             v-focus
             class="task-input"
+            :disabled="isTaskCompleted(task)"
           />
           <span v-else>{{ task.description }}</span>
         </td>
-        <td>
+        <td class="status-cell">
           <select v-model="task.status" @change="updateTask(task)">
             <option value="не выполнено">Не выполнено</option>
             <option value="выполнено">Выполнено</option>
@@ -64,23 +66,24 @@
           </select>
         </td>
         <td>
-          <select v-model="task.importance_tag" @change="updateTask(task)">
+          <select v-model="task.importance_tag" @change="updateTask(task)" :disabled="isTaskCompleted(task)">
             <option value="высокая">Высокая</option>
             <option value="средняя">Средняя</option>
             <option value="низкая">Низкая</option>
           </select>
         </td>
-        <td>{{ formatDate(task.created_at) }}</td>
-        <td>
+        <td class="date-cell">{{ formatDate(task.created_at) }}</td>
+        <td class="date-cell">
           <input
             v-model="task.due_date_edit"
             @change="updateDueDate(task)"
             type="date"
             :min="formatDateForInput(task.created_at)"
             class="date-input"
+            :disabled="isTaskCompleted(task)"
           />
         </td>
-        <td>
+        <td class="delete-cell">
           <button @click="deleteTask(task.id)">Удалить</button>
         </td>
       </tr>
@@ -115,6 +118,10 @@ export default {
     };
   },
   methods: {
+    isTaskCompleted(task) {
+      return task.status === 'выполнено';
+    },
+
     getCurrentDate() {
       const today = new Date();
       return today.toISOString().split('T')[0];
@@ -134,6 +141,7 @@ export default {
     },
 
     startEditing(task, field) {
+      if (this.isTaskCompleted(task)) return;
       task.editing = true;
       task.editingField = field;
       // Сохраняем исходное значение на случай отмены
@@ -170,15 +178,12 @@ export default {
       }
     },
 
-
-
     async addTask() {
       try {
         if (!this.newTask.title) {
           alert('Название задачи обязательно');
           return;
         }
-
 
         // Преобразуем дату в ISO формат перед отправкой
         let dueDateISO = null;
@@ -254,7 +259,7 @@ export default {
 
     async updateDueDate(task) {
       try {
-        if (!task.due_date_edit) {
+        if (!task.due_date_edit || this.isTaskCompleted(task)) {
           return;
         }
 
@@ -364,11 +369,22 @@ export default {
   font-size: 1em;
 }
 
+.task-input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
 .date-input {
   width: 100%;
   padding: 4px;
   border: 1px solid #ddd;
   border-radius: 3px;
+  font-size: 0.8em;
+}
+
+.date-input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
 }
 
 .todo-table {
@@ -383,18 +399,21 @@ export default {
   background-color: #4CAF50;
   color: white;
   font-weight: bold;
-  padding: 12px;
+  padding: 8px;
   text-align: left;
   border: 1px solid #ddd;
+  font-size: 0.9em; /* Уменьшил размер шрифта */
+  height: 30px; /* Уменьшил высоту строки заголовка */
 }
 
 .todo-table td {
-  padding: 8px;
+  padding: 6px; /* Уменьшил padding на 20% */
   border: 1px solid #ddd;
   background-color: #fffacd; /* Желтый цвет строк */
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: default;
+  height: 24px; /* Уменьшил высоту строки */
 }
 
 .todo-table tr:hover td {
@@ -406,6 +425,12 @@ export default {
   padding: 4px;
   border: 1px solid black;
   border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.todo-table select:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
 }
 
 .todo-table button {
@@ -415,6 +440,7 @@ export default {
   border: none;
   border-radius: 3px;
   cursor: pointer;
+  font-size: 0.9em; /* Уменьшил размер шрифта */
 }
 
 .todo-table button:hover {
@@ -454,5 +480,34 @@ export default {
 h1 {
   color: #333;
   margin-bottom: 20px;
+}
+
+/* Стили для дат */
+.date-cell {
+  font-size: 0.8em; /* Уменьшил размер шрифта на 20% */
+  white-space: nowrap;
+  padding: 2px 4px !important; /* Уплотнил padding */
+}
+
+/* Стиль для завершенных задач */
+.completed-task td {
+  position: relative;
+}
+
+.completed-task td:not(.status-cell):not(.delete-cell)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: red;
+  transform: translateY(-50%);
+}
+
+.status-cell, .delete-cell {
+  position: relative;
+  z-index: 1;
+  background-color: #fffacd !important;
 }
 </style>
