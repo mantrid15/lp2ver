@@ -1,6 +1,8 @@
 <template>
   <div class="todo-container">
+<!--
     <h1>TODO List</h1>
+-->
     <div class="input-group">
       <input v-model="newTask.title" placeholder="Название задачи" />
       <input v-model="newTask.description" placeholder="Описание задачи" />
@@ -32,19 +34,27 @@
       </thead>
       <tbody>
       <tr v-for="task in tasks" :key="task.id">
-        <td class="task-title">
+        <td class="task-title" @dblclick="startEditing(task, 'title')">
           <input
+            v-if="task.editing && task.editingField === 'title'"
             v-model="task.title"
-            @change="updateTask(task)"
+            @keyup.enter="finishEditing(task)"
+            @blur="finishEditing(task)"
+            v-focus
             class="task-input"
           />
+          <span v-else>{{ task.title }}</span>
         </td>
-        <td>
+        <td @dblclick="startEditing(task, 'description')">
           <input
+            v-if="task.editing && task.editingField === 'description'"
             v-model="task.description"
-            @change="updateTask(task)"
+            @keyup.enter="finishEditing(task)"
+            @blur="finishEditing(task)"
+            v-focus
             class="task-input"
           />
+          <span v-else>{{ task.description }}</span>
         </td>
         <td>
           <select v-model="task.status" @change="updateTask(task)">
@@ -84,6 +94,13 @@ import { supabase } from '@/clients/supabase.js';
 import { useStore } from 'vuex';
 
 export default {
+  directives: {
+    focus: {
+      inserted(el) {
+        el.focus();
+      }
+    }
+  },
   data() {
     return {
       newTask: {
@@ -93,7 +110,6 @@ export default {
         due_date: '',
         status: 'не выполнено'
       },
-      formattedDueDate: '',
       internalDate: null,
       tasks: []
     };
@@ -109,8 +125,27 @@ export default {
         this.newTask.due_date = '';
         return;
       }
+      // Сохраняем дату в формате DD.MM.YYYY для отображения
+      const date = new Date(this.internalDate);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      this.newTask.due_date = `${day}.${month}.${year}`;
+    },
 
-      this.newTask.due_date = this.formatDateForDisplay(this.internalDate);
+    startEditing(task, field) {
+      task.editing = true;
+      task.editingField = field;
+      // Сохраняем исходное значение на случай отмены
+      task.originalValue = task[field];
+    },
+
+    finishEditing(task) {
+      if (task.editing) {
+        task.editing = false;
+        task.editingField = null;
+        this.updateTask(task);
+      }
     },
 
     async fetchTasks() {
@@ -125,12 +160,17 @@ export default {
         this.tasks = (data || []).map(task => ({
           ...task,
           due_date_edit: this.formatDateForInput(task.due_date) || '',
-          due_date: this.formatDateForDisplay(task.due_date) || ''
+          due_date: this.formatDateForDisplay(task.due_date) || '',
+          editing: false,
+          editingField: null,
+          originalValue: ''
         }));
       } catch (error) {
         console.error('Ошибка при загрузке задач:', error);
       }
     },
+
+
 
     async addTask() {
       try {
@@ -139,11 +179,18 @@ export default {
           return;
         }
 
+
+        // Преобразуем дату в ISO формат перед отправкой
+        let dueDateISO = null;
+        if (this.newTask.due_date) {
+          const [day, month, year] = this.newTask.due_date.split('.');
+          dueDateISO = `${year}-${month}-${day}`;
+        }
         const taskToAdd = {
           title: this.newTask.title,
           description: this.newTask.description,
           importance_tag: this.newTask.importance_tag,
-          due_date: this.newTask.due_date,
+          due_date: dueDateISO, // Используем преобразованную дату
           status: this.newTask.status,
           created_at: new Date().toISOString()
         };
@@ -160,9 +207,13 @@ export default {
           this.tasks.push({
             ...newTask,
             due_date_edit: this.formatDateForInput(newTask.due_date) || '',
-            due_date: this.formatDateForDisplay(newTask.due_date) || ''
+            due_date: this.formatDateForDisplay(newTask.due_date) || '',
+            editing: false,
+            editingField: null,
+            originalValue: ''
           });
 
+          // Сбрасываем форму
           this.newTask = {
             title: '',
             description: '',
@@ -194,6 +245,10 @@ export default {
         if (error) throw error;
       } catch (error) {
         console.error('Ошибка при обновлении задачи:', error);
+        // Восстанавливаем исходное значение при ошибке
+        if (task.editingField && task.originalValue) {
+          task[task.editingField] = task.originalValue;
+        }
       }
     },
 
@@ -297,7 +352,23 @@ export default {
 .task-title {
   font-weight: bold;
   color: black;
-  font-size: 1.2em; /* 20% больше */
+  font-size: 1.2em;
+  cursor: pointer;
+}
+
+.task-input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 1em;
+}
+
+.date-input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
 }
 
 .todo-table {
@@ -323,6 +394,7 @@ export default {
   background-color: #fffacd; /* Желтый цвет строк */
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: default;
 }
 
 .todo-table tr:hover td {
@@ -351,12 +423,17 @@ export default {
 
 .input-group {
   margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
 
-.input-group input, .input-group select {
+.input-group input,
+.input-group select {
   padding: 8px;
   margin-right: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid black;
   border-radius: 4px;
 }
 
@@ -367,6 +444,7 @@ export default {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  flex: none;
 }
 
 .input-group button:hover {
