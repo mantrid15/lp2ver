@@ -99,7 +99,30 @@
           />
         </td>
         <td class="delete-cell">
-          <button @click="deleteTask(task.id)">{{ deleteButtonText }}</button>
+          <template v-if="task.deleted">
+            <button
+                @click="restoreTask(task.id)"
+                class="restore-btn"
+                title="Восстановить"
+            >
+              <i class="fas fa-undo-alt"></i>
+            </button>
+            <button
+                @click="permanentlyDeleteTask(task.id)"
+                class="permanent-delete-btn"
+                title="Удалить окончательно"
+            >
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </template>
+          <button
+              v-else
+              @click="deleteTask(task.id)"
+              class="delete-btn"
+              title="Удалить"
+          >
+            <i class="fas fa-trash"></i>
+          </button>
         </td>
       </tr>
       </tbody>
@@ -158,6 +181,9 @@ export default {
       deleteTask: 'Ошибка при пометке задачи как удаленной:',
       dateValidation: 'Дата выполнения не может быть раньше даты создания'
     };
+    // Добавляем новую текстовую константу
+    const restoreButtonText = 'Восстановить';
+    const permanentDeleteButtonText = 'Удалить окончательно';
 
     const tasks = ref([]);
     const subscription = ref(null);
@@ -277,25 +303,60 @@ export default {
         console.error(errorMessages.updateDate, error);
       }
     };
-
-    // Удаление задачи
-    const deleteTask = async (id) => {
+// Добавляем новую функцию для восстановления задачи
+    const restoreTask = async (id) => {
       try {
         const { error } = await supabase
-          .from('todolist')
-          .update({ deleted: true })
-          .match({ id });
+            .from('todolist')
+            .update({ deleted: false })
+            .match({ id });
 
         if (error) throw error;
 
         // Обновляем локальное состояние
         tasks.value = tasks.value.map(task =>
-          task.id === id ? { ...task, deleted: true } : task
+            task.id === id ? { ...task, deleted: false } : task
+        );
+      } catch (error) {
+        console.error('Ошибка при восстановлении задачи:', error);
+      }
+    };
+    // Добавляем новую функцию для полного удаления задачи
+    const permanentlyDeleteTask = async (id) => {
+      try {
+        const { error } = await supabase
+            .from('todolist')
+            .delete()
+            .match({ id });
+
+        if (error) throw error;
+
+        // Удаляем задачу из локального состояния
+        tasks.value = tasks.value.filter(task => task.id !== id);
+      } catch (error) {
+        console.error('Ошибка при полном удалении задачи:', error);
+      }
+    };
+
+    // Модифицируем функцию deleteTask (теперь только помечает как удаленную)
+    const deleteTask = async (id) => {
+      try {
+        const { error } = await supabase
+            .from('todolist')
+            .update({ deleted: true })
+            .match({ id });
+
+        if (error) throw error;
+
+        // Обновляем локальное состояние
+        tasks.value = tasks.value.map(task =>
+            task.id === id ? { ...task, deleted: true } : task
         );
       } catch (error) {
         console.error(errorMessages.deleteTask, error);
       }
     };
+
 
     // Форматирование дат
     const formatDate = (dateString) => {
@@ -364,6 +425,10 @@ export default {
       startEditing,
       finishEditing,
       updateTask,
+      restoreButtonText,
+      permanentDeleteButtonText,
+      permanentlyDeleteTask,
+      restoreTask,
       updateDueDate,
       deleteTask,
       formatDate,
@@ -404,6 +469,79 @@ export default {
 </script>
 
 <style scoped>
+/* Подключаем Font Awesome */
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+/* Стили для кнопок */
+.delete-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  padding: 1px 0; /* Вертикальный padding 1px (итого 2px отступа) */
+}
+
+/* Стили для иконок */
+/* Базовые стили для всех кнопок */
+/*
+.delete-btn,
+*/
+/*.restore-btn,
+.permanent-delete-btn {
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: calc(100% - 2px); !* Высота минус 2px *!
+  padding: 0;
+  border-radius: 2px;
+}*/
+
+.delete-btn i,
+.restore-btn i,
+.permanent-delete-btn i {
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Конкретные стили для каждой кнопки */
+.delete-btn {
+  background: #ff4444;
+  color: #ffffff;
+}
+
+.delete-btn:hover {
+  background: #cc0000 !important;
+}
+
+.restore-btn {
+  background: #09B211E5 !important;
+  color: white;
+  /*
+  margin-right: 0;
+  */
+}
+
+.restore-btn:hover {
+  background: #016b07 !important;
+}
+
+.permanent-delete-btn {
+  background: #9c27b0 ;
+  color: white;
+}
+
+.permanent-delete-btn:hover{
+  background: #7b1fa2 ;
+}
+
+
+
 .completed-task td:not(.status-cell):not(.delete-cell) {
   position: relative;
 }
@@ -419,7 +557,6 @@ export default {
   transform: translateY(-50%);
   z-index: 2;
 }
-
 /* Убедимся, что статус и кнопка удаления не зачеркнуты */
 .status-cell, .delete-cell {
   position: relative;
@@ -444,6 +581,7 @@ export default {
   background-color: #add8e6 !important;
   color: black;
 }
+
 .status-cell.status-waited {
   background-color: rgba(150, 2, 150, 0.4) !important;
   color: black;
@@ -468,7 +606,6 @@ export default {
   background-color: #add8e6;
   color: black;
 }
-
 
 .status-cell select option[value="отложено"] {
   background-color: rgba(150, 2, 150, 0.4);
@@ -539,14 +676,8 @@ export default {
 }
 
 .todo-table td {
-  padding: 4px;
-  border: 1px solid #ddd;
-  background-color: #fffacd;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: default;
-  height: 20px;
-  position: relative;
+  padding: 0; /* Убираем padding у ячеек */
+  height: 100%; /* Занимаем всю высоту */
 }
 
 .todo-table tr:hover td {
@@ -599,7 +730,7 @@ export default {
 }
 
 .delete-cell {
-  background-color: #fffacd !important;
+  background-color: #e1cb07 !important;
   position: relative;
   z-index: 2;
 }
