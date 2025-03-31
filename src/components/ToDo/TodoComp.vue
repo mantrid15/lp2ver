@@ -70,8 +70,20 @@
           />
           <span v-else>{{ task.object }}</span>
         </td>
-        <td></td>
-        <td></td>
+        <td class="privacy-cell" :class="privacyClass(task.privacy)">
+          <select v-model="task.privacy" @change="updateTask(task)" :disabled="isTaskCompleted(task)">
+            <option :value="homePrivacy">{{ homePrivacyText }}</option>
+            <option :value="workPrivacy">{{ workPrivacyText }}</option>
+            <option :value="otherPrivacy">{{ otherPrivacyText }}</option>
+          </select>
+        </td>
+        <td class="complexity-cell" :class="complexityClass(task.complexity)">
+          <select v-model="task.complexity" @change="updateTask(task)" :disabled="isTaskCompleted(task)">
+            <option :value="highComplexity">{{ highComplexityText }}</option>
+            <option :value="mediumComplexity">{{ mediumComplexityText }}</option>
+            <option :value="lowComplexity">{{ lowComplexityText }}</option>
+          </select>
+        </td>
         <td class="status-cell" :class="statusClass(task.status)">
           <select v-model="task.status" @change="updateTask(task)">
             <option :value="notStartedStatus">{{ notStartedText }}</option>
@@ -80,7 +92,7 @@
             <option :value="waitedStatus">{{ waitedText }}</option>
           </select>
         </td>
-        <td>
+        <td class="importance-cell" :class="importanceClass(task.importance_tag)">
           <select v-model="task.importance_tag" @change="updateTask(task)" :disabled="isTaskCompleted(task)">
             <option :value="highImportance">{{ highImportanceText }}</option>
             <option :value="mediumImportance">{{ mediumImportanceText }}</option>
@@ -173,6 +185,22 @@ export default {
     const mediumImportanceText = 'Средняя';
     const lowImportanceText = 'Низкая';
 
+    // Типы приватности
+    const homePrivacy = 'домашнее';
+    const workPrivacy = 'рабочее';
+    const otherPrivacy = 'иное';
+    const homePrivacyText = 'Домашнее';
+    const workPrivacyText = 'Рабочее';
+    const otherPrivacyText = 'Иное';
+
+    // Уровни сложности
+    const highComplexity = 'высокая';
+    const mediumComplexity = 'средняя';
+    const lowComplexity = 'низкая';
+    const highComplexityText = 'Высокая';
+    const mediumComplexityText = 'Средняя';
+    const lowComplexityText = 'Низкая';
+
     // Сообщения об ошибках
     const errorMessages = {
       loadTasks: 'Ошибка при загрузке задач:',
@@ -189,13 +217,37 @@ export default {
     const subscription = ref(null);
     const showDeletedTasks = ref(false);
 
+
+    const importanceClass = (importance) => {
+      return {
+        'importance-high': importance === highImportance,
+        'importance-medium': importance === mediumImportance,
+        'importance-low': importance === lowImportance
+      };
+    };
     // Функция для определения класса статуса
     const statusClass = (status) => {
       return {
         'status-completed': status === completedStatus,
         'status-in-progress': status === inProgressStatus,
         'status-not-started': status === notStartedStatus,
-        'status-waited': status === waitedStatus // Измените waitedText на waitedStatus
+        'status-waited': status === waitedStatus
+      };
+    };
+
+    const privacyClass = (privacy) => {
+      return {
+        'privacy-home': privacy === homePrivacy,
+        'privacy-work': privacy === workPrivacy,
+        'privacy-other': privacy === otherPrivacy
+      };
+    };
+
+    const complexityClass = (complexity) => {
+      return {
+        'complexity-high': complexity === highComplexity,
+        'complexity-medium': complexity === mediumComplexity,
+        'complexity-low': complexity === lowComplexity
       };
     };
 
@@ -258,7 +310,9 @@ export default {
           description: task.description,
           importance_tag: task.importance_tag,
           status: task.status,
-          object: task.object
+          object: task.object,
+          privacy: task.privacy,
+          complexity: task.complexity
         };
 
         const { error } = await supabase
@@ -303,7 +357,8 @@ export default {
         console.error(errorMessages.updateDate, error);
       }
     };
-// Добавляем новую функцию для восстановления задачи
+
+    // Восстановление задачи
     const restoreTask = async (id) => {
       try {
         const { error } = await supabase
@@ -425,9 +480,6 @@ export default {
       startEditing,
       finishEditing,
       updateTask,
-      restoreButtonText,
-      permanentDeleteButtonText,
-      permanentlyDeleteTask,
       restoreTask,
       updateDueDate,
       deleteTask,
@@ -441,6 +493,7 @@ export default {
       complexity,
       objectText,
       statusText,
+      importanceClass,
       importanceTagText,
       creationDateText,
       completionDateText,
@@ -462,7 +515,26 @@ export default {
       lowImportance,
       highImportanceText,
       mediumImportanceText,
-      lowImportanceText
+      lowImportanceText,
+      // Приватность
+      homePrivacy,
+      workPrivacy,
+      otherPrivacy,
+      homePrivacyText,
+      workPrivacyText,
+      otherPrivacyText,
+      privacyClass,
+      // Сложность
+      highComplexity,
+      mediumComplexity,
+      lowComplexity,
+      highComplexityText,
+      mediumComplexityText,
+      lowComplexityText,
+      complexityClass,
+      // Восстановление/удаление
+      restoreButtonText,
+      permanentDeleteButtonText
     };
   }
 };
@@ -471,6 +543,57 @@ export default {
 <style scoped>
 /* Подключаем Font Awesome */
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+/* Стили для тега важности */
+.importance-cell.importance-high {
+  background-color: #ff4444 !important; /* Красный */
+  color: white;
+}
+
+.importance-cell.importance-medium {
+  background-color: #4CAF50 !important; /* Зеленый */
+  color: black;
+}
+
+.importance-cell.importance-low {
+  background-color: #2196F3 !important; /* Синий */
+  color: white;
+}
+
+.importance-cell select {
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  border: none;
+  border-radius: 0;
+  font-size: 0.9em;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: transparent;
+}
+
+.importance-cell select option {
+  background-color: white;
+  color: black;
+}
+
+.importance-cell select option[value="высокая"] {
+  background-color: #ff4444;
+  color: white;
+}
+
+.importance-cell select option[value="средняя"] {
+  background-color: #4CAF50;
+  color: black;
+}
+
+.importance-cell select option[value="низкая"] {
+  background-color: #2196F3;
+  color: white;
+}
+
 
 /* Стили для кнопок */
 .delete-cell {
@@ -482,6 +605,12 @@ export default {
   padding: 1px 0; /* Вертикальный padding 1px (итого 2px отступа) */
 }
 
+.privacy-cell,
+.complexity-cell,
+.importance-cell {
+  position: relative;
+  z-index: 1; /* Меньше чем у красной линии (z-index: 2) */
+}
 /* Стили для иконок */
 /* Базовые стили для всех кнопок */
 /*
@@ -546,7 +675,7 @@ export default {
   position: relative;
 }
 
-.completed-task td:not(.status-cell):not(.delete-cell)::after {
+.completed-task td:not(.status-cell):not(.delete-cell)::after  {
   content: "";
   position: absolute;
   top: 50%;
@@ -557,7 +686,8 @@ export default {
   transform: translateY(-50%);
   z-index: 2;
 }
-/* Убедимся, что статус и кнопка удаления не зачеркнуты */
+
+/* Стили для ячеек статуса */
 .status-cell, .delete-cell {
   position: relative;
   z-index: 3;
@@ -611,6 +741,105 @@ export default {
   background-color: rgba(150, 2, 150, 0.4);
   color: black;
 }
+
+/* Стили для приватности */
+.privacy-cell.privacy-home {
+  background-color: #4CAF50 !important; /* Зеленый */
+  color: black;
+}
+
+.privacy-cell.privacy-work {
+  background-color: #ff4444 !important; /* Красный */
+  color: white;
+}
+
+.privacy-cell.privacy-other {
+  background-color: #2196F3 !important; /* Синий */
+  color: white;
+}
+
+.privacy-cell select option {
+  background-color: white;
+  color: black;
+}
+
+.privacy-cell select option[value="домашнее"] {
+  background-color: #4CAF50;
+  color: black;
+}
+
+.privacy-cell select option[value="рабочее"] {
+  background-color: #ff4444;
+  color: white;
+}
+
+.privacy-cell select option[value="иное"] {
+  background-color: #2196F3;
+  color: white;
+}
+
+/* Стили для сложности */
+.complexity-cell.complexity-high {
+  background-color: #ff4444 !important; /* Красный */
+  color: white;
+}
+
+.complexity-cell.complexity-medium {
+  background-color: #4CAF50 !important; /* Зеленый */
+  color: black;
+}
+
+.complexity-cell.complexity-low {
+  background-color: #2196F3 !important; /* Синий */
+  color: white;
+}
+
+.complexity-cell select option {
+  background-color: white;
+  color: black;
+}
+
+.complexity-cell select option[value="высокая"] {
+  background-color: #ff4444;
+  color: white;
+}
+
+.complexity-cell select option[value="средняя"] {
+  background-color: #4CAF50;
+  color: black;
+}
+
+.complexity-cell select option[value="низкая"] {
+  background-color: #2196F3;
+  color: white;
+}
+
+/* Общие стили для выпадающих списков */
+.status-cell select,
+.privacy-cell select,
+.complexity-cell select {
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  border: none;
+  border-radius: 0;
+  font-size: 0.9em;
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: transparent;
+}
+
+.todo-table select:disabled {
+  background-color: transparent;
+  cursor: not-allowed;
+  /*
+  opacity: 1; !* Сохраняем видимость цветного фона *!
+  */
+  -webkit-text-fill-color: inherit; /* Сохраняем цвет текста */
+}
+
 /* Остальные стили без изменений */
 .todo-container {
   background-color: #e6e6fa;
@@ -631,7 +860,7 @@ export default {
 .task-input {
   width: 100%;
   padding: 4px;
-  border: 1px solid #ddd;
+  border: 1px solid #000000;
   border-radius: 3px;
   font-size: 1em;
 }
@@ -644,7 +873,7 @@ export default {
 .date-input {
   width: 100%;
   padding: 4px;
-  border: 1px solid #ddd;
+  border: 1px solid #000000;
   border-radius: 3px;
   font-size: 0.8em;
 }
@@ -655,11 +884,8 @@ export default {
 }
 
 .todo-table {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
+  border-collapse: collapse; /* Убедитесь, что это свойство установлено */
   border-spacing: 0;
-  margin-top: 20px;
 }
 
 .todo-table th {
@@ -675,10 +901,6 @@ export default {
   height: 30px;
 }
 
-.todo-table td {
-  padding: 0; /* Убираем padding у ячеек */
-  height: 100%; /* Занимаем всю высоту */
-}
 
 .todo-table tr:hover td {
   background-color: #ffe4b5;
@@ -727,6 +949,7 @@ export default {
   font-size: 0.8em;
   white-space: nowrap;
   padding: 2px 4px !important;
+  forder-color: black;
 }
 
 .delete-cell {
@@ -739,4 +962,60 @@ export default {
   position: relative;
   z-index: 2;
 }
+
+
+/* Специфичные стили для заблокированных ячеек */
+.completed-task .privacy-cell select:disabled,
+.completed-task .complexity-cell select:disabled,
+.completed-task .importance-cell select:disabled {
+  pointer-events: none; /* Запрещаем любые взаимодействия */
+}
+
+/* Для ячеек с белым текстом (высокая важность/сложность) */
+.completed-task .importance-cell.importance-high select:disabled,
+.completed-task .complexity-cell.complexity-high select:disabled {
+  color: white !important;
+}
+
+.todo-table tbody tr {
+  border-top: 1px solid #000000; /* Горизонтальные разделители между строками */
+}
+
+.todo-table tbody td {
+  border-right: 1px solid #000000; /* Вертикальные разделители между ячейками */
+  padding: 8px; /* Добавляем отступы для контента */
+}
+
+.todo-table tbody td:last-child {
+  border-right: none; /* Убираем правую границу у последней ячейки */
+}
+
+/* Для строк с выполненными задачами - более светлые разделители */
+.completed-task {
+  border-top-color: #f0f0f0;
+}
+.completed-task td {
+  border-right-color: #f0f0f0;
+}
+
+/* Особые стили для ячеек с кнопками и select */
+.delete-cell,
+.status-cell,
+.privacy-cell,
+.complexity-cell,
+.importance-cell {
+  padding: 0; /* Убираем внутренние отступы для специальных ячеек */
+}
+
+/* Восстанавливаем стили для select внутри ячеек */
+.todo-table td select {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background-color: transparent;
+  /*
+  padding: 8px; !* Добавляем отступы внутри select *!
+  */
+}
+
 </style>
