@@ -28,6 +28,7 @@
       <tbody>
       <tr v-for="task in displayedTasks"
           :key="task.id"
+          :data-deleted="task.deleted"
           :class="{
             'completed-task': task.status === completedStatus,
             'status-completed': task.status === completedStatus,
@@ -486,6 +487,7 @@ export default {
       formatDate,
       formatDateForDisplay,
       formatDateForInput,
+      permanentlyDeleteTask,
       // Текстовые переменные
       taskTitleText,
       descriptionText,
@@ -541,31 +543,184 @@ export default {
 </script>
 
 <style scoped>
-/* Подключаем Font Awesome */
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
 
-/* Стили для тега важности */
-.importance-cell.importance-high {
-  background-color: #ff4444 !important; /* Красный */
-  color: white;
-}
-
-.importance-cell.importance-medium {
-  background-color: #4CAF50 !important; /* Зеленый */
+.task-title {
+  font-weight: bold;
+  margin-left: 5px;
   color: black;
+  font-size: 1.2em;
+  cursor: pointer;
+}
+.task-input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 1em;
 }
 
-.importance-cell.importance-low {
-  background-color: #2196F3 !important; /* Синий */
-  color: white;
+.todo-container {
+  background-color: #e6e6fa;
+  padding-top: 30px;
+  padding-left: 5px; /* Отступы по краям */
+  padding-right: 5px; /* Отступы по краям */
+  min-height: 100vh;
+  margin: 0;
+  width: 100%;
+  overflow-x: auto;
 }
 
-.importance-cell select {
+.todo-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0;
+  table-layout: fixed;
+}
+
+.todo-table th {
+  background-color: #4CAF50;
+  font-weight: bold;
+  /*
+  padding: 4px;
+  */
+  text-align: center;
+  border: 1px solid #000; /* Убираем задвоенные границы */
+  font-size: 0.9em;
+  height: 24px;
+}
+
+.todo-table td {
+  /*
+  border-collapse: collapse;
+  */
+  /*
+  padding: 4px;
+  */
+  border: 1px solid #000; /* Убираем задвоенные границы */
+  font-size: 0.9em;
+  /*
+  height: 23px; !* Установите фиксированную высоту для всех ячеек *!
+  */
+  height: 100%; /* Установите фиксированную высоту для всех ячеек */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-table tr:hover td {
+  background-color: #e1cb07;
+}
+
+/* Стиль для удаленных задач */
+.todo-table tr[data-deleted="true"] {
+  background-color: #808080; /* Темно-серая заливка для удаленных задач */
+}
+
+/*
+.todo-table tr[data-deleted="true"]:nth-child(even) {
+  background-color: #a9a9a9; !* Светло-серая заливка для удаленных задач *!
+}
+*/
+
+.date-input {
   width: 100%;
   height: 100%;
-  padding: 4px;
+  padding: 0;
   border: none;
-  border-radius: 0;
+  font-size: 0.9em;
+}
+
+.date-input:disabled {
+  background-color: transparent;
+  cursor: not-allowed;
+}
+
+/* Стили для ячейки удаления */
+.delete-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1px;
+  /*
+  height: 100%;
+  */
+  width: 100%; /* Фиксированная ширина для столбца удаления */
+  height: 40px; /* Установите фиксированную высоту */
+  border-left-style: none !important;
+  box-sizing: border-box; /* Учитываем границы в высоте */
+}
+
+.delete-btn, .restore-btn, .permanent-delete-btn {
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 2px;
+  border-radius: 4px;
+}
+
+.delete-btn i, .restore-btn i, .permanent-delete-btn i {
+  font-size: 14px;
+}
+
+.delete-btn {
+  background: #ff4444;
+  color: #fff;
+}
+
+.delete-btn:hover {
+  background: #cc0000;
+}
+
+.restore-btn {
+  background: #09B211E5;
+  color: white;
+}
+
+.restore-btn:hover {
+  background: #016b07;
+}
+
+.permanent-delete-btn {
+  background: #9c27b0;
+  color: white;
+}
+
+.permanent-delete-btn:hover {
+  background: #7b1fa2;
+}
+
+.completed-task td:not(.status-cell):not(.delete-cell) {
+  position: relative;
+}
+
+.completed-task td:not(.status-cell):not(.delete-cell)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background-color: red;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.status-cell, .privacy-cell, .complexity-cell, .importance-cell {
+  padding: 0 !important;
+}
+
+.status-cell select, .privacy-cell select,
+.complexity-cell select, .importance-cell select {
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+  border: none;
   font-size: 0.9em;
   cursor: pointer;
   -webkit-appearance: none;
@@ -574,132 +729,9 @@ export default {
   background-color: transparent;
 }
 
-.importance-cell select option {
-  background-color: white;
-  color: black;
-}
-
-.importance-cell select option[value="высокая"] {
-  background-color: #ff4444;
-  color: white;
-}
-
-.importance-cell select option[value="средняя"] {
-  background-color: #4CAF50;
-  color: black;
-}
-
-.importance-cell select option[value="низкая"] {
-  background-color: #2196F3;
-  color: white;
-}
-
-
-/* Стили для кнопок */
-.delete-cell {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 4px;
-  height: 100%;
-  padding: 1px 0; /* Вертикальный padding 1px (итого 2px отступа) */
-}
-
-.privacy-cell,
-.complexity-cell,
-.importance-cell {
-  position: relative;
-  z-index: 1; /* Меньше чем у красной линии (z-index: 2) */
-}
-/* Стили для иконок */
-/* Базовые стили для всех кнопок */
-/*
-.delete-btn,
-*/
-/*.restore-btn,
-.permanent-delete-btn {
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: calc(100% - 2px); !* Высота минус 2px *!
-  padding: 0;
-  border-radius: 2px;
-}*/
-
-.delete-btn i,
-.restore-btn i,
-.permanent-delete-btn i {
-  font-size: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Конкретные стили для каждой кнопки */
-.delete-btn {
-  background: #ff4444;
-  color: #ffffff;
-}
-
-.delete-btn:hover {
-  background: #cc0000 !important;
-}
-
-.restore-btn {
-  background: #09B211E5 !important;
-  color: white;
-  /*
-  margin-right: 0;
-  */
-}
-
-.restore-btn:hover {
-  background: #016b07 !important;
-}
-
-.permanent-delete-btn {
-  background: #9c27b0 ;
-  color: white;
-}
-
-.permanent-delete-btn:hover{
-  background: #7b1fa2 ;
-}
-
-
-
-.completed-task td:not(.status-cell):not(.delete-cell) {
-  position: relative;
-}
-
-.completed-task td:not(.status-cell):not(.delete-cell)::after  {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background-color: red;
-  transform: translateY(-50%);
-  z-index: 2;
-}
-
-/* Стили для ячеек статуса */
-.status-cell, .delete-cell {
-  position: relative;
-  z-index: 3;
-}
-
 .status-cell.status-completed {
   background-color: #ff4444 !important;
   color: white;
-}
-
-.status-cell.status-completed select {
-  color: white !important;
 }
 
 .status-cell.status-in-progress {
@@ -717,305 +749,60 @@ export default {
   color: black;
 }
 
-.status-cell select option {
-  background-color: white;
-  color: black;
-}
-
-.status-cell select option[value="выполнено"] {
-  background-color: #ff4444;
-  color: white !important;
-}
-
-.status-cell select option[value="выполняется"] {
-  background-color: #4CAF50;
-  color: white;
-}
-
-.status-cell select option[value="в очереди"] {
-  background-color: #add8e6;
-  color: black;
-}
-
-.status-cell select option[value="отложено"] {
-  background-color: rgba(150, 2, 150, 0.4);
-  color: black;
-}
-
-/* Стили для приватности */
 .privacy-cell.privacy-home {
-  background-color: #4CAF50 !important; /* Зеленый */
-  color: black;
+  background-color: #4CAF50 !important;
 }
 
 .privacy-cell.privacy-work {
-  background-color: #ff4444 !important; /* Красный */
+  background-color: #ff4444 !important;
   color: white;
 }
 
 .privacy-cell.privacy-other {
-  background-color: #2196F3 !important; /* Синий */
+  background-color: #2196F3 !important;
   color: white;
 }
 
-.privacy-cell select option {
-  background-color: white;
-  color: black;
-}
-
-.privacy-cell select option[value="домашнее"] {
-  background-color: #4CAF50;
-  color: black;
-}
-
-.privacy-cell select option[value="рабочее"] {
-  background-color: #ff4444;
-  color: white;
-}
-
-.privacy-cell select option[value="иное"] {
-  background-color: #2196F3;
-  color: white;
-}
-
-/* Стили для сложности */
 .complexity-cell.complexity-high {
-  background-color: #ff4444 !important; /* Красный */
+  background-color: #ff4444 !important;
   color: white;
 }
 
 .complexity-cell.complexity-medium {
-  background-color: #4CAF50 !important; /* Зеленый */
-  color: black;
+  background-color: #4CAF50 !important;
 }
 
 .complexity-cell.complexity-low {
-  background-color: #2196F3 !important; /* Синий */
+  background-color: #2196F3 !important;
   color: white;
 }
 
-.complexity-cell select option {
-  background-color: white;
-  color: black;
-}
-
-.complexity-cell select option[value="высокая"] {
-  background-color: #ff4444;
+.importance-cell.importance-high {
+  background-color: #ff4444 !important;
   color: white;
 }
 
-.complexity-cell select option[value="средняя"] {
-  background-color: #4CAF50;
-  color: black;
+.importance-cell.importance-medium {
+  background-color: #4CAF50 !important;
 }
 
-.complexity-cell select option[value="низкая"] {
-  background-color: #2196F3;
+.importance-cell.importance-low {
+  background-color: #2196F3 !important;
   color: white;
-}
-
-/* Общие стили для выпадающих списков */
-.status-cell select,
-.privacy-cell select,
-.complexity-cell select {
-  width: 100%;
-  height: 100%;
-  padding: 4px;
-  border: none;
-  border-radius: 0;
-  font-size: 0.9em;
-  cursor: pointer;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  background-color: transparent;
 }
 
 .todo-table select:disabled {
-  background-color: transparent;
-  cursor: not-allowed;
-  /*
-  opacity: 1; !* Сохраняем видимость цветного фона *!
-  */
-  -webkit-text-fill-color: inherit; /* Сохраняем цвет текста */
-}
-
-/* Остальные стили без изменений */
-.todo-container {
-  background-color: #e6e6fa;
-  padding: 10px;
-  min-height: 100vh;
-  /*
-  margin-top: 4px; !* Добавляем отступ сверху *!
-  */
-}
-
-.task-title {
-  font-weight: bold;
-  color: black;
-  font-size: 1.2em;
-  cursor: pointer;
-}
-
-.task-input {
-  width: 100%;
-  padding: 4px;
-  border: 1px solid #000000;
-  border-radius: 3px;
-  font-size: 1em;
-}
-
-.task-input:disabled {
-  background-color: #f5f5f5;
   cursor: not-allowed;
 }
 
-.date-input {
-  width: 100%;
-  padding: 4px;
-  border: 1px solid #000000;
-  border-radius: 3px;
-  font-size: 0.8em;
-}
-
-.date-input:disabled {
-  background-color: #f5f5f5;
-  cursor: not-allowed;
-}
-
-.todo-table {
-  border-collapse: collapse; /* Убедитесь, что это свойство установлено */
-  border-spacing: 0;
-}
-
-.todo-table th {
-  background-color: #4CAF50;
-  /*
-  color: white;
-  */
-  font-weight: bold;
-  padding: 8px;
-  text-align: left;
-  border: 1px solid #ddd;
-  font-size: 0.9em;
-  height: 30px;
-}
-
-
-.todo-table tr:hover td {
-  background-color: #ffe4b5;
-}
-
-/* Стили для ячейки статуса */
-.status-cell {
-  padding: 0 !important;
-}
-
-.status-cell select {
-  width: 100%;
-  height: 100%;
-  padding: 4px;
-  border: none;
-  border-radius: 0;
-  font-size: 0.9em;
-  color: black;
-  cursor: pointer;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  background-color: transparent;
-}
-
-.todo-table select:disabled {
-  background-color: #f5f5f5;
-  cursor: not-allowed;
-}
-
-.todo-table button {
-  padding: 4px 8px;
-  background-color: #ff4444;
-  color: white;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-  font-size: 0.9em;
-}
-
-.todo-table button:hover {
-  background-color: #cc0000;
-}
-
-.date-cell {
-  font-size: 0.8em;
-  white-space: nowrap;
-  padding: 2px 4px !important;
-  forder-color: black;
-}
-
-.delete-cell {
-  background-color: #e1cb07 !important;
-  position: relative;
-  z-index: 2;
-}
-
-.status-cell {
-  position: relative;
-  z-index: 2;
-}
-
-
-/* Специфичные стили для заблокированных ячеек */
 .completed-task .privacy-cell select:disabled,
 .completed-task .complexity-cell select:disabled,
 .completed-task .importance-cell select:disabled {
-  pointer-events: none; /* Запрещаем любые взаимодействия */
+  pointer-events: none;
 }
 
-/* Для ячеек с белым текстом (высокая важность/сложность) */
 .completed-task .importance-cell.importance-high select:disabled,
 .completed-task .complexity-cell.complexity-high select:disabled {
   color: white !important;
 }
-
-.todo-table tbody tr {
-  border-top: 1px solid #000000; /* Горизонтальные разделители между строками */
-}
-
-.todo-table tbody td {
-  border-right: 1px solid #000000; /* Вертикальные разделители между ячейками */
-  padding: 8px; /* Добавляем отступы для контента */
-}
-
-.todo-table tbody td:last-child {
-  border-right: none; /* Убираем правую границу у последней ячейки */
-}
-
-/* Для строк с выполненными задачами - более светлые разделители */
-.completed-task {
-  border-top-color: #f0f0f0;
-}
-.completed-task td {
-  border-right-color: #f0f0f0;
-}
-
-/* Особые стили для ячеек с кнопками и select */
-.delete-cell,
-.status-cell,
-.privacy-cell,
-.complexity-cell,
-.importance-cell {
-  padding: 0; /* Убираем внутренние отступы для специальных ячеек */
-}
-
-/* Восстанавливаем стили для select внутри ячеек */
-.todo-table td select {
-  width: 100%;
-  height: 100%;
-  border: none;
-  background-color: transparent;
-  /*
-  padding: 8px; !* Добавляем отступы внутри select *!
-  */
-}
-
 </style>
