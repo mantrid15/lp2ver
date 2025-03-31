@@ -3,7 +3,7 @@
     <table class="todo-table">
       <thead>
       <tr class="table-header">
-        <th style="width: 20%;">
+        <th style="width: 15%;">
           <div style="display: flex; align-items: center;">
             <input
                 type="checkbox"
@@ -11,27 +11,29 @@
                 @change="handleShowDeletedChange"
                 style="margin-right: 8px;"
             >
-            Задача
+            {{ taskTitleText }}
           </div>
         </th>
-        <th style="width: 30%;">Описание</th>
-        <th style="width: 10%;">Объект</th>
-        <th style="width: 6%;">Статус</th>
-        <th style="width: 6%;">Тег важности</th>
-        <th style="width: 5%;">Дата создания</th>
-        <th style="width: 6%;">Дата выполнения</th>
-        <th style="width: 5%;">Удалить</th>
+        <th style="width: 30%;">{{ descriptionText }}</th>
+        <th style="width: 10%;">{{ objectText }}</th>
+        <th style="width: 6%;">{{ privacy }}</th>
+        <th style="width: 6%;">{{ complexity }}</th>
+        <th style="width: 6%;">{{ statusText }}</th>
+        <th style="width: 6%;">{{ importanceTagText }}</th>
+        <th style="width: 6%;">{{ creationDateText }}</th>
+        <th style="width: 6%;">{{ completionDateText }}</th>
+        <th style="width: 6%;">{{ deleteText }}</th>
       </tr>
       </thead>
       <tbody>
       <tr v-for="task in displayedTasks"
           :key="task.id"
           :class="{
-      'completed-task': task.status === 'выполнено',
-      'status-completed': task.status === 'выполнено',
-      'status-in-progress': task.status === 'выполняется',
-      'status-not-started': task.status === 'не выполнено'
-    }">
+            'completed-task': task.status === completedStatus,
+            'status-completed': task.status === completedStatus,
+            'status-in-progress': task.status === inProgressStatus,
+            'status-not-started': task.status === notStartedStatus
+          }">
         <td class="task-title" @dblclick="!isTaskCompleted(task) && startEditing(task, 'title')">
           <input
               v-if="task.editing && task.editingField === 'title'"
@@ -68,18 +70,21 @@
           />
           <span v-else>{{ task.object }}</span>
         </td>
-        <td class="status-cell" :data-status="task.status">
+        <td></td>
+        <td></td>
+        <td class="status-cell" :class="statusClass(task.status)">
           <select v-model="task.status" @change="updateTask(task)">
-            <option value="не выполнено">Не выполнено</option>
-            <option value="выполнено">Выполнено</option>
-            <option value="выполняется">Выполняется</option>
+            <option :value="notStartedStatus">{{ notStartedText }}</option>
+            <option :value="completedStatus">{{ completedText }}</option>
+            <option :value="inProgressStatus">{{ inProgressText }}</option>
+            <option :value="waitedStatus">{{ waitedText }}</option>
           </select>
         </td>
         <td>
           <select v-model="task.importance_tag" @change="updateTask(task)" :disabled="isTaskCompleted(task)">
-            <option value="высокая">Высокая</option>
-            <option value="средняя">Средняя</option>
-            <option value="низкая">Низкая</option>
+            <option :value="highImportance">{{ highImportanceText }}</option>
+            <option :value="mediumImportance">{{ mediumImportanceText }}</option>
+            <option :value="lowImportance">{{ lowImportanceText }}</option>
           </select>
         </td>
         <td class="date-cell">{{ formatDate(task.created_at) }}</td>
@@ -94,7 +99,7 @@
           />
         </td>
         <td class="delete-cell">
-          <button @click="deleteTask(task.id)">Удалить</button>
+          <button @click="deleteTask(task.id)">{{ deleteButtonText }}</button>
         </td>
       </tr>
       </tbody>
@@ -115,9 +120,58 @@ export default {
   },
 
   setup() {
+    // Текстовые константы
+    const taskTitleText = 'Задача';
+    const descriptionText = 'Описание';
+    const privacy = 'Приватность'
+    const complexity = 'Сложность'
+    const objectText = 'Объект';
+    const statusText = 'Статус';
+    const importanceTagText = 'Тег важности';
+    const creationDateText = 'Дата создания';
+    const completionDateText = 'Дата выполнения';
+    const deleteText = 'Удалить';
+    const deleteButtonText = 'Удалить';
+
+    // Статусы задач
+    const completedStatus = 'выполнено';
+    const inProgressStatus = 'выполняется';
+    const notStartedStatus = 'в очереди';
+    const waitedStatus = 'отложено';
+    const completedText = 'Выполнено';
+    const inProgressText = 'Выполняется';
+    const notStartedText = 'В очереди';
+    const waitedText = 'Отложено';
+    // Уровни важности
+    const highImportance = 'высокая';
+    const mediumImportance = 'средняя';
+    const lowImportance = 'низкая';
+    const highImportanceText = 'Высокая';
+    const mediumImportanceText = 'Средняя';
+    const lowImportanceText = 'Низкая';
+
+    // Сообщения об ошибках
+    const errorMessages = {
+      loadTasks: 'Ошибка при загрузке задач:',
+      updateTask: 'Ошибка при обновлении задачи:',
+      updateDate: 'Ошибка при обновлении даты выполнения:',
+      deleteTask: 'Ошибка при пометке задачи как удаленной:',
+      dateValidation: 'Дата выполнения не может быть раньше даты создания'
+    };
+
     const tasks = ref([]);
     const subscription = ref(null);
     const showDeletedTasks = ref(false);
+
+    // Функция для определения класса статуса
+    const statusClass = (status) => {
+      return {
+        'status-completed': status === completedStatus,
+        'status-in-progress': status === inProgressStatus,
+        'status-not-started': status === notStartedStatus,
+        'status-waited': status === waitedStatus // Измените waitedText на waitedStatus
+      };
+    };
 
     // Реактивное свойство для отображаемых задач
     const displayedTasks = computed(() => {
@@ -145,13 +199,13 @@ export default {
           originalValue: ''
         }));
       } catch (error) {
-        console.error('Ошибка при загрузке задач:', error);
+        console.error(errorMessages.loadTasks, error);
       }
     };
 
     // Проверка статуса задачи
     const isTaskCompleted = (task) => {
-      return task.status === 'выполнено';
+      return task.status === completedStatus;
     };
 
     // Редактирование задачи
@@ -188,7 +242,7 @@ export default {
 
         if (error) throw error;
       } catch (error) {
-        console.error('Ошибка при обновлении задачи:', error);
+        console.error(errorMessages.updateTask, error);
         if (task.editingField && task.originalValue) {
           task[task.editingField] = task.originalValue;
         }
@@ -204,7 +258,7 @@ export default {
         const dueDate = new Date(task.due_date_edit);
 
         if (dueDate < createdDate) {
-          alert('Дата выполнения не может быть раньше даты создания');
+          alert(errorMessages.dateValidation);
           task.due_date_edit = formatDateForInput(task.due_date);
           return;
         }
@@ -220,7 +274,7 @@ export default {
 
         task.due_date = formattedDueDate;
       } catch (error) {
-        console.error('Ошибка при обновлении даты выполнения:', error);
+        console.error(errorMessages.updateDate, error);
       }
     };
 
@@ -239,7 +293,7 @@ export default {
           task.id === id ? { ...task, deleted: true } : task
         );
       } catch (error) {
-        console.error('Ошибка при пометке задачи как удаленной:', error);
+        console.error(errorMessages.deleteTask, error);
       }
     };
 
@@ -314,7 +368,36 @@ export default {
       deleteTask,
       formatDate,
       formatDateForDisplay,
-      formatDateForInput
+      formatDateForInput,
+      // Текстовые переменные
+      taskTitleText,
+      descriptionText,
+      privacy,
+      complexity,
+      objectText,
+      statusText,
+      importanceTagText,
+      creationDateText,
+      completionDateText,
+      deleteText,
+      deleteButtonText,
+      // Статусы
+      completedStatus,
+      inProgressStatus,
+      notStartedStatus,
+      waitedStatus,
+      completedText,
+      inProgressText,
+      notStartedText,
+      waitedText,
+      statusClass,
+      // Уровни важности
+      highImportance,
+      mediumImportance,
+      lowImportance,
+      highImportanceText,
+      mediumImportanceText,
+      lowImportanceText
     };
   }
 };
@@ -340,8 +423,58 @@ export default {
 /* Убедимся, что статус и кнопка удаления не зачеркнуты */
 .status-cell, .delete-cell {
   position: relative;
-  z-index: 3; /* Выше линии зачеркивания */
+  z-index: 3;
 }
+
+.status-cell.status-completed {
+  background-color: #ff4444 !important;
+  color: white;
+}
+
+.status-cell.status-completed select {
+  color: white !important;
+}
+
+.status-cell.status-in-progress {
+  background-color: #4CAF50 !important;
+  color: black;
+}
+
+.status-cell.status-not-started {
+  background-color: #add8e6 !important;
+  color: black;
+}
+.status-cell.status-waited {
+  background-color: rgba(150, 2, 150, 0.4) !important;
+  color: black;
+}
+
+.status-cell select option {
+  background-color: white;
+  color: black;
+}
+
+.status-cell select option[value="выполнено"] {
+  background-color: #ff4444;
+  color: white !important;
+}
+
+.status-cell select option[value="выполняется"] {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.status-cell select option[value="в очереди"] {
+  background-color: #add8e6;
+  color: black;
+}
+
+
+.status-cell select option[value="отложено"] {
+  background-color: rgba(150, 2, 150, 0.4);
+  color: black;
+}
+/* Остальные стили без изменений */
 .todo-container {
   background-color: #e6e6fa;
   padding: 10px;
@@ -438,63 +571,6 @@ export default {
   -moz-appearance: none;
   appearance: none;
   background-color: transparent;
-}
-
-/* Цвета для разных статусов в ячейке */
-.status-cell[data-status="выполнено"] {
-  background-color: #ff4444 !important;
-  color: white;
-}
-
-.status-cell[data-status="выполнено"] select {
-  color: white !important;
-}
-
-.status-cell[data-status="выполняется"] {
-  background-color: #4CAF50 !important;
-  color: black;
-}
-
-.status-cell[data-status="не выполнено"] {
-  background-color: #add8e6 !important;
-  color: black;
-}
-
-/* Зачеркивание для выполненных задач */
-.completed-task td:not(.status-cell):not(.delete-cell)::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background-color: red;
-  transform: translateY(-50%);
-  z-index: 1;
-}
-
-/* Стили для выпадающего списка */
-.status-cell select option {
-  background-color: white;
-  color: black; /* Черный текст в выпадающем списке */
-}
-
-/* Стиль для option "выполнено" в выпадающем списке */
-.status-cell select option[value="выполнено"] {
-  background-color: #ff4444;
-  color: white !important;
-}
-
-/* Стиль для option "выполняется" в выпадающем списке */
-.status-cell select option[value="выполняется"] {
-  background-color: #4CAF50;
-  color: white;
-}
-
-/* Стиль для option "не выполнено" в выпадающем списке */
-.status-cell select option[value="не выполнено"] {
-  background-color: #add8e6;
-  color: black;
 }
 
 .todo-table select:disabled {
