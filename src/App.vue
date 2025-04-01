@@ -27,7 +27,7 @@
         </v-toolbar-title>
         <v-spacer></v-spacer>
         <div class="row-tool-container">
-          <NewTask v-if="$route.path === '/todo'" @task-added="fetchTasks" />
+          <NewTask v-if="$route.path === '/todo'" />
           <RowTool v-else
                    :buttonColor="buttonColor"
                    @change-button-color="changeButtonColorHandler"
@@ -42,9 +42,9 @@
             <component
                 :is="Component"
                 v-bind="{
-        ...($route.meta.requiresAuth ? { buttonColor } : {}),
-        ...($route.meta.requiresAuth ? { onChangeButtonColor: changeButtonColorHandler } : {})
-      }"
+                  ...($route.meta.requiresAuth ? { buttonColor } : {}),
+                  ...($route.meta.requiresAuth ? { onChangeButtonColor: changeButtonColorHandler } : {})
+                }"
             />
           </v-fade-transition>
         </router-view>
@@ -85,12 +85,14 @@ const changeButtonColorHandler = (color) => {
   buttonColor.value = color;
 };
 
-const handleLoginStateChange = (isLoggedIn) => {
-  loginButtonText.value = isLoggedIn ? 'Logout' : 'Login';
-  buttonColor.value = isLoggedIn ? 'purple' : 'red';
+const handleLoginStateChange = (loggedIn) => { // Переименовали для ясности
+  isLoggedIn.value = loggedIn; // Обновляем состояние isLoggedIn
+  loginButtonText.value = loggedIn ? 'Logout' : 'Login';
+  buttonColor.value = loggedIn ? 'purple' : 'red';
 };
 
-async function fetchTasks() {
+// Добавили функцию выхода
+const handleLogout = async () => {
   try {
     const {data, error} = await supabase
         .from('todolist')

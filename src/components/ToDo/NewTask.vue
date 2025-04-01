@@ -18,27 +18,34 @@
 </template>
 
 <script>
-import { ref, defineEmits } from 'vue';
+// Убираем defineEmits из импорта
+import { ref } from 'vue';
 import { supabase } from '@/clients/supabase.js';
 
 export default {
   name: 'NewTask',
-  setup() {
-    const emit = defineEmits(['task-added']); // Определяем emit с событием
+  // Добавляем emits на уровне опций компонента для декларации событий
+  emits: ['task-added'],
+  // setup теперь принимает props и context (нам нужен context)
+  setup(props, context) { // <--- Изменено здесь
+
+    // Убрали: const emit = defineEmits(['task-added']);
+
     const newTask = ref({
       title: '',
       description: '',
       importance_tag: 'средняя',
-      due_date: '',
+      due_date: '', // Это будет 'дд.мм.гггг' или ''
       status: 'в очереди'
     });
-    const internalDate = ref(null);
+    const internalDate = ref(null); // Для v-model input type="date" ('гггг-мм-дд')
 
     function getCurrentDate() {
       const today = new Date();
-      return today.toISOString().split('T')[0];
+      return today.toISOString().split('T')[0]; // Формат 'гггг-мм-дд'
     }
 
+    // Вызывается при изменении значения в input type="date"
     function handleDateChange() {
       if (!internalDate.value) {
         newTask.value.due_date = '';
@@ -46,7 +53,7 @@ export default {
       }
       const date = new Date(internalDate.value);
       const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0'); // Месяцы с 0
       const year = date.getFullYear();
       newTask.value.due_date = `${day}.${month}.${year}`;
     }
@@ -58,19 +65,35 @@ export default {
           return;
         }
 
-        let dueDateISO = null;
+        let dueDateForSupabase = null;
         if (newTask.value.due_date) {
-          const [day, month, year] = newTask.value.due_date.split('.');
-          dueDateISO = `${year}-${month}-${day}`;
+            const [day, month, year] = newTask.value.due_date.split('.');
+            const dateObj = new Date(year, month - 1, day);
+            if (!isNaN(dateObj.getTime())) {
+                 dueDateForSupabase = dateObj.toISOString().split('T')[0];
+            } else {
+                console.warn("Невалидная дата:", newTask.value.due_date);
+                // Можно установить null или показать ошибку
+                dueDateForSupabase = null;
+            }
+        }
+
+        const sessionResult = await supabase.auth.getSession();
+        const user = sessionResult?.data?.session?.user;
+
+        if (!user) {
+          alert('Пожалуйста, войдите в систему для добавления задачи.');
+          return;
         }
 
         const taskToAdd = {
           title: newTask.value.title,
           description: newTask.value.description,
           importance_tag: newTask.value.importance_tag,
-          due_date: dueDateISO,
+          due_date: dueDateForSupabase, // Отправляем 'гггг-мм-дд' или null
           status: newTask.value.status,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          user_id: user.id // Добавляем ID пользователя
         };
 
         const { error } = await supabase
@@ -89,12 +112,16 @@ export default {
         };
         internalDate.value = null;
 
-        emit('task-added'); // Уведомляем родителя
+        // Используем context.emit вместо emit
+        context.emit('task-added'); // <--- Изменено здесь
+
       } catch (error) {
+        // Логируем полную ошибку
         console.error('Ошибка при добавлении задачи:', error);
       }
     }
 
+    // Возвращаем все необходимое для шаблона
     return {
       newTask,
       internalDate,
