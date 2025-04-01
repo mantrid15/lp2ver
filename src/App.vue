@@ -75,6 +75,8 @@ const buttonColor = ref('red');
 const loginButtonText = ref('Login');
 const loginButtonColor = ref('red');
 const isLoggedIn = ref(false);
+const tasks = ref([]);
+
 supabase.auth.onAuthStateChange((event, session) => {
   isLoggedIn.value = !!session;
   handleLoginStateChange(isLoggedIn.value);

@@ -154,8 +154,14 @@ export default {
   components: {
     NewTask
   },
+  props: {
+    tasks: {
+      type: Array,
+      required: true
+    }
+  },
 
-  setup() {
+  setup(props) {
     // Текстовые константы
     const taskTitleText = 'Задача';
     const descriptionText = 'Описание';
@@ -218,7 +224,6 @@ export default {
     const subscription = ref(null);
     const showDeletedTasks = ref(false);
 
-
     const importanceClass = (importance) => {
       return {
         'importance-high': importance === highImportance,
@@ -255,8 +260,8 @@ export default {
     // Реактивное свойство для отображаемых задач
     const displayedTasks = computed(() => {
       return showDeletedTasks.value
-        ? tasks.value
-        : tasks.value.filter(task => !task.deleted);
+          ? props.tasks
+          : props.tasks.filter(task => !task.deleted);
     });
 
     // Загрузка всех задач без фильтрации

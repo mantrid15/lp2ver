@@ -1,9 +1,6 @@
 <template>
   <div v-if="account?.data?.session" class="container">
-<!--
-    <NewTask @task-added="fetchTasks" />
--->
-    <TodoList />
+    <TodoList :tasks="tasks" />
   </div>
   <div v-else class="auth-message">
     Пожалуйста, войдите в систему
@@ -15,20 +12,19 @@ import {ref, computed, onMounted} from 'vue';
 import TodoList from '@/components/ToDo/TodoComp.vue';
 import {supabase} from '@/clients/supabase.js';
 import {useStore} from 'vuex';
-import NewTask from '@/components/ToDo/NewTask.vue';
 
 export default {
   name: 'TodoView',
 
   components: {
     TodoList,
-    NewTask
   },
 
   setup() {
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const account = ref(null);
+    const tasks = ref([]);
 
     async function fetchTasks() {
       try {
@@ -89,6 +85,7 @@ export default {
 
     onMounted(async () => {
       await getSession();
+      await fetchTasks();
       supabase.auth.onAuthStateChange((event, session) => {
         account.value = {data: {session}};
         console.log('Auth state changed:', event, session);
@@ -97,7 +94,8 @@ export default {
 
     return {
       account,
-      fetchTasks
+      tasks,
+
     };
   }
 };

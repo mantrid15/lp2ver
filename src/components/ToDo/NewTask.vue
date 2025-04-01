@@ -30,7 +30,7 @@ export default {
       description: '',
       importance_tag: 'средняя',
       due_date: '',
-      status: 'не выполнено'
+      status: 'в очереди'
     });
 
     const internalDate = ref(null);
@@ -86,7 +86,7 @@ export default {
           description: '',
           importance_tag: 'средняя',
           due_date: '',
-          status: 'не выполнено'
+          status: 'в очереди'
         };
         internalDate.value = null;
 
