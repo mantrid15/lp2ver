@@ -73,7 +73,6 @@ const store = useStore();
 const userId = computed(() => store.state.userId);
 const buttonColor = ref('red');
 const loginButtonText = ref('Login');
-const loginButtonColor = ref('red');
 const isLoggedIn = ref(false);
 const tasks = ref([]);
 
@@ -81,19 +80,14 @@ supabase.auth.onAuthStateChange((event, session) => {
   isLoggedIn.value = !!session;
   handleLoginStateChange(isLoggedIn.value);
 });
+
 const changeButtonColorHandler = (color) => {
   buttonColor.value = color;
 };
+
 const handleLoginStateChange = (isLoggedIn) => {
-  if (isLoggedIn) {
-    loginButtonText.value = 'Logout';
-    loginButtonColor.value = 'purple';
-    buttonColor.value = 'purple';
-  } else {
-    loginButtonText.value = 'Login';
-    loginButtonColor.value = 'red';
-    buttonColor.value = 'red';
-  }
+  loginButtonText.value = isLoggedIn ? 'Logout' : 'Login';
+  buttonColor.value = isLoggedIn ? 'purple' : 'red';
 };
 
 async function fetchTasks() {

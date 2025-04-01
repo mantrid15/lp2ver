@@ -8,18 +8,16 @@
 </template>
 
 <script>
-import {ref, computed, onMounted} from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import TodoList from '@/components/ToDo/TodoComp.vue';
-import {supabase} from '@/clients/supabase.js';
-import {useStore} from 'vuex';
+import { supabase } from '@/clients/supabase.js';
+import { useStore } from 'vuex';
 
 export default {
   name: 'TodoView',
-
   components: {
     TodoList,
   },
-
   setup() {
     const store = useStore();
     const userId = computed(() => store.state.userId);
@@ -46,10 +44,10 @@ export default {
       } catch (error) {
         console.error('Ошибка при загрузке задач:', error);
       }
-    };
+    }
+
     function formatDateForDisplay(dateString) {
       if (!dateString) return '';
-
       if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
         return dateString;
       }
@@ -87,7 +85,8 @@ export default {
       await getSession();
       await fetchTasks();
       supabase.auth.onAuthStateChange((event, session) => {
-        account.value = {data: {session}};
+        account.value = { data: { session } };
+        fetchTasks(); // Обновляем задачи при изменении состояния
         console.log('Auth state changed:', event, session);
       });
     });
@@ -95,7 +94,6 @@ export default {
     return {
       account,
       tasks,
-
     };
   }
 };

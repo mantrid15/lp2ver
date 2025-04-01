@@ -18,13 +18,13 @@
 </template>
 
 <script>
-import { ref } from 'vue';
+import { ref, defineEmits } from 'vue';
 import { supabase } from '@/clients/supabase.js';
 
 export default {
   name: 'NewTask',
-
-  setup(props, { emit }) {
+  setup() {
+    const emit = defineEmits(['task-added']); // Определяем emit с событием
     const newTask = ref({
       title: '',
       description: '',
@@ -32,7 +32,6 @@ export default {
       due_date: '',
       status: 'в очереди'
     });
-
     const internalDate = ref(null);
 
     function getCurrentDate() {
@@ -90,8 +89,7 @@ export default {
         };
         internalDate.value = null;
 
-        emit('task-added');
-
+        emit('task-added'); // Уведомляем родителя
       } catch (error) {
         console.error('Ошибка при добавлении задачи:', error);
       }

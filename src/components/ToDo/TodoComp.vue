@@ -161,7 +161,7 @@ export default {
     }
   },
 
-  setup(props) {
+  setup() {
     // Текстовые константы
     const taskTitleText = 'Задача';
     const descriptionText = 'Описание';
@@ -260,8 +260,8 @@ export default {
     // Реактивное свойство для отображаемых задач
     const displayedTasks = computed(() => {
       return showDeletedTasks.value
-          ? props.tasks
-          : props.tasks.filter(task => !task.deleted);
+        ? tasks.value
+        : tasks.value.filter(task => !task.deleted);
     });
 
     // Загрузка всех задач без фильтрации
