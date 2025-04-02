@@ -7,6 +7,12 @@
       <option value="средняя" selected>Средняя</option>
       <option value="низкая">Низкая</option>
     </select>
+    <select v-model="newTask.privacy">
+      <option value="домашнее">Домашнее</option>
+      <option value="рабочее" selected>Рабочее</option>
+      <option value="иное">Иное</option>
+    </select>
+
     <input
         v-model="internalDate"
         @change="handleDateChange"
@@ -16,7 +22,6 @@
     <button @click="addTask">Добавить задачу</button>
   </div>
 </template>
-
 <script>
 // Убираем defineEmits из импорта
 import { ref } from 'vue';
@@ -36,7 +41,9 @@ export default {
       description: '',
       importance_tag: 'средняя',
       due_date: '', // Это будет 'дд.мм.гггг' или ''
-      status: 'в очереди'
+      status: 'в очереди',
+      privacy: 'рабочее',
+      complexity: 'средняя'
     });
     const internalDate = ref(null); // Для v-model input type="date" ('гггг-мм-дд')
 
@@ -77,7 +84,6 @@ export default {
                 dueDateForSupabase = null;
             }
         }
-
         const sessionResult = await supabase.auth.getSession();
         const user = sessionResult?.data?.session?.user;
 
@@ -92,6 +98,8 @@ export default {
           importance_tag: newTask.value.importance_tag,
           due_date: dueDateForSupabase, // Отправляем 'гггг-мм-дд' или null
           status: newTask.value.status,
+          privacy: newTask.value.privacy,
+          complexity: newTask.value.complexity,
           created_at: new Date().toISOString(),
           user_id: user.id // Добавляем ID пользователя
         };
@@ -108,7 +116,9 @@ export default {
           description: '',
           importance_tag: 'средняя',
           due_date: '',
-          status: 'в очереди'
+          status: 'в очереди',
+          privacy: 'рабочее'
+
         };
         internalDate.value = null;
 
@@ -132,7 +142,6 @@ export default {
   }
 };
 </script>
-
 <style scoped>
 .input-group {
   display: flex;

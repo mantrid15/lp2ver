@@ -133,8 +133,8 @@ export default {
       // Функция для фильтрации общеупотребительных терминов
       const isCommonTerm = (term) => {
         const commonTerms = [
-          'и', ' и','в', 'на', 'с', 'по', 'для', 'это', 'что', 'как', 'we', 'to', 'you', 'your', '!',
-          'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'simplify',
+          'и', ' и','в', 'на', 'с', 'по', 'для', 'это', 'что', 'как', 'к', 'it', 'we', 'to', 'you', 'your', '!',
+          'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'simplify', '',
           'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing',
           'if', 'then', 'else', 'but', 'or', 'because', 'since', 'until',
           'while', 'for', 'in', 'of', 'about', 'at', 'as', 'by', 'with',
