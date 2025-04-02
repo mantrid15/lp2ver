@@ -11,17 +11,60 @@
                 @change="handleShowDeletedChange"
                 style="margin-right: 8px;"
             >
-            {{ taskTitleText }}
+            <span class="header-label-container" @click="(e) => handleClick(e, 'title')" style="cursor: pointer;">
+              {{ taskTitleText }}
+              <span class="sort-icon">{{ getSortIcon('title') || SORT_DEFAULT_ICON }}</span>
+            </span>
           </div>
         </th>
-        <th style="width: 30%;">{{ descriptionText }}</th>
-        <th style="width: 10%;">{{ objectText }}</th>
-        <th style="width: 6%;">{{ privacy }}</th>
-        <th style="width: 6%;">{{ complexity }}</th>
-        <th style="width: 6%;">{{ statusText }}</th>
-        <th style="width: 6%;">{{ importanceTagText }}</th>
-        <th style="width: 6%;">{{ creationDateText }}</th>
-        <th style="width: 6%;">{{ completionDateText }}</th>
+        <th style="width: 30%;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'description')" style="cursor: pointer;">
+            {{ descriptionText }}
+            <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
+          </span>
+        </th>
+        <th style="width: 10%;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'object')" style="cursor: pointer;">
+            {{ objectText }}
+            <span class="sort-icon">{{ getSortIcon('object') || SORT_DEFAULT_ICON }}</span>
+          </span>
+        </th>
+        <th style="width: 6%;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'privacy')" style="cursor: pointer;">
+            {{ privacy }}
+            <span class="sort-icon">{{ getSortIcon('privacy') || SORT_DEFAULT_ICON }}</span>
+          </span>
+        </th>
+        <th style="width: 6%;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'complexity')" style="cursor: pointer;">
+            {{ complexity }}
+            <span class="sort-icon">{{ getSortIcon('complexity') || SORT_DEFAULT_ICON }}</span>
+          </span>
+        </th>
+        <th style="width: 6%;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'status')" style="cursor: pointer;">
+            {{ statusText }}
+            <span class="sort-icon">{{ getSortIcon('status') || SORT_DEFAULT_ICON }}</span>
+          </span>
+        </th>
+        <th style="width: 6%;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'importance_tag')" style="cursor: pointer;">
+            {{ importanceTagText }}
+            <span class="sort-icon">{{ getSortIcon('importance_tag') || SORT_DEFAULT_ICON }}</span>
+          </span>
+        </th>
+        <th style="width: 6%;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'created_at')" style="cursor: pointer;">
+            {{ creationDateText }}
+            <span class="sort-icon">{{ getSortIcon('created_at') || SORT_DEFAULT_ICON }}</span>
+          </span>
+        </th>
+        <th style="width: 6%;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'due_date')" style="cursor: pointer;">
+            {{ completionDateText }}
+            <span class="sort-icon">{{ getSortIcon('due_date') || SORT_DEFAULT_ICON }}</span>
+          </span>
+        </th>
         <th style="width: 6%;">{{ deleteText }}</th>
       </tr>
       </thead>
@@ -114,9 +157,9 @@
               v-focus
           />
           <span v-else>
-    {{ formatDateForDisplay(task.due_date) }}
-    <i class="fas fa-calendar-alt" @click="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')" title="Редактировать дату" style="cursor: pointer; margin-left: 5px;"></i>
-  </span>
+            {{ formatDateForDisplay(task.due_date) }}
+            <i class="fas fa-calendar-alt" @click="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')" title="Редактировать дату" style="cursor: pointer; margin-left: 5px;"></i>
+          </span>
         </td>
 
         <td class="delete-cell">
@@ -148,17 +191,17 @@
       </tr>
       </tbody>
     </table>
-     </div>
+  </div>
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'; // Добавили nextTick
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
 import { supabase } from '@/clients/supabase.js';
 
 export default {
   name: 'TodoComp',
 
-  setup() {
+  setup(props, { emit }) {
     // --- Текстовые константы ---
     const taskTitleText = 'Задача';
     const descriptionText = 'Описание';
@@ -171,6 +214,12 @@ export default {
     const completionDateText = 'Дата выполнения';
     const deleteText = 'Удалить';
     const deleteButtonText = 'Удалить';
+
+
+    // Константы для сортировки
+    const SORT_ASC_ICON = '↑';
+    const SORT_DESC_ICON = '↓';
+    const SORT_DEFAULT_ICON = '⇅';
 
     // Статусы задач
     const completedStatus = 'выполнено';
@@ -225,8 +274,12 @@ export default {
 
     const tasks = ref([]); // Внутреннее состояние компонента
     const subscription = ref(null);
-    const showDeletedTasks = ref(false); // Состояние для чекбокса
-    const currentUserId = ref(null); // Для хранения ID текущего пользователя
+    const showDeletedTasks = ref(false);
+    const currentUserId = ref(null);
+    // Переменные для сортировки
+
+    const currentSortKey = ref('created_at');
+    const currentSortOrder = ref('desc');
 
     const formatDateForDisplay = (dateString) => {
       if (!dateString) return '';
@@ -266,7 +319,6 @@ export default {
       }
     };
     // --- Конец функций форматирования дат ---
-
     const importanceClass = (importance) => ({
       'importance-high': importance === highImportance,
       'importance-medium': importance === mediumImportance,
@@ -292,12 +344,56 @@ export default {
       'complexity-low': complexity === lowComplexity
     });
 
+    // Функции для сортировки
+    const handleClick = (event, key) => {
+      if (currentSortKey.value === key) {
+        currentSortOrder.value = currentSortOrder.value === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSortOrder.value = 'asc';
+      }
+      currentSortKey.value = key;
+      emit('sort', key, currentSortOrder.value); // Эмитим событие сортировки
+    };
 
-    // Реактивное свойство для отображаемых задач (теперь зависит только от внутреннего tasks и showDeletedTasks)
+    const getSortIcon = (key) => {
+      if (currentSortKey.value === key) {
+        return currentSortOrder.value === 'asc' ? SORT_ASC_ICON : SORT_DESC_ICON;
+      }
+      return '';
+    };
+
+    const sortByKey = (a, b, key, order) => {
+      const modifier = order === 'asc' ? 1 : -1;
+
+      // Для дат
+      if (key === 'created_at' || key === 'due_date') {
+        const aValue = a[key] ? new Date(a[key]) : new Date(0);
+        const bValue = b[key] ? new Date(b[key]) : new Date(0);
+        return (aValue - bValue) * modifier;
+      }
+
+      // Для выпадающих списков (приватность, сложность, статус, важность)
+      if (key === 'privacy' || key === 'complexity' || key === 'status' || key === 'importance_tag') {
+        const aValue = a[key] || '';
+        const bValue = b[key] || '';
+        return aValue.localeCompare(bValue) * modifier;
+      }
+
+      // Для текстовых полей
+      const aValue = a[key] !== null ? a[key].toString().toLowerCase() : '';
+      const bValue = b[key] !== null ? b[key].toString().toLowerCase() : '';
+
+      return aValue.localeCompare(bValue) * modifier;
+    };
+
     const displayedTasks = computed(() => {
-      return showDeletedTasks.value
-        ? tasks.value
-        : tasks.value.filter(task => !task.deleted);
+      let tasksToDisplay = showDeletedTasks.value
+          ? tasks.value
+          : tasks.value.filter(task => !task.deleted);
+
+      return [...tasksToDisplay].sort((a, b) =>
+          sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+      );
     });
 
     // ИЗМЕНЕНО: Загрузка задач ТОЛЬКО для текущего пользователя
@@ -428,7 +524,6 @@ export default {
            fetchAllTasks();
            return;
          }
-
          // Если валидация прошла, обновляем в базе
          updateDueDate(task, newDateValue_YYYYMMDD);
      };
@@ -456,7 +551,6 @@ export default {
              fetchAllTasks(); // Откат при ошибке
          }
      };
-
     // ИЗМЕНЕНО: Пометка на удаление
      const deleteTask = async (id) => {
         const task = tasks.value.find(t => t.id === id);
@@ -480,7 +574,6 @@ export default {
          console.error(errorMessages.deleteTask, error);
        }
      };
-
     // ИЗМЕНЕНО: Восстановление
     const restoreTask = async (id) => {
          const task = tasks.value.find(t => t.id === id);
@@ -505,7 +598,6 @@ export default {
          console.error(errorMessages.restoreTask, error);
        }
      };
-
     // ИЗМЕНЕНО: Окончательное удаление
      const permanentlyDeleteTask = async (id) => {
          const task = tasks.value.find(t => t.id === id);
@@ -598,7 +690,6 @@ export default {
        } else {
            console.warn("Нет пользователя при монтировании TodoComp, задачи не загружены.");
        }
-
         // Слушаем изменения аутентификации ЗДЕСЬ, чтобы обновлять задачи
         supabase.auth.onAuthStateChange(async (_event, session) => {
             console.log("Auth state changed in TodoComp:", _event);
@@ -644,7 +735,13 @@ export default {
       statusClass,
       privacyClass,
       complexityClass,
-      // --- Текстовые переменные для шаблона ---
+      handleClick,
+      getSortIcon,
+      currentSortKey,
+      currentSortOrder,
+      SORT_ASC_ICON,
+      SORT_DESC_ICON,
+      SORT_DEFAULT_ICON,
       taskTitleText, descriptionText, privacy, complexity, objectText, statusText,
       importanceTagText, creationDateText, completionDateText, deleteText, deleteButtonText,
       completedStatus, inProgressStatus, notStartedStatus, waitedStatus,
@@ -658,10 +755,22 @@ export default {
   }
 };
 </script>
-
 <style scoped>
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+.header-label-container {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
 
+.sort-icon {
+  font-size: 0.9em;
+  opacity: 0.7;
+}
+
+.header-label-container:hover .sort-icon {
+  opacity: 1;
+}
 .task-title {
   font-weight: bold;
   margin-left: 5px;
