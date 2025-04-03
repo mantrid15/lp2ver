@@ -4,7 +4,7 @@
       <thead>
       <tr class="table-header">
         <th style="width: 15%;">
-          <div style="display: flex; align-items: center;">
+          <div style="display: flex; align-items: center; padding-left: 5px;">
             <input
                 type="checkbox"
                 v-model="showDeletedTasks"
@@ -18,54 +18,54 @@
           </div>
         </th>
         <th style="width: 30%;">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'description')" style="cursor: pointer;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'description')" style="cursor: pointer; padding-left: 5px;">
             {{ descriptionText }}
             <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
         <th style="width: 10%;">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'object')" style="cursor: pointer;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'object')" style="cursor: pointer; padding-left: 5px;">
             {{ objectText }}
             <span class="sort-icon">{{ getSortIcon('object') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
         <th style="width: 6%;">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'privacy')" style="cursor: pointer;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'privacy')" style="cursor: pointer; padding-left: 5px;">
             {{ privacy }}
             <span class="sort-icon">{{ getSortIcon('privacy') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
         <th style="width: 6%;">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'complexity')" style="cursor: pointer;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'complexity')" style="cursor: pointer; padding-left: 5px;">
             {{ complexity }}
             <span class="sort-icon">{{ getSortIcon('complexity') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
         <th style="width: 6%;">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'status')" style="cursor: pointer;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'status')" style="cursor: pointer; padding-left: 5px;">
             {{ statusText }}
             <span class="sort-icon">{{ getSortIcon('status') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
         <th style="width: 6%;">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'importance_tag')" style="cursor: pointer;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'importance_tag')" style="cursor: pointer; padding-left: 5px;">
             {{ importanceTagText }}
             <span class="sort-icon">{{ getSortIcon('importance_tag') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
         <th style="width: 6%;">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'created_at')" style="cursor: pointer;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'created_at')" style="cursor: pointer; padding-left: 5px;">
             {{ creationDateText }}
             <span class="sort-icon">{{ getSortIcon('created_at') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
         <th style="width: 6%;">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'due_date')" style="cursor: pointer;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'due_date')" style="cursor: pointer; padding-left: 5px;">
             {{ completionDateText }}
             <span class="sort-icon">{{ getSortIcon('due_date') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
-        <th style="width: 6%;">{{ deleteText }}</th>
+        <th style="width: 6%; padding-left: 5px;">{{ deleteText }}</th>
       </tr>
       </thead>
       <tbody>
@@ -210,8 +210,8 @@ export default {
     const objectText = 'Объект';
     const statusText = 'Статус';
     const importanceTagText = 'Тег важности';
-    const creationDateText = 'Дата создания';
-    const completionDateText = 'Дата выполнения';
+    const creationDateText = 'Создано';
+    const completionDateText = 'Выполнение';
     const deleteText = 'Удалить';
     const deleteButtonText = 'Удалить';
 
@@ -759,6 +759,9 @@ export default {
 <style scoped>
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
 
+.table-header {
+  border-bottom: 3px solid #000; /* Добавляем более толстую нижнюю границу для всей строки заголовка */
+}
 
 .todo-table td:first-child, /* Первый столбец (Задача) */
 .todo-table td:nth-child(2), /* Второй столбец (Описание) */
@@ -846,7 +849,7 @@ export default {
   text-align: center;
   border: 1px solid #000; /* Убираем задвоенные границы */
   font-size: 0.9em;
-  height: 24px;
+  height: 36px;
 }
 
 .todo-table td {
@@ -861,7 +864,7 @@ export default {
   /*
   height: 23px; !* Установите фиксированную высоту для всех ячеек *!
   */
-  height: 100%; /* Установите фиксированную высоту для всех ячеек */
+  height: 80%; /* Установите фиксированную высоту для всех ячеек */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

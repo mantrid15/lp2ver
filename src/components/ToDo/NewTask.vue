@@ -2,14 +2,9 @@
   <div class="input-group">
     <input v-model="newTask.title" placeholder="Название задачи" />
     <input v-model="newTask.description" placeholder="Описание задачи" />
-    <select
-        v-model="newTask.importance_tag"
-        title="Важность"
-    >
-      <option value="высокая">Высокая</option>
-      <option value="средняя" selected>Средняя</option>
-      <option value="низкая">Низкая</option>
-    </select>
+    <input v-model="newTask.object" placeholder="Объект" />
+
+
     <select
         v-model="newTask.privacy"
         title="Приватность"
@@ -18,7 +13,22 @@
       <option value="рабочее" selected>Рабочее</option>
       <option value="иное">Иное</option>
     </select>
-
+    <select
+        v-model="newTask.complexity"
+        title="Сложность"
+    >
+      <option value="высокая">Высокая</option>
+      <option value="средняя" selected>Средняя</option>
+      <option value="низкая">Низкая</option>
+    </select>
+    <select
+        v-model="newTask.importance_tag"
+        title="Важность"
+    >
+      <option value="высокая">Высокая</option>
+      <option value="средняя" selected>Средняя</option>
+      <option value="низкая">Низкая</option>
+    </select>
 
     <input
         v-model="internalDate"
@@ -31,7 +41,7 @@
 </template>
 <script>
 // Убираем defineEmits из импорта
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { supabase } from '@/clients/supabase.js';
 
 export default {
@@ -46,6 +56,7 @@ export default {
     const newTask = ref({
       title: '',
       description: '',
+      object: '',
       importance_tag: 'средняя',
       due_date: '', // Это будет 'дд.мм.гггг' или ''
       status: 'в очереди',
@@ -54,11 +65,20 @@ export default {
     });
     const internalDate = ref(null); // Для v-model input type="date" ('гггг-мм-дд')
 
-    function getCurrentDate() {
+    // Устанавливаем текущую дату при монтировании компонента
+    onMounted(() => {
+      setDefaultDate();
+    });
+    function setDefaultDate() {
       const today = new Date();
-      return today.toISOString().split('T')[0]; // Формат 'гггг-мм-дд'
+      internalDate.value = today.toISOString().split('T')[0];
+      handleDateChange(); // Обновляем форматированную дату
     }
 
+    function getCurrentDate() {
+      const today = new Date();
+      return today.toISOString().split('T')[0];
+    }
     // Вызывается при изменении значения в input type="date"
     function handleDateChange() {
       if (!internalDate.value) {
@@ -78,7 +98,6 @@ export default {
           alert('Название задачи обязательно');
           return;
         }
-
         let dueDateForSupabase = null;
         if (newTask.value.due_date) {
             const [day, month, year] = newTask.value.due_date.split('.');
@@ -102,6 +121,7 @@ export default {
         const taskToAdd = {
           title: newTask.value.title,
           description: newTask.value.description,
+          object: newTask.value.object,
           importance_tag: newTask.value.importance_tag,
           due_date: dueDateForSupabase, // Отправляем 'гггг-мм-дд' или null
           status: newTask.value.status,
@@ -119,15 +139,16 @@ export default {
 
         // Сбрасываем форму
         newTask.value = {
+          importance_tag: 'средняя',
+          status: 'в очереди',
+          privacy: 'рабочее',
           title: '',
           description: '',
-          importance_tag: 'средняя',
-          due_date: '',
-          status: 'в очереди',
-          privacy: 'рабочее'
-
+          object: '',
+          due_date: '', // Это будет 'дд.мм.гггг' или ''
+          complexity: 'средняя'
         };
-        internalDate.value = null;
+        setDefaultDate(); // Сбрасываем на текущую дату после добавления
 
         // Используем context.emit вместо emit
         context.emit('task-added'); // <--- Изменено здесь
@@ -169,6 +190,17 @@ export default {
 
 .input-group select:hover {
   box-shadow: 0 0 5px rgba(0,0,0,0.2);
+  backrgound: rgba(9, 178, 17, 0.9);
+}
+
+.input-group button {
+    padding: 8px 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+
 }
 
 .input-group button {
