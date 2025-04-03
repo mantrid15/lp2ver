@@ -755,8 +755,41 @@ export default {
   }
 };
 </script>
+
 <style scoped>
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+
+.todo-table td:first-child, /* Первый столбец (Задача) */
+.todo-table td:nth-child(2), /* Второй столбец (Описание) */
+.todo-table td:nth-child(3) { /* Третий столбец (Объект) */
+  padding-left: 5px !important;
+}
+
+/* Для инпутов в этих ячейках */
+.todo-table td:first-child .task-input,
+.todo-table td:nth-child(2) .task-input,
+.todo-table td:nth-child(3) .task-input {
+  padding-left: 5px;
+}
+
+.todo-table td:nth-child(8), /* created_at */
+.todo-table td:nth-child(9) { /* due_date */
+  padding-left: 5px !important;
+}
+
+/* Для инпутов в ячейке due_date */
+.todo-table td:nth-child(9) .date-input {
+  padding-left: 5px;
+}
+
+/* Для текстового содержимого в ячейках с датами */
+.todo-table td:nth-child(8) > span,
+.todo-table td:nth-child(9) > span {
+  padding-left: 5px;
+  display: inline-block;
+}
+
 .header-label-container {
   display: flex;
   align-items: center;

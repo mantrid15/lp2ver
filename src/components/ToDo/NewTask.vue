@@ -2,16 +2,23 @@
   <div class="input-group">
     <input v-model="newTask.title" placeholder="Название задачи" />
     <input v-model="newTask.description" placeholder="Описание задачи" />
-    <select v-model="newTask.importance_tag">
+    <select
+        v-model="newTask.importance_tag"
+        title="Важность"
+    >
       <option value="высокая">Высокая</option>
       <option value="средняя" selected>Средняя</option>
       <option value="низкая">Низкая</option>
     </select>
-    <select v-model="newTask.privacy">
+    <select
+        v-model="newTask.privacy"
+        title="Приватность"
+    >
       <option value="домашнее">Домашнее</option>
       <option value="рабочее" selected>Рабочее</option>
       <option value="иное">Иное</option>
     </select>
+
 
     <input
         v-model="internalDate"
@@ -157,6 +164,11 @@ export default {
   border: 1px solid black;
   border-radius: 4px;
   background: white;
+  cursor: pointer;
+}
+
+.input-group select:hover {
+  box-shadow: 0 0 5px rgba(0,0,0,0.2);
 }
 
 .input-group button {
