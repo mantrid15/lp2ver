@@ -18,12 +18,29 @@
           </div>
         </th>
         <th style="width: 30%;">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'description')" style="cursor: pointer; padding-left: 5px;">
-            {{ descriptionText }}
-            <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
-          </span>
-        </th>
-        <th style="width: 10%;">
+          <div style="display: flex; align-items: center;">
+            <div style="position: relative; display: flex; align-items: center;">
+              <input
+                  v-model="filterText"
+                  @input="applyFilter"
+                  placeholder="Фильтр..."
+                  class="filter-input"
+                  maxlength="10"
+                  style="margin-right: 8px; padding-right: 20px;"
+              />
+              <i
+                  v-if="filterText"
+                  @click="clearFilter"
+                  class="fas fa-times clear-filter-icon"
+                  title="Очистить фильтр"
+              ></i>
+            </div>
+            <span class="header-label-container" @click="(e) => handleClick(e, 'description')" style="cursor: pointer; padding-left: 5px;">
+              {{ descriptionText }}
+              <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
+            </span>
+          </div>
+        </th>        <th style="width: 10%;">
           <span class="header-label-container" @click="(e) => handleClick(e, 'object')" style="cursor: pointer; padding-left: 5px;">
             {{ objectText }}
             <span class="sort-icon">{{ getSortIcon('object') || SORT_DEFAULT_ICON }}</span>
@@ -69,7 +86,7 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="task in displayedTasks"
+      <tr v-for="task in filteredTasks"
           :key="task.id"
           :data-deleted="task.deleted"
           :class="{
@@ -202,20 +219,6 @@ export default {
   name: 'TodoComp',
 
   setup(props, { emit }) {
-    // --- Текстовые константы ---
-    const taskTitleText = 'Задача';
-    const descriptionText = 'Описание';
-    const privacy = 'Приватность';
-    const complexity = 'Сложность';
-    const objectText = 'Объект';
-    const statusText = 'Статус';
-    const importanceTagText = 'Тег важности';
-    const creationDateText = 'Создано';
-    const completionDateText = 'Выполнить';
-    const deleteText = 'Удалить';
-    const deleteButtonText = 'Удалить';
-
-
     // Константы для сортировки
     const SORT_ASC_ICON = '↑';
     const SORT_DESC_ICON = '↓';
@@ -255,6 +258,21 @@ export default {
     const mediumComplexityText = 'Средняя';
     const lowComplexityText = 'Низкая';
 
+    // Текстовые константы
+    const taskTitleText = 'Задача';
+    const descriptionText = 'Описание';
+    const privacy = 'Приватность';
+    const complexity = 'Сложность';
+    const objectText = 'Объект';
+    const statusText = 'Статус';
+    const importanceTagText = 'Тег важности';
+    const creationDateText = 'Создано';
+    const completionDateText = 'Выполнить';
+    const deleteText = 'Удалить';
+    const deleteButtonText = 'Удалить';
+    const restoreButtonText = 'Восстановить';
+    const permanentDeleteButtonText = 'Удалить окончательно';
+
     // Сообщения об ошибках
     const errorMessages = {
       loadTasks: 'Ошибка при загрузке задач:',
@@ -268,18 +286,44 @@ export default {
       updateUserMismatch: 'Попытка обновить задачу другого пользователя.'
     };
 
-    const restoreButtonText = 'Восстановить';
-    const permanentDeleteButtonText = 'Удалить окончательно';
-    // --- Конец текстовых констант ---
-
-    const tasks = ref([]); // Внутреннее состояние компонента
+    // Состояние компонента
+    const tasks = ref([]);
     const subscription = ref(null);
     const showDeletedTasks = ref(false);
     const currentUserId = ref(null);
-    // Переменные для сортировки
-
+    const filterText = ref('');
     const currentSortKey = ref('created_at');
     const currentSortOrder = ref('desc');
+
+    const clearFilter = () => {
+      filterText.value = '';
+    };
+    // Computed свойства
+    const displayedTasks = computed(() => {
+      let tasksToDisplay = showDeletedTasks.value
+        ? tasks.value
+        : tasks.value.filter(task => !task.deleted);
+
+      return [...tasksToDisplay].sort((a, b) =>
+        sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+      );
+    });
+
+    const filteredTasks = computed(() => {
+      if (!filterText.value.trim()) return displayedTasks.value;
+
+      const searchText = filterText.value.toLowerCase().trim();
+      return displayedTasks.value.filter(task =>
+        (task.title && task.title.toLowerCase().includes(searchText)) ||
+        (task.description && task.description.toLowerCase().includes(searchText)) ||
+        (task.object && task.object.toLowerCase().includes(searchText))
+      );
+    });
+
+    // Методы
+    const applyFilter = () => {
+      // Фильтрация происходит автоматически через computed свойство filteredTasks
+    };
 
     const formatDateForDisplay = (dateString) => {
       if (!dateString) return '';
@@ -386,123 +430,63 @@ export default {
       return aValue.localeCompare(bValue) * modifier;
     };
 
-    const displayedTasks = computed(() => {
-      let tasksToDisplay = showDeletedTasks.value
-          ? tasks.value
-          : tasks.value.filter(task => !task.deleted);
+    const isTaskCompleted = (task) => task.status === completedStatus;
 
-      return [...tasksToDisplay].sort((a, b) =>
-          sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
-      );
-    });
+    const startEditing = (task, field) => {
+      if (isTaskCompleted(task) || task.deleted) return;
+      tasks.value.forEach(t => { if (t.editing) finishEditing(t, false); });
+      task.originalValue = task[field];
+      task.editing = true;
+      task.editingField = field;
+      nextTick(() => {
+        const inputElement = document.querySelector(`tr[data-task-id="${task.id}"] input.task-input`);
+        if (inputElement) {
+          inputElement.focus();
+        }
+      });
+    };
 
-    // ИЗМЕНЕНО: Загрузка задач ТОЛЬКО для текущего пользователя
-    const fetchAllTasks = async () => {
-      if (!currentUserId.value) {
-        console.warn(errorMessages.fetchUser);
-        tasks.value = []; // Очищаем список, если нет пользователя
-        return;
-      }
-      try {
-        const { data, error } = await supabase
-          .from('todolist')
-          .select('*')
-          .eq('user_id', currentUserId.value) // Фильтруем по ID пользователя
-          .order('created_at', { ascending: true });
-
-        if (error) throw error;
-
-        // Обновляем внутреннюю переменную tasks
-        tasks.value = (data || []).map(task => ({
-          ...task,
-          // due_date_edit хранит 'гггг-мм-дд' для input[type=date]
-          due_date_edit: formatDateForInput(task.due_date) || '',
-          // due_date оставляем как пришло из базы ('гггг-мм-дд' или null)
-          // но можно и отформатировать для каких-то других нужд, если потребуется
-          // due_date_display: formatDateForDisplay(task.due_date) || '', // Пример
-          editing: false,
-          editingField: null,
-          originalValue: ''
-        }));
-      } catch (error) {
-        console.error(errorMessages.loadTasks, error);
-        tasks.value = []; // Очищаем при ошибке
+    const finishEditing = (task, shouldUpdateDB = true) => {
+      if (task.editing) {
+        task.editing = false;
+        task.editingField = null;
+        if (shouldUpdateDB && task[task.editingField] !== task.originalValue) {
+          updateTask(task);
+        } else if (!shouldUpdateDB) {
+          task[task.editingField] = task.originalValue;
+        }
+        task.originalValue = '';
       }
     };
 
-    // --- Функции редактирования, обновления, удаления (добавлена проверка user_id) ---
-     const isTaskCompleted = (task) => task.status === completedStatus;
-
-     const startEditing = (task, field) => {
-        if (isTaskCompleted(task) || task.deleted) return;
-        // Закрываем редактирование других задач, если они есть
-        tasks.value.forEach(t => { if (t.editing) finishEditing(t, false); }); // Не обновлять в базе при закрытии других
-        task.originalValue = task[field];
-        task.editing = true;
-        task.editingField = field;
-        // Фокусировка на инпуте после того, как Vue обновит DOM
-        nextTick(() => {
-            const inputElement = document.querySelector(`tr[data-task-id="${task.id}"] input.task-input`); // TODO: Добавить data-task-id к tr
-             if (inputElement) {
-                 inputElement.focus();
-             }
-        });
-     };
-
-     // Добавили параметр shouldUpdateDB
-     const finishEditing = (task, shouldUpdateDB = true) => {
-       if (task.editing) {
-         task.editing = false;
-         task.editingField = null;
-         // Обновляем в базе только если нужно и значение изменилось
-         if (shouldUpdateDB && task[task.editingField] !== task.originalValue) {
-            updateTask(task);
-         } else if (!shouldUpdateDB) {
-             // Если отмена (blur без Enter), возвращаем оригинальное значение
-             task[task.editingField] = task.originalValue;
-         }
-         task.originalValue = '';
-       }
-     };
-
-    // ИЗМЕНЕНО: Добавлена проверка user_id перед обновлением
-     const updateTask = async (task) => {
-        if (task.user_id !== currentUserId.value) {
-             console.error(errorMessages.updateUserMismatch, `Task ID: ${task.id}, Task User: ${task.user_id}, Current User: ${currentUserId.value}`);
-             // Можно откатить изменение локально или показать ошибку
-             fetchAllTasks(); // Перезагрузить данные как самый простой вариант отката
-             return;
-         }
-       try {
-         const taskToUpdate = { // Собираем только обновляемые поля
-           title: task.title,
-           description: task.description,
-           object: task.object,
-           privacy: task.privacy,
-           complexity: task.complexity,
-           status: task.status,
-           importance_tag: task.importance_tag,
-           // due_date обновляется отдельной функцией updateDueDate
-         };
+    const updateTask = async (task) => {
+      if (task.user_id !== currentUserId.value) {
+        console.error(errorMessages.updateUserMismatch, `Task ID: ${task.id}, Task User: ${task.user_id}, Current User: ${currentUserId.value}`);
+        fetchAllTasks();
+        return;
+      }
+      try {
+        const taskToUpdate = {
+          title: task.title,
+          description: task.description,
+          object: task.object,
+          privacy: task.privacy,
+          complexity: task.complexity,
+          status: task.status,
+          importance_tag: task.importance_tag,
+        };
 
          const { error } = await supabase
            .from('todolist')
            .update(taskToUpdate)
            .match({ id: task.id, user_id: currentUserId.value }); // Обновляем только свою задачу
 
-         if (error) throw error;
-         // Данные обновятся через real-time, но можно и локально для скорости
-         // console.log('Задача обновлена локально/realtime');
-
-       } catch (error) {
-         console.error(errorMessages.updateTask, error);
-         // Попытка отката локальных изменений при ошибке
-          fetchAllTasks();
-         // if (task.editingField && task.originalValue) {
-         //   task[task.editingField] = task.originalValue; // Это не сработает для селектов
-         // }
-       }
-     };
+        if (error) throw error;
+      } catch (error) {
+        console.error(errorMessages.updateTask, error);
+        fetchAllTasks();
+      }
+    };
 
     // ИЗМЕНЕНО: Обновление даты
     // Нужна промежуточная функция, чтобы поймать значение из @input
@@ -514,55 +498,47 @@ export default {
          const dueDate = new Date(newDateValue_YYYYMMDD);
          dueDate.setHours(0,0,0,0); // Убираем время для сравнения
 
-         // Проверка, чтобы дата выполнения была не раньше даты создания
-         if (dueDate < createdDate) {
-           alert(errorMessages.dateValidation);
-           // Нужно как-то откатить значение в инпуте, если он не v-model
-           // Самый простой способ - перезапросить данные
-            // TODO: Найти способ лучше откатить инпут без перезапроса
-            // например, хранить предыдущее значение task.due_date_edit
-           fetchAllTasks();
-           return;
-         }
-         // Если валидация прошла, обновляем в базе
-         updateDueDate(task, newDateValue_YYYYMMDD);
-     };
-     // Обновляет дату в базе данных
-     const updateDueDate = async (task, newDate_YYYYMMDD) => {
-        if (task.user_id !== currentUserId.value) {
-             console.error(errorMessages.updateUserMismatch, `Task ID: ${task.id}`);
-             fetchAllTasks();
-             return;
-         }
-         try {
-             const { error } = await supabase
-             .from('todolist')
-             .update({ due_date: newDate_YYYYMMDD || null }) // Отправляем 'гггг-мм-дд' или null
-             .match({ id: task.id, user_id: currentUserId.value });
+      if (dueDate < createdDate) {
+        alert(errorMessages.dateValidation);
+        fetchAllTasks();
+        return;
+      }
+      updateDueDate(task, newDateValue_YYYYMMDD);
+    };
+
+    const updateDueDate = async (task, newDate_YYYYMMDD) => {
+      if (task.user_id !== currentUserId.value) {
+        console.error(errorMessages.updateUserMismatch, `Task ID: ${task.id}`);
+        fetchAllTasks();
+        return;
+      }
+      try {
+        const { error } = await supabase
+          .from('todolist')
+          .update({ due_date: newDate_YYYYMMDD || null })
+          .match({ id: task.id, user_id: currentUserId.value });
 
              if (error) throw error;
 
-             // Обновляем локальное состояние (хотя real-time тоже сработает)
-             task.due_date = newDate_YYYYMMDD; // Обновляем основное поле даты
-             task.due_date_edit = newDate_YYYYMMDD; // Обновляем поле для инпута
+        task.due_date = newDate_YYYYMMDD;
+        task.due_date_edit = newDate_YYYYMMDD;
+      } catch (error) {
+        console.error(errorMessages.updateDate, error);
+        fetchAllTasks();
+      }
+    };
 
-         } catch (error) {
-             console.error(errorMessages.updateDate, error);
-             fetchAllTasks(); // Откат при ошибке
-         }
-     };
-    // ИЗМЕНЕНО: Пометка на удаление
-     const deleteTask = async (id) => {
-        const task = tasks.value.find(t => t.id === id);
-         if (!task || task.user_id !== currentUserId.value) {
-             console.error("Попытка удалить чужую или несуществующую задачу.");
-             return;
-         }
-       try {
-         const { error } = await supabase
-           .from('todolist')
-           .update({ deleted: true }) // Помечаем как удаленную
-           .match({ id: id, user_id: currentUserId.value });
+    const deleteTask = async (id) => {
+      const task = tasks.value.find(t => t.id === id);
+      if (!task || task.user_id !== currentUserId.value) {
+        console.error("Попытка удалить чужую или несуществующую задачу.");
+        return;
+      }
+      try {
+        const { error } = await supabase
+          .from('todolist')
+          .update({ deleted: true })
+          .match({ id: id, user_id: currentUserId.value });
 
         if (error) throw error;
          // Обновляем локальное состояние (real-time тоже сработает)
@@ -588,7 +564,6 @@ export default {
            .match({ id: id, user_id: currentUserId.value });
 
          if (error) throw error;
-
          // Обновляем локальное состояние (real-time тоже сработает)
           const taskIndex = tasks.value.findIndex(t => t.id === id);
          if (taskIndex !== -1) {
@@ -615,55 +590,71 @@ export default {
            .delete() // Физическое удаление
            .match({ id: id, user_id: currentUserId.value });
 
-         if (error) throw error;
+        if (error) throw error;
+        tasks.value = tasks.value.filter(t => t.id !== id);
+      } catch (error) {
+        console.error(errorMessages.permanentlyDeleteTask, error);
+      }
+    };
 
-         // Обновляем локальное состояние (real-time тоже сработает, удалив запись)
-         tasks.value = tasks.value.filter(t => t.id !== id);
+    const fetchAllTasks = async () => {
+      if (!currentUserId.value) {
+        console.warn(errorMessages.fetchUser);
+        tasks.value = [];
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from('todolist')
+          .select('*')
+          .eq('user_id', currentUserId.value)
+          .order('created_at', { ascending: true });
 
-       } catch (error) {
-         console.error(errorMessages.permanentlyDeleteTask, error);
-       }
-     };
-    // --- Конец функций CRUD ---
+        if (error) throw error;
 
+        tasks.value = (data || []).map(task => ({
+          ...task,
+          due_date_edit: formatDateForInput(task.due_date) || '',
+          editing: false,
+          editingField: null,
+          originalValue: ''
+        }));
+      } catch (error) {
+        console.error(errorMessages.loadTasks, error);
+        tasks.value = [];
+      }
+    };
 
-    // --- Real-time подписка (без изменений, но теперь она - главный источник обновлений) ---
     const setupRealtimeUpdates = () => {
-       // Убедимся, что нет старых подписок
-       unsubscribeFromRealtimeChanges();
-       console.log('Setting up realtime subscription...');
-       try {
-           subscription.value = supabase
-             .channel('todolist_changes')
-             .on('postgres_changes', {
-               event: '*', // Слушаем все события (INSERT, UPDATE, DELETE)
-               schema: 'public',
-               table: 'todolist',
-               // filter: `user_id=eq.${currentUserId.value}` // Фильтр на стороне Supabase!
-             },
-             (payload) => { // Получаем payload с информацией об изменении
-               console.log('Realtime change received:', payload);
-               // Просто перезагружаем все задачи пользователя
-               // Это проще, чем обрабатывать каждый тип события (new, old)
-               // Особенно с учетом фильтрации по deleted на клиенте
-               fetchAllTasks();
-             })
-             .subscribe((status, err) => {
-                 if (status === 'SUBSCRIBED') {
-                     console.log('Realtime subscription active.');
-                 }
-                 if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                     console.error('Realtime subscription error:', status, err);
-                     // Можно попробовать переподписаться через некоторое время
-                 }
-                 if (status === 'CLOSED') {
-                    console.log('Realtime subscription closed.');
-                 }
-             });
-       } catch (error) {
-           console.error("Ошибка при создании realtime подписки:", error);
-       }
-     };
+      unsubscribeFromRealtimeChanges();
+      console.log('Setting up realtime subscription...');
+      try {
+        subscription.value = supabase
+          .channel('todolist_changes')
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'todolist',
+          },
+          (payload) => {
+            console.log('Realtime change received:', payload);
+            fetchAllTasks();
+          })
+          .subscribe((status, err) => {
+            if (status === 'SUBSCRIBED') {
+              console.log('Realtime subscription active.');
+            }
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              console.error('Realtime subscription error:', status, err);
+            }
+            if (status === 'CLOSED') {
+              console.log('Realtime subscription closed.');
+            }
+          });
+      } catch (error) {
+        console.error("Ошибка при создании realtime подписки:", error);
+      }
+    };
 
      const unsubscribeFromRealtimeChanges = () => {
        if (subscription.value) {
@@ -717,9 +708,12 @@ export default {
     // --- Конец хуков ---
 
     return {
-      tasks, // Внутреннее состояние
+      clearFilter,
+      filterText, // Добавляем эту строку
+      applyFilter,
+      tasks,
       showDeletedTasks,
-      displayedTasks, // Computed свойство для отображения
+      filteredTasks,
       isTaskCompleted,
       startEditing,
       finishEditing,
@@ -757,7 +751,45 @@ export default {
 </script>
 
 <style scoped>
+/* Остальные стили остаются без изменений */
+/*
+@import url('@/styles/all.min.css');
+*/
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+
+/* Добавляем стили для иконки очистки */
+.clear-filter-icon {
+  position: absolute;
+  right: 12px;
+  cursor: pointer;
+  color: #999;
+  font-size: 12px;
+}
+
+.clear-filter-icon:hover {
+  color: #666;
+}
+
+.filter-input {
+  background-color: pink;
+  border-radius: 2px;
+  border: 1px solid #ccc;
+  padding: 2px 5px;
+  width: 80px;
+}
+/* Добавляем стиль для поля фильтрации */
+.filter-input {
+  background-color: pink;
+  border-radius: 2px;
+  border: 1px solid #000000;
+  padding: 2px 5px;
+  margin: 2px 5px;
+  width: calc(100% - 10px);
+  max-width: 100px;
+}
+
+
 
 .table-header {
   border-bottom: 3px solid #000; /* Добавляем более толстую нижнюю границу для всей строки заголовка */
