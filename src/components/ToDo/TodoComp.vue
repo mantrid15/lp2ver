@@ -96,7 +96,9 @@
             'status-in-progress': task.status === inProgressStatus,
             'status-not-started': task.status === notStartedStatus
           }">
-        <td class="task-title" @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'title')">
+        <td class="task-title"
+            @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'title')"
+            @mousemove="showTooltip($event, task.title)">
           <input
               v-if="task.editing && task.editingField === 'title'"
               v-model="task.title"
@@ -108,7 +110,8 @@
             />
             <span v-else>{{ task.title }}</span>
           </td>
-          <td @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'description')">
+        <td @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'description')"
+            @mousemove="showTooltip($event, task.description)">
             <input
               v-if="task.editing && task.editingField === 'description'"
               v-model="task.description"
@@ -120,7 +123,8 @@
             />
             <span v-else>{{ task.description }}</span>
           </td>
-          <td @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'object')">
+        <td @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'object')"
+            @mousemove="showTooltip($event, task.object)">
             <input
               v-if="task.editing && task.editingField === 'object'"
               v-model="task.object"
@@ -285,7 +289,6 @@ export default {
       fetchUser: 'Не удалось получить ID пользователя для загрузки задач.',
       updateUserMismatch: 'Попытка обновить задачу другого пользователя.'
     };
-
     // Состояние компонента
     const tasks = ref([]);
     const subscription = ref(null);
@@ -294,6 +297,32 @@ export default {
     const filterText = ref('');
     const currentSortKey = ref('created_at');
     const currentSortOrder = ref('desc');
+
+
+    const showTooltip = (event, text) => {
+      if (event.ctrlKey) {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'custom-tooltip';
+        tooltip.textContent = text;
+
+        document.body.appendChild(tooltip);
+
+        // Позиционируем подсказку рядом с курсором
+        tooltip.style.position = 'absolute';
+        tooltip.style.left = `${event.clientX + 10}px`;
+        tooltip.style.top = `${event.clientY + 10}px`;
+
+        // Удаляем подсказку при отпускании Ctrl или движении мыши
+        const removeTooltip = () => {
+          document.body.removeChild(tooltip);
+          document.removeEventListener('keyup', removeTooltip);
+          document.removeEventListener('mousemove', removeTooltip);
+        };
+
+        document.addEventListener('keyup', removeTooltip);
+        document.addEventListener('mousemove', removeTooltip);
+      }
+    };
 
     const clearFilter = () => {
       filterText.value = '';
@@ -311,7 +340,6 @@ export default {
 
     const filteredTasks = computed(() => {
       if (!filterText.value.trim()) return displayedTasks.value;
-
       const searchText = filterText.value.toLowerCase().trim();
       return displayedTasks.value.filter(task =>
         (task.title && task.title.toLowerCase().includes(searchText)) ||
@@ -319,7 +347,6 @@ export default {
         (task.object && task.object.toLowerCase().includes(searchText))
       );
     });
-
     // Методы
     const applyFilter = () => {
       // Фильтрация происходит автоматически через computed свойство filteredTasks
@@ -667,7 +694,6 @@ export default {
      };
     // --- Конец Real-time ---
 
-
     // --- Хуки жизненного цикла ---
     onMounted(async () => {
        // Получаем ID текущего пользователя при монтировании
@@ -706,8 +732,8 @@ export default {
         // (но обычно основной слушатель в App.vue достаточен)
      });
     // --- Конец хуков ---
-
     return {
+      showTooltip,
       clearFilter,
       filterText, // Добавляем эту строку
       applyFilter,
@@ -757,7 +783,20 @@ export default {
 */
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
 
-
+.custom-tooltip {
+  position: absolute;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-width: 400px;
+  word-wrap: break-word;
+  white-space: normal;
+  font-size: 0.9em;
+  pointer-events: none;
+}
 /* Добавляем стили для иконки очистки */
 .clear-filter-icon {
   position: absolute;
@@ -789,8 +828,6 @@ export default {
   max-width: 100px;
 }
 
-
-
 .table-header {
   border-bottom: 3px solid #000; /* Добавляем более толстую нижнюю границу для всей строки заголовка */
 }
@@ -800,7 +837,6 @@ export default {
 .todo-table td:nth-child(3) { /* Третий столбец (Объект) */
   padding-left: 5px !important;
 }
-
 /* Для инпутов в этих ячейках */
 .todo-table td:first-child .task-input,
 .todo-table td:nth-child(2) .task-input,
@@ -812,12 +848,10 @@ export default {
 .todo-table td:nth-child(9) { /* due_date */
   padding-left: 5px !important;
 }
-
 /* Для инпутов в ячейке due_date */
 .todo-table td:nth-child(9) .date-input {
   padding-left: 5px;
 }
-
 /* Для текстового содержимого в ячейках с датами */
 .todo-table td:nth-child(8) > span,
 .todo-table td:nth-child(9) > span {
@@ -839,6 +873,7 @@ export default {
 .header-label-container:hover .sort-icon {
   opacity: 1;
 }
+
 .task-title {
   font-weight: bold;
   margin-left: 5px;
@@ -846,6 +881,7 @@ export default {
   font-size: 1.2em;
   cursor: pointer;
 }
+
 .task-input {
   width: 100%;
   padding: 4px;
@@ -905,17 +941,10 @@ export default {
 .todo-table tr:hover td {
   background-color: #e1cb07;
 }
-
 /* Стиль для удаленных задач */
 .todo-table tr[data-deleted="true"] {
   background-color: #808080; /* Темно-серая заливка для удаленных задач */
 }
-
-/*
-.todo-table tr[data-deleted="true"]:nth-child(even) {
-  background-color: #a9a9a9; !* Светло-серая заливка для удаленных задач *!
-}
-*/
 
 .date-input {
   width: 100%;
@@ -929,7 +958,6 @@ export default {
   background-color: transparent;
   cursor: not-allowed;
 }
-
 /* Стили для ячейки удаления */
 .delete-cell {
   border: 1px solid #000 !important; /* Такая же граница, как у других ячеек */
@@ -952,8 +980,6 @@ export default {
   margin: 0 2px;
 
 }
-
-
 
 .delete-btn, .restore-btn, .permanent-delete-btn {
   border: none;
@@ -1098,6 +1124,25 @@ export default {
 .todo-table select:disabled {
   cursor: not-allowed;
 }
+
+/* Добавьте эти стили в секцию <style scoped> */
+
+.todo-table td:first-child, /* Первый столбец (Задача) */
+.todo-table td:nth-child(2), /* Второй столбец (Описание) */
+.todo-table td:nth-child(3) { /* Третий столбец (Объект) */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0; /* Это важно для правильной работы text-overflow */
+}
+
+/* Для ячеек в режиме редактирования */
+.todo-table td:first-child .task-input,
+.todo-table td:nth-child(2) .task-input,
+.todo-table td:nth-child(3) .task-input {
+  white-space: normal; /* Разрешаем перенос строк в input при редактировании */
+}
+
 
 .completed-task .privacy-cell select:disabled,
 .completed-task .complexity-cell select:disabled,
