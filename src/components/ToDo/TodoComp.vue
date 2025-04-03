@@ -211,7 +211,7 @@ export default {
     const statusText = 'Статус';
     const importanceTagText = 'Тег важности';
     const creationDateText = 'Создано';
-    const completionDateText = 'Выполнение';
+    const completionDateText = 'Выполнить';
     const deleteText = 'Удалить';
     const deleteButtonText = 'Удалить';
 
@@ -900,6 +900,7 @@ export default {
 
 /* Стили для ячейки удаления */
 .delete-cell {
+  border: 1px solid #000 !important; /* Такая же граница, как у других ячеек */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -910,8 +911,17 @@ export default {
   width: 100%; /* Фиксированная ширина для столбца удаления */
   height: 40px; /* Установите фиксированную высоту */
   border-left-style: none !important;
+  border-top-style: none !important;
   box-sizing: border-box; /* Учитываем границы в высоте */
 }
+
+.delete-cell button {
+  border: none !important;
+  margin: 0 2px;
+
+}
+
+
 
 .delete-btn, .restore-btn, .permanent-delete-btn {
   border: none;
