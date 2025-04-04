@@ -865,6 +865,88 @@ export default {
 */
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
 
+@media screen and (max-width: 1200px) {
+  .todo-table th {
+    font-size: 0.8em;
+    padding: 8px 4px;
+  }
+
+  .sort-icon {
+    font-size: 0.8em;
+  }
+
+  .header-label-container {
+    font-size: 0.9em;
+  }
+}
+
+@media screen and (max-width: 992px) {
+  .todo-table th {
+    font-size: 0.75em;
+  }
+
+  .sort-icon {
+    font-size: 0.75em;
+  }
+
+  .todo-table td {
+    font-size: 0.8em;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .todo-container {
+    padding: 10px 2px;
+  }
+
+  .todo-table th {
+    font-size: 0.7em;
+    padding: 6px 2px;
+  }
+
+  .sort-icon {
+    font-size: 0.7em;
+  }
+
+  .todo-table td {
+    font-size: 0.75em;
+    padding: 4px 2px;
+  }
+
+  .delete-btn, .restore-btn, .permanent-delete-btn {
+    width: 20px;
+    height: 20px;
+  }
+
+  .delete-btn i, .restore-btn i, .permanent-delete-btn i {
+    font-size: 12px;
+  }
+}
+
+@media screen and (max-width: 576px) {
+  .todo-table th {
+    font-size: 0.65em;
+  }
+
+  .sort-icon {
+    font-size: 0.65em;
+  }
+
+  .todo-table td {
+    font-size: 0.7em;
+  }
+
+  .filter-input {
+    max-width: 70px;
+    font-size: 0.7em;
+  }
+
+  .default-sort-btn {
+    width: 60px;
+    font-size: 0.7em;
+  }
+}
+
 .default-sort-btn {
   height: 100%;
   width: 80px;
@@ -973,8 +1055,12 @@ export default {
 }
 
 .sort-icon {
+  /*
   font-size: 0.9em;
+  */
   opacity: 0.7;
+  font-size: 0.85em; /* Базовый размер */
+  transition: all 0.3s ease;
 }
 
 .header-label-container:hover .sort-icon {
@@ -990,6 +1076,10 @@ export default {
 }
 
 .task-input {
+  /*
+  font-size: 0.9em;
+  */
+  max-width: 100%;
   width: 100%;
   padding: 4px;
   border: 1px solid #ddd;
@@ -1009,13 +1099,20 @@ export default {
 }
 
 .todo-table {
+  font-size: calc(12px + 0.3vw); /* Адаптивный базовый размер */
+
   border-collapse: collapse;
   width: 100%;
   margin: 0;
   table-layout: fixed;
 }
 
+
+
 .todo-table th {
+  font-size: 0.85em; /* Базовый размер */
+  transition: all 0.3s ease; /* Плавное изменение размеров */
+  padding: 10px 8px; /* Адаптивный padding */
   background-color: #4CAF50;
   font-weight: bold;
   /*
@@ -1023,7 +1120,9 @@ export default {
   */
   text-align: center;
   border: 1px solid #000; /* Убираем задвоенные границы */
+  /*
   font-size: 0.9em;
+  */
   height: 36px;
 }
 
@@ -1034,6 +1133,10 @@ export default {
   /*
   padding: 4px;
   */
+  /*
+  font-size: 0.85em;
+  */
+  transition: all 0.3s ease;
   border: 1px solid #000; /* Убираем задвоенные границы */
   font-size: 0.9em;
   /*
@@ -1089,6 +1192,7 @@ export default {
 }
 
 .delete-btn, .restore-btn, .permanent-delete-btn {
+  transition: all 0.3s ease;
   border: none;
   cursor: pointer;
   display: flex;
