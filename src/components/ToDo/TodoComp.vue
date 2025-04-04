@@ -50,24 +50,14 @@
               Default
             </button>
           </div>
-        </th>        <th style="width: 10%;">
+        </th>
+        <th style="width: 10%;">
           <span class="header-label-container" @click="(e) => handleClick(e, 'object')" style="cursor: pointer; padding-left: 5px;">
             {{ objectText }}
             <span class="sort-icon">{{ getSortIcon('object') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
-        <th style="width: 6%;">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'privacy')" style="cursor: pointer; padding-left: 5px;">
-            {{ privacy }}
-            <span class="sort-icon">{{ getSortIcon('privacy') || SORT_DEFAULT_ICON }}</span>
-          </span>
-        </th>
-        <th style="width: 6%;">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'complexity')" style="cursor: pointer; padding-left: 5px;">
-            {{ complexity }}
-            <span class="sort-icon">{{ getSortIcon('complexity') || SORT_DEFAULT_ICON }}</span>
-          </span>
-        </th>
+
         <th style="width: 6%;">
           <span class="header-label-container" @click="(e) => handleClick(e, 'status')" style="cursor: pointer; padding-left: 5px;">
             {{ statusText }}
@@ -78,6 +68,18 @@
           <span class="header-label-container" @click="(e) => handleClick(e, 'importance_tag')" style="cursor: pointer; padding-left: 5px;">
             {{ importanceTagText }}
             <span class="sort-icon">{{ getSortIcon('importance_tag') || SORT_DEFAULT_ICON }}</span>
+          </span>
+        </th>
+        <th style="width: 6%;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'complexity')" style="cursor: pointer; padding-left: 5px;">
+            {{ complexity }}
+            <span class="sort-icon">{{ getSortIcon('complexity') || SORT_DEFAULT_ICON }}</span>
+          </span>
+        </th>
+        <th style="width: 6%;">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'privacy')" style="cursor: pointer; padding-left: 5px;">
+            {{ privacy }}
+            <span class="sort-icon">{{ getSortIcon('privacy') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
         <th style="width: 6%;">
@@ -146,11 +148,19 @@
           />
           <span v-else>{{ task.object }}</span>
         </td>
-         <td class="privacy-cell" :class="privacyClass(task.privacy)">
-          <select v-model="task.privacy" @change="updateTask(task)" :disabled="isTaskCompleted(task) || task.deleted">
-            <option :value="homePrivacy">{{ homePrivacyText }}</option>
-            <option :value="workPrivacy">{{ workPrivacyText }}</option>
-            <option :value="otherPrivacy">{{ otherPrivacyText }}</option>
+        <td class="status-cell" :class="statusClass(task.status)">
+          <select v-model="task.status" @change="updateTask(task)" :disabled="task.deleted && task.status === completedStatus">
+            <option :value="inProgressStatus">{{ inProgressText }}</option>
+            <option :value="completedStatus">{{ completedText }}</option>
+            <option :value="notStartedStatus">{{ notStartedText }}</option>
+            <option :value="waitedStatus">{{ waitedText }}</option>
+          </select>
+        </td>
+        <td class="importance-cell" :class="importanceClass(task.importance_tag)">
+          <select v-model="task.importance_tag" @change="updateTask(task)" :disabled="isTaskCompleted(task) || task.deleted">
+            <option :value="highImportance">{{ highImportanceText }}</option>
+            <option :value="mediumImportance">{{ mediumImportanceText }}</option>
+            <option :value="lowImportance">{{ lowImportanceText }}</option>
           </select>
         </td>
         <td class="complexity-cell" :class="complexityClass(task.complexity)">
@@ -160,19 +170,11 @@
             <option :value="lowComplexity">{{ lowComplexityText }}</option>
           </select>
         </td>
-        <td class="status-cell" :class="statusClass(task.status)">
-          <select v-model="task.status" @change="updateTask(task)" :disabled="task.deleted && task.status === completedStatus">
-            <option :value="notStartedStatus">{{ notStartedText }}</option>
-            <option :value="completedStatus">{{ completedText }}</option>
-            <option :value="inProgressStatus">{{ inProgressText }}</option>
-            <option :value="waitedStatus">{{ waitedText }}</option>
-          </select>
-        </td>
-        <td class="importance-cell" :class="importanceClass(task.importance_tag)">
-          <select v-model="task.importance_tag" @change="updateTask(task)" :disabled="isTaskCompleted(task) || task.deleted">
-            <option :value="highImportance">{{ highImportanceText }}</option>
-            <option :value="mediumImportance">{{ mediumImportanceText }}</option>
-            <option :value="lowImportance">{{ lowImportanceText }}</option>
+        <td class="privacy-cell" :class="privacyClass(task.privacy)">
+          <select v-model="task.privacy" @change="updateTask(task)" :disabled="isTaskCompleted(task) || task.deleted">
+            <option :value="workPrivacy">{{ workPrivacyText }}</option>
+            <option :value="homePrivacy">{{ homePrivacyText }}</option>
+            <option :value="otherPrivacy">{{ otherPrivacyText }}</option>
           </select>
         </td>
         <td class="date-cell">{{ formatDate(task.created_at) }}</td>
@@ -192,7 +194,6 @@
             <i class="fas fa-calendar-alt" @click="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')" title="Редактировать дату" style="cursor: pointer; margin-left: 5px;"></i>
           </span>
         </td>
-
         <td class="delete-cell">
           <template v-if="task.deleted">
             <button
