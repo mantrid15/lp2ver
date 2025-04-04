@@ -3,7 +3,7 @@
     <table class="todo-table">
       <thead>
       <tr class="table-header">
-        <th style="width: 15%;">
+        <th style="width: 15%;" :class="{ 'active-sort': isActiveSort('title') }">
           <div style="display: flex; align-items: center; padding-left: 5px;">
             <input
                 type="checkbox"
@@ -17,7 +17,7 @@
             </span>
           </div>
         </th>
-        <th style="width: 30%;">
+        <th style="width: 30%;" :class="{ 'active-sort': isActiveSort('description') }">
           <div style="display: flex; align-items: center; justify-content: space-between;">
             <div style="display: flex; align-items: center; flex-grow: 1;">
               <div style="position: relative; display: flex; align-items: center;">
@@ -51,44 +51,44 @@
             </button>
           </div>
         </th>
-        <th style="width: 10%;">
+        <th style="width: 10%;" :class="{ 'active-sort': isActiveSort('object') }">
           <span class="header-label-container" @click="(e) => handleClick(e, 'object')" style="cursor: pointer; padding-left: 5px;">
             {{ objectText }}
             <span class="sort-icon">{{ getSortIcon('object') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
 
-        <th style="width: 6%;">
+        <th style="width: 6%; " :class="{ 'active-sort': isActiveSort('status') }">
           <span class="header-label-container" @click="(e) => handleClick(e, 'status')" style="cursor: pointer; padding-left: 5px;">
             {{ statusText }}
             <span class="sort-icon">{{ getSortIcon('status') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
-        <th style="width: 6%;">
+        <th style="width: 6%; " :class="{ 'active-sort': isActiveSort('importance_tag') }">
           <span class="header-label-container" @click="(e) => handleClick(e, 'importance_tag')" style="cursor: pointer; padding-left: 5px;">
             {{ importanceTagText }}
             <span class="sort-icon">{{ getSortIcon('importance_tag') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
-        <th style="width: 6%;">
+        <th style="width: 6%; " :class="{ 'active-sort': isActiveSort('complexity') }">
           <span class="header-label-container" @click="(e) => handleClick(e, 'complexity')" style="cursor: pointer; padding-left: 5px;">
             {{ complexity }}
             <span class="sort-icon">{{ getSortIcon('complexity') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
-        <th style="width: 6%;">
+        <th style="width: 6%; " :class="{ 'active-sort': isActiveSort('privacy') }">
           <span class="header-label-container" @click="(e) => handleClick(e, 'privacy')" style="cursor: pointer; padding-left: 5px;">
             {{ privacy }}
             <span class="sort-icon">{{ getSortIcon('privacy') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
-        <th style="width: 6%;">
+        <th style="width: 6%; " :class="{ 'active-sort': isActiveSort('created_at') }">
           <span class="header-label-container" @click="(e) => handleClick(e, 'created_at')" style="cursor: pointer; padding-left: 5px;">
             {{ creationDateText }}
             <span class="sort-icon">{{ getSortIcon('created_at') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
-        <th style="width: 6%;">
+        <th style="width: 6%; " :class="{ 'active-sort': isActiveSort('due_date') }">
           <span class="header-label-container" @click="(e) => handleClick(e, 'due_date')" style="cursor: pointer; padding-left: 5px;">
             {{ completionDateText }}
             <span class="sort-icon">{{ getSortIcon('due_date') || SORT_DEFAULT_ICON }}</span>
@@ -288,6 +288,9 @@ export default {
     const restoreButtonText = 'Восстановить';
     const permanentDeleteButtonText = 'Удалить окончательно';
 
+    const isActiveSort = (key) => {
+      return currentSortKey.value === key;
+    };
     // Сообщения об ошибках
     const errorMessages = {
       loadTasks: 'Ошибка при загрузке задач:',
@@ -361,10 +364,13 @@ export default {
         try {
           const aDate = a.created_at ? new Date(a.created_at) : new Date(0);
           const bDate = b.created_at ? new Date(b.created_at) : new Date(0);
+          currentSortKey.value = '';
+          currentSortOrder.value = 'asc';
           return bDate - aDate;
         } catch (e) {
           return 0;
         }
+
       });
 
       // Обновляем массив задач
@@ -814,6 +820,7 @@ export default {
      });
     // --- Конец хуков ---
     return {
+      isActiveSort,
       applyDefaultSort,
       showTooltip,
       clearFilter,
@@ -945,6 +952,21 @@ export default {
     width: 60px;
     font-size: 0.7em;
   }
+}
+
+.active-sort {
+  background-color: #9c27b0 !important; /* Фиолетовый цвет */
+  color: white !important;
+}
+
+/* Для кнопки Default */
+.default-sort-btn {
+  background-color: #9c27b0; /* Фиолетовый цвет */
+  color: white;
+}
+
+.default-sort-btn:hover {
+  background-color: #7b1fa2; /* Темнее фиолетовый при наведении */
 }
 
 .default-sort-btn {
