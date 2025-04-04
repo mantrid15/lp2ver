@@ -57,7 +57,6 @@
             <span class="sort-icon">{{ getSortIcon('object') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
-
         <th style="width: 6%; " :class="{ 'active-sort': isActiveSort('status') }">
           <span class="header-label-container" @click="(e) => handleClick(e, 'status')" style="cursor: pointer; padding-left: 5px;">
             {{ statusText }}
@@ -108,9 +107,10 @@
             'status-in-progress': task.status === inProgressStatus,
             'status-not-started': task.status === notStartedStatus
           }">
-        <td class="task-title"
+        <td class="task-title" :title="task.title"
             @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'title')"
-            @mousemove="showTooltip($event, task.title)">
+            @mousemove="(e) => showTooltip(e, task.title)"
+            @mouseleave="removeTooltip()">
           <input
               v-if="task.editing && task.editingField === 'title'"
               v-model="task.title"
@@ -122,8 +122,10 @@
             />
             <span v-else>{{ task.title }}</span>
           </td>
-        <td @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'description')"
-            @mousemove="showTooltip($event, task.description)">
+        <td :title="task.description"
+            @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'description')"
+            @mousemove="(e) => showTooltip(e, task.description)"
+            @mouseleave="removeTooltip()">
             <input
               v-if="task.editing && task.editingField === 'description'"
               v-model="task.description"
@@ -135,8 +137,10 @@
             />
             <span v-else>{{ task.description }}</span>
           </td>
-        <td @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'object')"
-            @mousemove="showTooltip($event, task.object)">
+        <td :title="task.object"
+            @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'object')"
+            @mousemove="(e) => showTooltip(e, task.object)"
+            @mouseleave="removeTooltip()">
             <input
               v-if="task.editing && task.editingField === 'object'"
               v-model="task.object"
@@ -288,6 +292,16 @@ export default {
     const restoreButtonText = 'Восстановить';
     const permanentDeleteButtonText = 'Удалить окончательно';
 
+
+    const removeTooltip = () => {
+      const tooltips = document.querySelectorAll('.custom-tooltip');
+      tooltips.forEach(tooltip => {
+        if (tooltip.parentNode === document.body) {
+          document.body.removeChild(tooltip);
+        }
+      });
+    };
+
     const isActiveSort = (key) => {
       return currentSortKey.value === key;
     };
@@ -382,27 +396,27 @@ export default {
     };
 
     const showTooltip = (event, text) => {
-      if (event.ctrlKey) {
-        const tooltip = document.createElement('div');
-        tooltip.className = 'custom-tooltip';
-        tooltip.textContent = text;
+      // Удаляем старые подсказки, если они есть
+      removeTooltip();
 
-        document.body.appendChild(tooltip);
+      // Показываем подсказку только если:
+      // 1) нажат Ctrl
+      // 2) текст не помещается в ячейке
+      if (event.ctrlKey && text) {
+        const target = event.currentTarget;
+        const isTextOverflowing = target.scrollWidth > target.clientWidth;
 
-        // Позиционируем подсказку рядом с курсором
-        tooltip.style.position = 'absolute';
-        tooltip.style.left = `${event.clientX + 10}px`;
-        tooltip.style.top = `${event.clientY + 10}px`;
+        if (isTextOverflowing) {
+          const tooltip = document.createElement('div');
+          tooltip.className = 'custom-tooltip';
+          tooltip.textContent = text;
+          document.body.appendChild(tooltip);
 
-        // Удаляем подсказку при отпускании Ctrl или движении мыши
-        const removeTooltip = () => {
-          document.body.removeChild(tooltip);
-          document.removeEventListener('keyup', removeTooltip);
-          document.removeEventListener('mousemove', removeTooltip);
-        };
-
-        document.addEventListener('keyup', removeTooltip);
-        document.addEventListener('mousemove', removeTooltip);
+          // Позиционируем подсказку рядом с ячейкой
+          const rect = target.getBoundingClientRect();
+          tooltip.style.left = `${rect.left}px`;
+          tooltip.style.top = `${rect.bottom + window.scrollY + 5}px`;
+        }
       }
     };
 
@@ -541,6 +555,7 @@ export default {
       // Для текстовых полей
       return aValue.toString().toLowerCase().localeCompare(bValue.toString().toLowerCase()) * modifier;
     };
+
     const isTaskCompleted = (task) => task.status === completedStatus;
 
     const startEditing = (task, field) => {
@@ -598,7 +613,6 @@ export default {
         fetchAllTasks();
       }
     };
-
     // ИЗМЕНЕНО: Обновление даты
     // Нужна промежуточная функция, чтобы поймать значение из @input
      const updateDueDateValue = (task, newDateValue_YYYYMMDD) => {
@@ -685,7 +699,7 @@ export default {
        }
      };
     // ИЗМЕНЕНО: Окончательное удаление
-     const permanentlyDeleteTask = async (id) => {
+    const permanentlyDeleteTask = async (id) => {
          const task = tasks.value.find(t => t.id === id);
          if (!task || task.user_id !== currentUserId.value) {
              console.error("Попытка окончательно удалить чужую или несуществующую задачу.");
@@ -739,6 +753,7 @@ export default {
         tasks.value = [];
       }
     };
+
     const setupRealtimeUpdates = () => {
       unsubscribeFromRealtimeChanges();
       console.log('Setting up realtime subscription...');
@@ -783,6 +798,11 @@ export default {
 
     // --- Хуки жизненного цикла ---
     onMounted(async () => {
+      document.addEventListener('keyup', (e) => {
+        if (e.key === 'Control') {
+          removeTooltip();
+        }
+        });
        // Получаем ID текущего пользователя при монтировании
        const session = await supabase.auth.getSession();
        currentUserId.value = session?.data?.session?.user?.id || null;
@@ -813,6 +833,7 @@ export default {
      });
 
      onUnmounted(() => {
+       document.removeEventListener('keyup', removeTooltip);
        console.log("TodoComp Unmounted.");
        unsubscribeFromRealtimeChanges(); // Отписываемся при размонтировании
         // Также отписываемся от onAuthStateChange, если нужно
@@ -820,6 +841,7 @@ export default {
      });
     // --- Конец хуков ---
     return {
+      removeTooltip,
       isActiveSort,
       applyDefaultSort,
       showTooltip,
@@ -996,17 +1018,16 @@ export default {
 
 .custom-tooltip {
   position: absolute;
-  background-color: #fff;
-  border: 1px solid #ccc;
+  background: #333;
+  color: white;
+  padding: 5px 10px;
   border-radius: 4px;
-  padding: 8px 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  max-width: 400px;
-  word-wrap: break-word;
-  white-space: normal;
-  font-size: 0.9em;
   pointer-events: none;
+  white-space: nowrap;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Добавляем стили для иконки очистки */
 .clear-filter-icon {
@@ -1129,8 +1150,6 @@ export default {
   table-layout: fixed;
 }
 
-
-
 .todo-table th {
   font-size: 0.85em; /* Базовый размер */
   transition: all 0.3s ease; /* Плавное изменение размеров */
@@ -1149,15 +1168,7 @@ export default {
 }
 
 .todo-table td {
-  /*
-  border-collapse: collapse;
-  */
-  /*
-  padding: 4px;
-  */
-  /*
-  font-size: 0.85em;
-  */
+
   transition: all 0.3s ease;
   border: 1px solid #000; /* Убираем задвоенные границы */
   font-size: 0.9em;
@@ -1168,6 +1179,7 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  position: relative; /* Добавляем для корректного позиционирования */
 }
 
 .todo-table tr:hover td {
@@ -1357,9 +1369,7 @@ export default {
 .todo-table select:disabled {
   cursor: not-allowed;
 }
-
 /* Добавьте эти стили в секцию <style scoped> */
-
 .todo-table td:first-child, /* Первый столбец (Задача) */
 .todo-table td:nth-child(2), /* Второй столбец (Описание) */
 .todo-table td:nth-child(3) { /* Третий столбец (Объект) */
@@ -1368,14 +1378,12 @@ export default {
   white-space: nowrap;
   max-width: 0; /* Это важно для правильной работы text-overflow */
 }
-
 /* Для ячеек в режиме редактирования */
 .todo-table td:first-child .task-input,
 .todo-table td:nth-child(2) .task-input,
 .todo-table td:nth-child(3) .task-input {
   white-space: normal; /* Разрешаем перенос строк в input при редактировании */
 }
-
 
 .completed-task .privacy-cell select:disabled,
 .completed-task .complexity-cell select:disabled,
