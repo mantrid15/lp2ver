@@ -18,27 +18,37 @@
           </div>
         </th>
         <th style="width: 30%;">
-          <div style="display: flex; align-items: center;">
-            <div style="position: relative; display: flex; align-items: center;">
-              <input
-                  v-model="filterText"
-                  @input="applyFilter"
-                  placeholder="Фильтр..."
-                  class="filter-input"
-                  maxlength="10"
-                  style="margin-right: 8px; padding-right: 20px;"
-              />
-              <i
-                  v-if="filterText"
-                  @click="clearFilter"
-                  class="fas fa-times clear-filter-icon"
-                  title="Очистить фильтр"
-              ></i>
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; flex-grow: 1;">
+              <div style="position: relative; display: flex; align-items: center;">
+                <input
+                    v-model="filterText"
+                    @input="applyFilter"
+                    placeholder="Фильтр..."
+                    class="filter-input"
+                    maxlength="10"
+                    style="margin-right: 8px; padding-right: 20px;"
+                />
+                <i
+                    v-if="filterText"
+                    @click="clearFilter"
+                    class="fas fa-times clear-filter-icon"
+                    title="Очистить фильтр"
+                ></i>
+              </div>
+              <span class="header-label-container" @click="(e) => handleClick(e, 'description')" style="cursor: pointer; padding-left: 5px;">
+        {{ descriptionText }}
+        <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
+      </span>
             </div>
-            <span class="header-label-container" @click="(e) => handleClick(e, 'description')" style="cursor: pointer; padding-left: 5px;">
-              {{ descriptionText }}
-              <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
-            </span>
+            <button
+                @click="applyDefaultSort"
+                class="default-sort-btn"
+                title="Сортировка по умолчанию"
+                style="margin-right: 20px;"
+            >
+              Default
+            </button>
           </div>
         </th>        <th style="width: 10%;">
           <span class="header-label-container" @click="(e) => handleClick(e, 'object')" style="cursor: pointer; padding-left: 5px;">
@@ -298,6 +308,71 @@ export default {
     const currentSortKey = ref('created_at');
     const currentSortOrder = ref('desc');
 
+    const applyDefaultSort = () => {
+      // Определяем порядок сортировки для каждого поля
+      const statusOrder = {
+        [inProgressStatus]: 1,
+        [notStartedStatus]: 2,
+        [waitedStatus]: 3,
+        [completedStatus]: 4
+      };
+
+      const privacyOrder = {
+        [workPrivacy]: 1,
+        [homePrivacy]: 2,
+        [otherPrivacy]: 3
+      };
+
+      const importanceOrder = {
+        [highImportance]: 1,
+        [mediumImportance]: 2,
+        [lowImportance]: 3
+      };
+
+      const complexityOrder = {
+        [highComplexity]: 1,
+        [mediumComplexity]: 2,
+        [lowComplexity]: 3
+      };
+
+      // Создаем копию массива для сортировки
+      const tasksToSort = [...tasks.value];
+
+      // Сортируем задачи по указанным критериям
+      tasksToSort.sort((a, b) => {
+        // Сначала по статусу
+        const statusCompare = (statusOrder[a.status] || 5) - (statusOrder[b.status] || 5);
+        if (statusCompare !== 0) return statusCompare;
+
+        // Затем по приватности
+        const privacyCompare = (privacyOrder[a.privacy] || 4) - (privacyOrder[b.privacy] || 4);
+        if (privacyCompare !== 0) return privacyCompare;
+
+        // Затем по важности
+        const importanceCompare = (importanceOrder[a.importance_tag] || 4) - (importanceOrder[b.importance_tag] || 4);
+        if (importanceCompare !== 0) return importanceCompare;
+
+        // Затем по сложности
+        const complexityCompare = (complexityOrder[a.complexity] || 4) - (complexityOrder[b.complexity] || 4);
+        if (complexityCompare !== 0) return complexityCompare;
+
+        // Если все критерии равны, сортируем по дате создания (новые выше)
+        try {
+          const aDate = a.created_at ? new Date(a.created_at) : new Date(0);
+          const bDate = b.created_at ? new Date(b.created_at) : new Date(0);
+          return bDate - aDate;
+        } catch (e) {
+          return 0;
+        }
+      });
+
+      // Обновляем массив задач
+      tasks.value = tasksToSort;
+
+      // Сбрасываем текущую сортировку (если была)
+      currentSortKey.value = '';
+      currentSortOrder.value = 'asc';
+    };
 
     const showTooltip = (event, text) => {
       if (event.ctrlKey) {
@@ -436,27 +511,29 @@ export default {
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
 
+      // Получаем значения с проверкой на undefined/null
+      const aValue = a[key] !== undefined && a[key] !== null ? a[key] : '';
+      const bValue = b[key] !== undefined && b[key] !== null ? b[key] : '';
+
       // Для дат
       if (key === 'created_at' || key === 'due_date') {
-        const aValue = a[key] ? new Date(a[key]) : new Date(0);
-        const bValue = b[key] ? new Date(b[key]) : new Date(0);
-        return (aValue - bValue) * modifier;
+        try {
+          const aDate = aValue ? new Date(aValue) : new Date(0);
+          const bDate = bValue ? new Date(bValue) : new Date(0);
+          return (aDate - bDate) * modifier;
+        } catch (e) {
+          return 0;
+        }
       }
 
-      // Для выпадающих списков (приватность, сложность, статус, важность)
+      // Для выпадающих списков
       if (key === 'privacy' || key === 'complexity' || key === 'status' || key === 'importance_tag') {
-        const aValue = a[key] || '';
-        const bValue = b[key] || '';
-        return aValue.localeCompare(bValue) * modifier;
+        return aValue.toString().localeCompare(bValue.toString()) * modifier;
       }
 
       // Для текстовых полей
-      const aValue = a[key] !== null ? a[key].toString().toLowerCase() : '';
-      const bValue = b[key] !== null ? b[key].toString().toLowerCase() : '';
-
-      return aValue.localeCompare(bValue) * modifier;
+      return aValue.toString().toLowerCase().localeCompare(bValue.toString().toLowerCase()) * modifier;
     };
-
     const isTaskCompleted = (task) => task.status === completedStatus;
 
     const startEditing = (task, field) => {
@@ -632,10 +709,10 @@ export default {
       }
       try {
         const { data, error } = await supabase
-          .from('todolist')
-          .select('*')
-          .eq('user_id', currentUserId.value)
-          .order('created_at', { ascending: true });
+            .from('todolist')
+            .select('*')
+            .eq('user_id', currentUserId.value)
+            .order('created_at', { ascending: true }); // Исходная сортировка по дате
 
         if (error) throw error;
 
@@ -646,12 +723,15 @@ export default {
           editingField: null,
           originalValue: ''
         }));
+
+        // Сразу применяем сортировку Default при загрузке
+        applyDefaultSort();
+
       } catch (error) {
         console.error(errorMessages.loadTasks, error);
         tasks.value = [];
       }
     };
-
     const setupRealtimeUpdates = () => {
       unsubscribeFromRealtimeChanges();
       console.log('Setting up realtime subscription...');
@@ -733,6 +813,7 @@ export default {
      });
     // --- Конец хуков ---
     return {
+      applyDefaultSort,
       showTooltip,
       clearFilter,
       filterText, // Добавляем эту строку
@@ -782,6 +863,31 @@ export default {
 @import url('@/styles/all.min.css');
 */
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
+
+.default-sort-btn {
+  height: 100%;
+  width: 80px;
+  background-color: #ff4444; /* Красный цвет */
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8em;
+  /*
+  padding: 0 5px;
+  */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  /*
+  margin-left: 5px; !* Отступ 5px от соседних элементов *!
+  */
+}
+
+.default-sort-btn:hover {
+  background-color: #cc0000; /* Темнее красный при наведении */
+}
 
 .custom-tooltip {
   position: absolute;
