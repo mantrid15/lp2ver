@@ -93,7 +93,7 @@
             <span class="sort-icon">{{ getSortIcon('due_date') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
-        <th style="width: 6%; padding-left: 5px;">{{ deleteText }}</th>
+        <th style="width: 5%; padding-left: 5px;">{{ deleteText }}</th>
       </tr>
       </thead>
       <tbody>
@@ -280,13 +280,13 @@ export default {
     // Текстовые константы
     const taskTitleText = 'Задача';
     const descriptionText = 'Описание';
-    const privacy = 'Приватность';
+    const privacy = 'Локаль';
     const complexity = 'Сложность';
     const objectText = 'Объект';
     const statusText = 'Статус';
-    const importanceTagText = 'Тег важности';
+    const importanceTagText = 'Важность';
     const creationDateText = 'Создано';
-    const completionDateText = 'Выполнить';
+    const completionDateText = 'Сделать';
     const deleteText = 'Удалить';
     const deleteButtonText = 'Удалить';
     const restoreButtonText = 'Восстановить';
