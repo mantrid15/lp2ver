@@ -121,7 +121,7 @@
           :data-deleted="task.deleted"
           :class="{
             'deleted-task-row': task.deleted, // Стиль для удаленных (можно добавить в CSS)
-            'completed-task': task.status === completedStatus && !task.deleted, // Только для не удаленных
+            'completed-task': task.status === completedStatus,
             'status-completed': task.status === completedStatus,
             'status-in-progress': task.status === inProgressStatus,
             'status-not-started': task.status === notStartedStatus
@@ -326,7 +326,6 @@ export default {
     const deleteButtonText = 'Удалить';
     const restoreButtonText = 'Восстановить';
     const permanentDeleteButtonText = 'Удалить окончательно';
-    const projectText = 'Проект'; // Новая текстовая константа
 
     const removeTooltip = () => {
       const tooltips = document.querySelectorAll('.custom-tooltip');
@@ -483,8 +482,8 @@ export default {
       let filtered = [...displayedTasks.value]; // Используем displayedTasks вместо tasks.value
 
       if (filterText.value.trim()) {
-        const searchText = filterText.value.toLowerCase().trim();
-        filtered = filtered.filter(task =>
+        const searchText = displayedTasks.value.toLowerCase().trim();
+        filtered = displayedTasks.filter(task =>
             (task.title?.toLowerCase().includes(searchText)) ||
             (task.description?.toLowerCase().includes(searchText))
         );
@@ -961,7 +960,7 @@ export default {
       taskTitleText, descriptionText, privacy, project, objectText, statusText,
       importanceTagText, creationDateText, completionDateText, deleteText, deleteButtonText,
       completedStatus, inProgressStatus, notStartedStatus, waitedStatus,
-      completedText, inProgressText, notStartedText, waitedText, projectText,
+      completedText, inProgressText, notStartedText, waitedText,
       highImportance, mediumImportance, lowImportance, highImportanceText, mediumImportanceText, lowImportanceText,
       homePrivacy, workPrivacy, otherPrivacy, homePrivacyText, workPrivacyText, otherPrivacyText,
       highComplexity, mediumComplexity, lowComplexity, highComplexityText, mediumComplexityText, lowComplexityText,
@@ -1448,20 +1447,6 @@ export default {
 }
 
 .privacy-cell.privacy-other {
-  background-color: #2196F3 !important;
-  color: white;
-}
-
-.complexity-cell.complexity-high {
-  background-color: #ff4444 !important;
-  color: white;
-}
-
-.complexity-cell.complexity-medium {
-  background-color: #4CAF50 !important;
-}
-
-.complexity-cell.complexity-low {
   background-color: #2196F3 !important;
   color: white;
 }
