@@ -51,6 +51,12 @@
             </button>
           </div>
         </th>
+        <th style="width: 5%; " :class="{ 'active-sort': isActiveSort('project') }">
+          <span class="header-label-container" @click="(e) => handleClick(e, 'project')" style="cursor: pointer; padding-left: 5px;">
+            {{ project }}
+            <span class="sort-icon">{{ getSortIcon('project') || SORT_DEFAULT_ICON }}</span>
+          </span>
+        </th>
         <th style="width: 10%;" :class="{ 'active-sort': isActiveSort('object') }">
           <span class="header-label-container" @click="(e) => handleClick(e, 'object')" style="cursor: pointer; padding-left: 5px;">
             {{ objectText }}
@@ -67,12 +73,6 @@
           <span class="header-label-container" @click="(e) => handleClick(e, 'importance_tag')" style="cursor: pointer; padding-left: 5px;">
             {{ importanceTagText }}
             <span class="sort-icon">{{ getSortIcon('importance_tag') || SORT_DEFAULT_ICON }}</span>
-          </span>
-        </th>
-        <th style="width: 6%; " :class="{ 'active-sort': isActiveSort('complexity') }">
-          <span class="header-label-container" @click="(e) => handleClick(e, 'complexity')" style="cursor: pointer; padding-left: 5px;">
-            {{ complexity }}
-            <span class="sort-icon">{{ getSortIcon('complexity') || SORT_DEFAULT_ICON }}</span>
           </span>
         </th>
         <th style="width: 6%; " :class="{ 'active-sort': isActiveSort('privacy') }">
@@ -137,6 +137,18 @@
             />
             <span v-else>{{ task.description }}</span>
           </td>
+        <td @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'project')">
+          <input
+              v-if="task.editing && task.editingField === 'project'"
+              v-model="task.project"
+              @keyup.enter="finishEditing(task)"
+              @blur="finishEditing(task)"
+              v-focus
+              class="task-input"
+              :disabled="isTaskCompleted(task) || task.deleted"
+          />
+          <span v-else>{{ task.project }}</span>
+        </td>
         <td :title="task.object"
             @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'object')"
             @mousemove="(e) => showTooltip(e, task.object)"
@@ -165,13 +177,6 @@
             <option :value="highImportance">{{ highImportanceText }}</option>
             <option :value="mediumImportance">{{ mediumImportanceText }}</option>
             <option :value="lowImportance">{{ lowImportanceText }}</option>
-          </select>
-        </td>
-        <td class="complexity-cell" :class="complexityClass(task.complexity)">
-          <select v-model="task.complexity" @change="updateTask(task)" :disabled="isTaskCompleted(task) || task.deleted">
-            <option :value="highComplexity">{{ highComplexityText }}</option>
-            <option :value="mediumComplexity">{{ mediumComplexityText }}</option>
-            <option :value="lowComplexity">{{ lowComplexityText }}</option>
           </select>
         </td>
         <td class="privacy-cell" :class="privacyClass(task.privacy)">
@@ -281,7 +286,7 @@ export default {
     const taskTitleText = 'Задача';
     const descriptionText = 'Описание';
     const privacy = 'Локаль';
-    const complexity = 'Сложность';
+    const project = 'Проект';
     const objectText = 'Объект';
     const statusText = 'Статус';
     const importanceTagText = 'Важность';
@@ -291,7 +296,7 @@ export default {
     const deleteButtonText = 'Удалить';
     const restoreButtonText = 'Восстановить';
     const permanentDeleteButtonText = 'Удалить окончательно';
-
+    const projectText = 'Проект'; // Новая текстовая константа
 
     const removeTooltip = () => {
       const tooltips = document.querySelectorAll('.custom-tooltip');
@@ -597,7 +602,7 @@ export default {
           description: task.description,
           object: task.object,
           privacy: task.privacy,
-          complexity: task.complexity,
+          project: task.project,
           status: task.status,
           importance_tag: task.importance_tag,
         };
@@ -873,10 +878,10 @@ export default {
       SORT_ASC_ICON,
       SORT_DESC_ICON,
       SORT_DEFAULT_ICON,
-      taskTitleText, descriptionText, privacy, complexity, objectText, statusText,
+      taskTitleText, descriptionText, privacy, project, objectText, statusText,
       importanceTagText, creationDateText, completionDateText, deleteText, deleteButtonText,
       completedStatus, inProgressStatus, notStartedStatus, waitedStatus,
-      completedText, inProgressText, notStartedText, waitedText,
+      completedText, inProgressText, notStartedText, waitedText, projectText,
       highImportance, mediumImportance, lowImportance, highImportanceText, mediumImportanceText, lowImportanceText,
       homePrivacy, workPrivacy, otherPrivacy, homePrivacyText, workPrivacyText, otherPrivacyText,
       highComplexity, mediumComplexity, lowComplexity, highComplexityText, mediumComplexityText, lowComplexityText,
