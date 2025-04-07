@@ -14,13 +14,27 @@
       <option value="иное">Иное</option>
     </select>
     <select
-        v-model="newTask.complexity"
-        title="Сложность"
+        v-model="newTask.project"
+        title="Project"
     >
-      <option value="высокая">Высокая</option>
-      <option value="средняя" selected>Средняя</option>
-      <option value="низкая">Низкая</option>
+      <option value="" selected>Проект</option>
+      <option
+        v-for="project in uniqueProjects"
+        :key="project"
+        :value="project"
+      >
+        {{ project }}
+      </option>
+      <option value="new-project">+newProject</option>
     </select>
+    <input
+      v-if="showNewProjectInput"
+      v-model="newProjectName"
+      @blur="addNewProject"
+      placeholder="newProject"
+      class="new-project-input"
+    />
+
     <select
         v-model="newTask.importance_tag"
         title="Важность"
@@ -39,9 +53,10 @@
     <button @click="addTask">Добавить задачу</button>
   </div>
 </template>
+
 <script>
 // Убираем defineEmits из импорта
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { supabase } from '@/clients/supabase.js';
 
 export default {
@@ -61,14 +76,20 @@ export default {
       due_date: '', // Это будет 'дд.мм.гггг' или ''
       status: 'в очереди',
       privacy: 'рабочее',
-      complexity: 'средняя'
+      project: ''
     });
-    const internalDate = ref(null); // Для v-model input type="date" ('гггг-мм-дд')
+
+    const internalDate = ref(null);
+    const uniqueProjects = ref([]);
+    const showNewProjectInput = ref(false);
+    const newProjectName = ref('');
 
     // Устанавливаем текущую дату при монтировании компонента
     onMounted(() => {
       setDefaultDate();
+      fetchUniqueProjects();
     });
+
     function setDefaultDate() {
       const today = new Date();
       internalDate.value = today.toISOString().split('T')[0];
@@ -92,12 +113,64 @@ export default {
       newTask.value.due_date = `${day}.${month}.${year}`;
     }
 
+    const fetchUniqueProjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('todolist')
+          .select('project')
+          .not('project', 'is', null)
+          .order('project', { ascending: true });
+
+        if (error) throw error;
+
+        // Убираем дубликаты и пустые значения
+        const projects = [...new Set(data.map(item => item.project).filter(Boolean))];
+        uniqueProjects.value = projects;
+      } catch (error) {
+        console.error('Ошибка при загрузке проектов:', error);
+      }
+    };
+
+    watch(() => newTask.value.project, (newValue) => {
+      if (newValue === 'new-project') {
+        showNewProjectInput.value = true;
+        newTask.value.project = '';
+      } else {
+        showNewProjectInput.value = false;
+      }
+    });
+
+    const addNewProject = async () => {
+      if (!newProjectName.value.trim()) {
+        showNewProjectInput.value = false;
+        return;
+      }
+
+      try {
+        // Добавляем проект в список
+        if (!uniqueProjects.value.includes(newProjectName.value)) {
+          uniqueProjects.value.push(newProjectName.value);
+          uniqueProjects.value.sort();
+        }
+
+        newTask.value.project = newProjectName.value;
+        newProjectName.value = '';
+        showNewProjectInput.value = false;
+
+        // Можно опционально сохранить новый проект в базу данных
+        context.emit('project-added', newTask.value.project);
+      } catch (error) {
+        console.error('Ошибка при добавлении проекта:', error);
+      }
+    };
+
     async function addTask() {
       try {
         if (!newTask.value.title) {
           alert('Название задачи обязательно');
           return;
         }
+
         let dueDateForSupabase = null;
         if (newTask.value.due_date) {
             const [day, month, year] = newTask.value.due_date.split('.');
@@ -126,7 +199,7 @@ export default {
           due_date: dueDateForSupabase, // Отправляем 'гггг-мм-дд' или null
           status: newTask.value.status,
           privacy: newTask.value.privacy,
-          complexity: newTask.value.complexity,
+          project: newTask.value.project,
           created_at: new Date().toISOString(),
           user_id: user.id // Добавляем ID пользователя
         };
@@ -146,7 +219,7 @@ export default {
           description: '',
           object: '',
           due_date: '', // Это будет 'дд.мм.гггг' или ''
-          complexity: 'средняя'
+          project: ''
         };
         setDefaultDate(); // Сбрасываем на текущую дату после добавления
 
@@ -163,13 +236,18 @@ export default {
     return {
       newTask,
       internalDate,
+      uniqueProjects,
+      showNewProjectInput,
+      newProjectName,
       getCurrentDate,
       handleDateChange,
-      addTask
+      addTask,
+      addNewProject
     };
   }
 };
 </script>
+
 <style scoped>
 .input-group {
   display: flex;
@@ -194,16 +272,6 @@ export default {
 }
 
 .input-group button {
-    padding: 8px 16px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-
-}
-
-.input-group button {
   padding: 8px 16px;
   background-color: #4CAF50;
   color: white;
@@ -215,5 +283,10 @@ export default {
 
 .input-group button:hover {
   background-color: #45a049;
+}
+
+.new-project-input {
+  width: 150px;
+  transition: width 0.3s ease;
 }
 </style>

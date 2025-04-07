@@ -1179,13 +1179,17 @@ export default {
 
 .todo-table td:first-child, /* Первый столбец (Задача) */
 .todo-table td:nth-child(2), /* Второй столбец (Описание) */
-.todo-table td:nth-child(3) { /* Третий столбец (Объект) */
+.todo-table td:nth-child(3),
+.todo-table td:nth-child(4){ /* Третий столбец (Объект) */
   padding-left: 5px !important;
 }
 /* Для инпутов в этих ячейках */
 .todo-table td:first-child .task-input,
 .todo-table td:nth-child(2) .task-input,
-.todo-table td:nth-child(3) .task-input {
+.todo-table td:nth-child(3) .task-input,
+.todo-table td:nth-child(4) .task-input
+
+{
   padding-left: 5px;
 }
 
