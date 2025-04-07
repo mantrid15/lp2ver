@@ -40,6 +40,24 @@
         {{ descriptionText }}
         <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
       </span>
+              <div class="project-filter-container">
+                <select
+                    v-model="selectedProjectFilter"
+                    @change="applyProjectFilter"
+                    class="project-filter-select"
+                >
+                  <option value="">Prjct</option>
+                  <option v-for="project in uniqueProjects" :key="project" :value="project">
+                    {{ project || '(без проекта)' }}
+                  </option>
+                </select>
+                <i
+                    v-if="selectedProjectFilter"
+                    @click="clearProjectFilter"
+                    class="fas fa-times clear-project-filter-icon"
+                    title="Очистить фильтр по проекту"
+                ></i>
+              </div>
             </div>
             <button
                 @click="applyDefaultSort"
@@ -147,7 +165,7 @@
               class="task-input"
               :disabled="isTaskCompleted(task) || task.deleted"
           />
-          <span v-else>{{ task.project }}</span>
+          <span v-else>{{ task.project || '-' }}</span>
         </td>
         <td :title="task.object"
             @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'object')"
@@ -243,6 +261,10 @@ export default {
   name: 'TodoComp',
 
   setup(props, { emit }) {
+
+    const selectedProjectFilter = ref('');
+    const uniqueProjects = ref([]);
+
     // Константы для сортировки
     const SORT_ASC_ICON = '↑';
     const SORT_DESC_ICON = '↓';
@@ -330,6 +352,38 @@ export default {
     const filterText = ref('');
     const currentSortKey = ref('created_at');
     const currentSortOrder = ref('desc');
+
+    // Метод для загрузки уникальных проектов
+    const fetchUniqueProjects = async () => {
+      try {
+        const { data, error } = await supabase
+            .from('todolist')
+            .select('project')
+            .not('project', 'is', null)
+            .order('project', { ascending: true });
+
+        if (error) throw error;
+
+        // Убираем дубликаты и пустые значения
+        const projects = [...new Set(data.map(item => item.project).filter(Boolean))];
+        uniqueProjects.value = projects;
+      } catch (error) {
+        console.error('Ошибка при загрузке проектов:', error);
+      }
+    };
+
+    // Метод для применения фильтра по проекту
+    const applyProjectFilter = () => {
+      // Фильтрация будет обработана в computed свойстве filteredTasks
+    };
+
+
+    // Метод для очистки фильтра по проекту
+    const clearProjectFilter = () => {
+      selectedProjectFilter.value = '';
+    };
+
+
 
     const applyDefaultSort = () => {
       // Определяем порядок сортировки для каждого поля
@@ -440,13 +494,28 @@ export default {
     });
 
     const filteredTasks = computed(() => {
-      if (!filterText.value.trim()) return displayedTasks.value;
-      const searchText = filterText.value.toLowerCase().trim();
-      return displayedTasks.value.filter(task =>
-        (task.title && task.title.toLowerCase().includes(searchText)) ||
-        (task.description && task.description.toLowerCase().includes(searchText)) ||
-        (task.object && task.object.toLowerCase().includes(searchText))
-      );
+      let filtered = tasks.value;
+
+      // Фильтрация по тексту
+      if (filterText.value.trim()) {
+        const searchText = filterText.value.toLowerCase().trim();
+        filtered = filtered.filter(task =>
+            (task.title && task.title.toLowerCase().includes(searchText)) ||
+            (task.description && task.description.toLowerCase().includes(searchText))
+        );
+      }
+
+      // Фильтрация по проекту
+      if (selectedProjectFilter.value) {
+        filtered = filtered.filter(task => {
+          if (selectedProjectFilter.value === '(без проекта)') {
+            return !task.project;
+          }
+          return task.project === selectedProjectFilter.value;
+        });
+      }
+
+      return filtered;
     });
     // Методы
     const applyFilter = () => {
@@ -803,6 +872,7 @@ export default {
 
     // --- Хуки жизненного цикла ---
     onMounted(async () => {
+      await fetchUniqueProjects();
       document.addEventListener('keyup', (e) => {
         if (e.key === 'Control') {
           removeTooltip();
@@ -846,6 +916,10 @@ export default {
      });
     // --- Конец хуков ---
     return {
+      selectedProjectFilter,
+      uniqueProjects,
+      applyProjectFilter,
+      clearProjectFilter,
       removeTooltip,
       isActiveSort,
       applyDefaultSort,
@@ -981,6 +1055,35 @@ export default {
   }
 }
 
+
+.project-filter-container {
+  position: relative;
+  margin-left: 30px;
+
+}
+
+.project-filter-select {
+  padding: 2px 5px;
+  width: 90px;
+  border-radius: 2px;
+  border: 1px solid #000000;
+  background-color: pink;
+  cursor: pointer;
+}
+
+.clear-project-filter-icon {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #999;
+  font-size: 12px;
+}
+
+.clear-project-filter-icon:hover {
+  color: #666;
+}
 .active-sort {
   background-color: #9c27b0 !important; /* Фиолетовый цвет */
   color: white !important;
