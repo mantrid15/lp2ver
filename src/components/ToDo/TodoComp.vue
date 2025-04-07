@@ -37,16 +37,18 @@
                 ></i>
               </div>
               <span class="header-label-container" @click="(e) => handleClick(e, 'description')" style="cursor: pointer; padding-left: 5px;">
-        {{ descriptionText }}
-        <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
-      </span>
+                  {{ descriptionText }}
+                  <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
+                </span>
+
+              <!-- Фильтр по проекту -->
               <div class="project-filter-container">
                 <select
                     v-model="selectedProjectFilter"
                     @change="applyProjectFilter"
                     class="project-filter-select"
                 >
-                  <option value="">Prjct</option>
+                  <option value="">Все проекты</option>
                   <option v-for="project in uniqueProjects" :key="project" :value="project">
                     {{ project || '(без проекта)' }}
                   </option>
@@ -115,7 +117,7 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="task in filteredTasks"
+        <tr v-for="task in filteredTasks"
           :key="task.id"
           :data-deleted="task.deleted"
           :class="{
@@ -265,6 +267,13 @@ export default {
     const selectedProjectFilter = ref('');
     const uniqueProjects = ref([]);
 
+
+    const currentSortKey = ref('created_at');
+    const currentSortOrder = ref('desc');
+
+    const tasks = ref([]);
+    const filterText = ref('');
+
     // Константы для сортировки
     const SORT_ASC_ICON = '↑';
     const SORT_DESC_ICON = '↓';
@@ -345,13 +354,9 @@ export default {
       updateUserMismatch: 'Попытка обновить задачу другого пользователя.'
     };
     // Состояние компонента
-    const tasks = ref([]);
     const subscription = ref(null);
     const showDeletedTasks = ref(false);
     const currentUserId = ref(null);
-    const filterText = ref('');
-    const currentSortKey = ref('created_at');
-    const currentSortOrder = ref('desc');
 
     // Метод для загрузки уникальных проектов
     const fetchUniqueProjects = async () => {
@@ -371,20 +376,14 @@ export default {
         console.error('Ошибка при загрузке проектов:', error);
       }
     };
-
     // Метод для применения фильтра по проекту
     const applyProjectFilter = () => {
       // Фильтрация будет обработана в computed свойстве filteredTasks
     };
-
-
     // Метод для очистки фильтра по проекту
     const clearProjectFilter = () => {
       selectedProjectFilter.value = '';
     };
-
-
-
     const applyDefaultSort = () => {
       // Определяем порядок сортировки для каждого поля
       const statusOrder = {
@@ -405,14 +404,7 @@ export default {
         [mediumImportance]: 2,
         [lowImportance]: 3
       };
-
-      const complexityOrder = {
-        [highComplexity]: 1,
-        [mediumComplexity]: 2,
-        [lowComplexity]: 3
-      };
-
-      // Создаем копию массива для сортировки
+            // Создаем копию массива для сортировки
       const tasksToSort = [...tasks.value];
 
       // Сортируем задачи по указанным критериям
@@ -429,11 +421,6 @@ export default {
         const importanceCompare = (importanceOrder[a.importance_tag] || 4) - (importanceOrder[b.importance_tag] || 4);
         if (importanceCompare !== 0) return importanceCompare;
 
-        // Затем по сложности
-        const complexityCompare = (complexityOrder[a.complexity] || 4) - (complexityOrder[b.complexity] || 4);
-        if (complexityCompare !== 0) return complexityCompare;
-
-        // Если все критерии равны, сортируем по дате создания (новые выше)
         try {
           const aDate = a.created_at ? new Date(a.created_at) : new Date(0);
           const bDate = b.created_at ? new Date(b.created_at) : new Date(0);
@@ -443,7 +430,6 @@ export default {
         } catch (e) {
           return 0;
         }
-
       });
 
       // Обновляем массив задач
@@ -493,28 +479,43 @@ export default {
       );
     });
 
+    // Computed свойство для фильтрации и сортировки задач
     const filteredTasks = computed(() => {
-      let filtered = tasks.value;
+      let filtered = [...tasks.value];
 
-      // Фильтрация по тексту
       if (filterText.value.trim()) {
         const searchText = filterText.value.toLowerCase().trim();
         filtered = filtered.filter(task =>
-            (task.title && task.title.toLowerCase().includes(searchText)) ||
-            (task.description && task.description.toLowerCase().includes(searchText))
+            (task.title?.toLowerCase().includes(searchText)) ||
+            (task.description?.toLowerCase().includes(searchText))
+        );
+      }
+      if (selectedProjectFilter.value) {
+        filtered = filtered.filter(task =>
+            selectedProjectFilter.value === '(без проекта)'
+                ? !task.project
+                : task.project === selectedProjectFilter.value
         );
       }
 
-      // Фильтрация по проекту
-      if (selectedProjectFilter.value) {
-        filtered = filtered.filter(task => {
-          if (selectedProjectFilter.value === '(без проекта)') {
-            return !task.project;
+      if (currentSortKey.value) {
+        filtered.sort((a, b) => {
+          const modifier = currentSortOrder.value === 'asc' ? 1 : -1;
+          const aValue = a[currentSortKey.value] ?? '';
+          const bValue = b[currentSortKey.value] ?? '';
+
+          if (['created_at', 'due_date'].includes(currentSortKey.value)) {
+            try {
+              const aDate = aValue ? new Date(aValue) : new Date(0);
+              const bDate = bValue ? new Date(bValue) : new Date(0);
+              return (aDate - bDate) * modifier;
+            } catch (e) {
+              return 0;
+            }
           }
-          return task.project === selectedProjectFilter.value;
+          return String(aValue).toLowerCase().localeCompare(String(bValue).toLowerCase()) * modifier;
         });
       }
-
       return filtered;
     });
     // Методы
@@ -587,21 +588,23 @@ export default {
 
     // Функции для сортировки
     const handleClick = (event, key) => {
+      event.stopPropagation();
       if (currentSortKey.value === key) {
         currentSortOrder.value = currentSortOrder.value === 'asc' ? 'desc' : 'asc';
       } else {
+        currentSortKey.value = key;
         currentSortOrder.value = 'asc';
       }
-      currentSortKey.value = key;
-      emit('sort', key, currentSortOrder.value); // Эмитим событие сортировки
     };
+
 
     const getSortIcon = (key) => {
       if (currentSortKey.value === key) {
         return currentSortOrder.value === 'asc' ? SORT_ASC_ICON : SORT_DESC_ICON;
       }
-      return '';
+      return SORT_DEFAULT_ICON;
     };
+
 
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
@@ -870,6 +873,7 @@ export default {
      };
     // --- Конец Real-time ---
 
+
     // --- Хуки жизненного цикла ---
     onMounted(async () => {
       await fetchUniqueProjects();
@@ -916,7 +920,6 @@ export default {
      });
     // --- Конец хуков ---
     return {
-      selectedProjectFilter,
       uniqueProjects,
       applyProjectFilter,
       clearProjectFilter,
@@ -947,6 +950,8 @@ export default {
       complexityClass,
       handleClick,
       getSortIcon,
+      selectedProjectFilter,
+
       currentSortKey,
       currentSortOrder,
       SORT_ASC_ICON,
