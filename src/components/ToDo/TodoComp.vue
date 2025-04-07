@@ -40,7 +40,6 @@
                   {{ descriptionText }}
                   <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
                 </span>
-
               <!-- Фильтр по проекту -->
               <div class="project-filter-container">
                 <select
@@ -48,7 +47,7 @@
                     @change="applyProjectFilter"
                     class="project-filter-select"
                 >
-                  <option value="">Все проекты</option>
+                  <option value="">Project</option>
                   <option v-for="project in uniqueProjects" :key="project" :value="project">
                     {{ project || '(без проекта)' }}
                   </option>
@@ -65,7 +64,7 @@
                 @click="applyDefaultSort"
                 class="default-sort-btn"
                 title="Сортировка по умолчанию"
-                style="margin-right: 20px;"
+                style="margin-right: 5px;"
             >
               Default
             </button>
@@ -481,7 +480,7 @@ export default {
 
     // Computed свойство для фильтрации и сортировки задач
     const filteredTasks = computed(() => {
-      let filtered = [...tasks.value];
+      let filtered = [...displayedTasks.value]; // Используем displayedTasks вместо tasks.value
 
       if (filterText.value.trim()) {
         const searchText = filterText.value.toLowerCase().trim();
@@ -592,9 +591,10 @@ export default {
       if (currentSortKey.value === key) {
         currentSortOrder.value = currentSortOrder.value === 'asc' ? 'desc' : 'asc';
       } else {
-        currentSortKey.value = key;
         currentSortOrder.value = 'asc';
       }
+      currentSortKey.value = key;
+      emit('sort', key, currentSortOrder.value); // Эмитим событие сортировки
     };
 
 
@@ -920,6 +920,7 @@ export default {
      });
     // --- Конец хуков ---
     return {
+
       uniqueProjects,
       applyProjectFilter,
       clearProjectFilter,
