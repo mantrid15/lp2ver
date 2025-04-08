@@ -120,8 +120,9 @@
           :key="task.id"
           :data-deleted="task.deleted"
           :class="{
-            'deleted-task-row': task.deleted, // Стиль для удаленных (можно добавить в CSS)
+            'deleted-task-row': task.deleted,
             'completed-task': task.status === completedStatus,
+            'status-cancelled-task': task.status === cancelledStatus,
             'status-completed': task.status === completedStatus,
             'status-in-progress': task.status === inProgressStatus,
             'status-not-started': task.status === notStartedStatus,
@@ -193,6 +194,7 @@
             <option :value="completedStatus">{{ completedText }}</option>
             <option :value="notStartedStatus">{{ notStartedText }}</option>
             <option :value="waitedStatus">{{ waitedText }}</option>
+            <option :value="cancelledStatus">{{ cancelledText }}</option>
           </select>
         </td>
         <td class="importance-cell" :class="importanceClass(task.importance_tag)">
@@ -286,10 +288,13 @@ export default {
     const inProgressStatus = 'выполняется';
     const notStartedStatus = 'в очереди';
     const waitedStatus = 'отложено';
+    const cancelledStatus = 'отменено'
     const completedText = 'Выполнено';
     const inProgressText = 'Выполняется';
     const notStartedText = 'В очереди';
     const waitedText = 'Отложено';
+    const cancelledText = 'Отменено'
+
 
     // Уровни важности
     const highImportance = 'высокая';
@@ -430,7 +435,8 @@ export default {
         [inProgressStatus]: 1,
         [notStartedStatus]: 2,
         [waitedStatus]: 3,
-        [completedStatus]: 4
+        [completedStatus]: 4,
+        [cancelledStatus]: 5
       };
 
       const privacyOrder = {
@@ -561,8 +567,8 @@ export default {
     });
     // Методы
     const applyFilter = () => {
-      console.log('Filter text:', filterText.value);
-      console.log('Sample highlight:', highlightMatch('Test string', 'test'));
+      // console.log('Filter text:', filterText.value);
+      // console.log('Sample highlight:', highlightMatch('Test string', 'test'));
       // Фильтрация происходит автоматически через computed свойство filteredTasks
     };
 
@@ -614,7 +620,8 @@ export default {
       'status-completed': status === completedStatus,
       'status-in-progress': status === inProgressStatus,
       'status-not-started': status === notStartedStatus,
-      'status-waited': status === waitedStatus
+      'status-waited': status === waitedStatus,
+      'status-cancelled': status === cancelledStatus
     });
 
     const privacyClass = (privacy) => ({
@@ -706,7 +713,7 @@ export default {
     const updateTask = async (task) => {
       if (task.user_id !== currentUserId.value) {
         console.error(errorMessages.updateUserMismatch, `Task ID: ${task.id}, Task User: ${task.user_id}, Current User: ${currentUserId.value}`);
-        fetchAllTasks();
+        await fetchAllTasks();
         return;
       }
       try {
@@ -728,46 +735,65 @@ export default {
         if (error) throw error;
       } catch (error) {
         console.error(errorMessages.updateTask, error);
-        fetchAllTasks();
+        await fetchAllTasks();
       }
     };
     // ИЗМЕНЕНО: Обновление даты
     // Нужна промежуточная функция, чтобы поймать значение из @input
-     const updateDueDateValue = (task, newDateValue_YYYYMMDD) => {
+    const updateDueDateValue = (task, newDateValue_YYYYMMDD) => {
          if (isTaskCompleted(task) || task.deleted) return;
 
-         const createdDate = new Date(task.created_at);
-         createdDate.setHours(0,0,0,0); // Убираем время для сравнения
-         const dueDate = new Date(newDateValue_YYYYMMDD);
-         dueDate.setHours(0,0,0,0); // Убираем время для сравнения
+  // Получаем дату создания задачи
+    const createdDate = new Date(task.created_at);
+    createdDate.setHours(0, 0, 0, 0); // Убираем время для сравнения
 
-      if (dueDate < createdDate) {
-        alert(errorMessages.dateValidation);
-        fetchAllTasks();
-        return;
-      }
-      updateDueDate(task, newDateValue_YYYYMMDD);
-    };
+    // Получаем новую дату выполнения
+    const dueDate = new Date(newDateValue_YYYYMMDD);
+    dueDate.setHours(0, 0, 0, 0); // Убираем время для сравнения
 
+         // Проверяем, что дата выполнения не раньше даты создания
+         if (dueDate < createdDate) {
+           alert(errorMessages.dateValidation);
+
+           // Восстанавливаем предыдущее значение
+           task.due_date_edit = formatDateForInput(task.due_date) || '';
+           return;
+         }
+
+       // Если проверка пройдена, обновляем значение
+       updateDueDate(task, newDateValue_YYYYMMDD);
+     };
     const updateDueDate = async (task, newDate_YYYYMMDD) => {
       if (task.user_id !== currentUserId.value) {
         console.error(errorMessages.updateUserMismatch, `Task ID: ${task.id}`);
-        fetchAllTasks();
+        await fetchAllTasks();
         return;
       }
+
+      // Дополнительная проверка даты
+      const createdDate = new Date(task.created_at);
+      createdDate.setHours(0, 0, 0, 0);
+      const dueDate = new Date(newDate_YYYYMMDD);
+      dueDate.setHours(0, 0, 0, 0);
+
+      if (dueDate < createdDate) {
+        console.error("Попытка сохранить недопустимую дату выполнения");
+        return;
+      }
+
       try {
         const { error } = await supabase
-          .from('todolist')
-          .update({ due_date: newDate_YYYYMMDD || null })
-          .match({ id: task.id, user_id: currentUserId.value });
+            .from('todolist')
+            .update({ due_date: newDate_YYYYMMDD || null })
+            .match({ id: task.id, user_id: currentUserId.value });
 
-             if (error) throw error;
+        if (error) throw error;
 
         task.due_date = newDate_YYYYMMDD;
         task.due_date_edit = newDate_YYYYMMDD;
       } catch (error) {
         console.error(errorMessages.updateDate, error);
-        fetchAllTasks();
+        await fetchAllTasks();
       }
     };
 
@@ -1001,8 +1027,8 @@ export default {
       SORT_DEFAULT_ICON,
       taskTitleText, descriptionText, privacy, project, objectText, statusText,
       importanceTagText, creationDateText, completionDateText, deleteText, deleteButtonText,
-      completedStatus, inProgressStatus, notStartedStatus, waitedStatus,
-      completedText, inProgressText, notStartedText, waitedText,
+      completedStatus, inProgressStatus, notStartedStatus, waitedStatus,cancelledStatus,
+      completedText, inProgressText, notStartedText, waitedText, cancelledText,
       highImportance, mediumImportance, lowImportance, highImportanceText, mediumImportanceText, lowImportanceText,
       homePrivacy, workPrivacy, otherPrivacy, homePrivacyText, workPrivacyText, otherPrivacyText,
       highComplexity, mediumComplexity, lowComplexity, highComplexityText, mediumComplexityText, lowComplexityText,
@@ -1100,6 +1126,28 @@ export default {
     width: 60px;
     font-size: 0.7em;
   }
+}
+
+.status-cancelled {
+  background-color: #8B4513 !important; /* Коричневый цвет для ячейки статуса */
+  color: white !important;
+}
+
+/* Зачеркивание для отмененных задач (кроме ячеек статуса и удаления) */
+.status-cancelled-task td:not(.status-cell):not(.delete-cell) {
+  position: relative;
+}
+
+.status-cancelled-task td:not(.status-cell):not(.delete-cell)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background-color: #8B4513; /* Коричневая линия */
+  transform: translateY(-50%);
+  z-index: 1;
 }
 
 .highlight {
