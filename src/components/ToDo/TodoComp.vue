@@ -271,7 +271,6 @@ export default {
     const currentSortOrder = ref('desc');
 
     const tasks = ref([]);
-    const filterText = ref('');
 
     // Константы для сортировки
     const SORT_ASC_ICON = '↑';
@@ -355,6 +354,7 @@ export default {
     const subscription = ref(null);
     const showDeletedTasks = ref(false);
     const currentUserId = ref(null);
+    const filterText = ref(''); // Добавляем переменную для фильтрации
 
     // Метод для загрузки уникальных проектов
     const fetchUniqueProjects = async () => {
@@ -469,25 +469,26 @@ export default {
     // Computed свойства
     const displayedTasks = computed(() => {
       let tasksToDisplay = showDeletedTasks.value
-        ? tasks.value
-        : tasks.value.filter(task => !task.deleted);
+          ? tasks.value
+          : tasks.value.filter(task => !task.deleted);
 
       return [...tasksToDisplay].sort((a, b) =>
-        sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+          sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
     });
 
-    // Computed свойство для фильтрации и сортировки задач
     const filteredTasks = computed(() => {
       let filtered = [...displayedTasks.value]; // Используем displayedTasks вместо tasks.value
 
       if (filterText.value.trim()) {
-        const searchText = displayedTasks.value.toLowerCase().trim();
-        filtered = displayedTasks.filter(task =>
+        const searchText = filterText.value.toLowerCase().trim(); // Исправлено на filterText
+        filtered = filtered.filter(task =>
             (task.title?.toLowerCase().includes(searchText)) ||
-            (task.description?.toLowerCase().includes(searchText))
+            (task.description?.toLowerCase().includes(searchText)) ||
+            (task.object?.toLowerCase().includes(searchText)) // Добавлено условие для object
         );
       }
+
       if (selectedProjectFilter.value) {
         filtered = filtered.filter(task =>
             selectedProjectFilter.value === '(без проекта)'
@@ -514,6 +515,7 @@ export default {
           return String(aValue).toLowerCase().localeCompare(String(bValue).toLowerCase()) * modifier;
         });
       }
+
       return filtered;
     });
     // Методы
@@ -1060,7 +1062,6 @@ export default {
   }
 }
 
-
 .project-filter-container {
   position: relative;
   margin-left: 30px;
@@ -1094,39 +1095,23 @@ export default {
   color: white !important;
 }
 
-/* Для кнопки Default */
-.default-sort-btn {
-  background-color: #9c27b0; /* Фиолетовый цвет */
-  color: white;
-}
-
 .default-sort-btn:hover {
   background-color: #7b1fa2; /* Темнее фиолетовый при наведении */
 }
 
 .default-sort-btn {
   height: 100%;
-  width: 80px;
+  width: 100px;
   background-color: #ff4444; /* Красный цвет */
   color: white;
   border: none;
   border-radius: 3px;
   cursor: pointer;
   font-size: 0.8em;
-  /*
-  padding: 0 5px;
-  */
   display: flex;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
-  /*
-  margin-left: 5px; !* Отступ 5px от соседних элементов *!
-  */
-}
-
-.default-sort-btn:hover {
-  background-color: #cc0000; /* Темнее красный при наведении */
 }
 
 .custom-tooltip {
@@ -1154,14 +1139,6 @@ export default {
 .clear-filter-icon:hover {
   color: #666;
 }
-
-/*.filter-input {
-  background-color: pink;
-  border-radius: 2px;
-  border: 1px solid #ccc;
-  padding: 2px 5px;
-  width: 80px;
-}*/
 /* Добавляем стиль для поля фильтрации */
 .filter-input {
   background-color: pink;
@@ -1250,13 +1227,16 @@ export default {
   background-color: #e6e6fa;
   padding-top: 30px;
   padding-left: 5px; /* Отступы по краям */
-  padding-right: 5px; /* Отступы по краям */
+  padding-right: 1px; /* Отступы по краям */
   min-height: 100vh;
   margin: 0;
   width: 100%;
   position: relative;
   height: calc(100vh - 60px); /* Высота контейнера, учитывая padding-top */
+  /*
   overflow: auto;
+  */
+  overflow-x: hidden;
 }
 
 .todo-table {
@@ -1267,7 +1247,6 @@ export default {
   margin: 0;
   table-layout: fixed;
 }
-
 
 .todo-table th {
   position: sticky; /* Делаем заголовки фиксированными */
