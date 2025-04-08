@@ -1,0 +1,4 @@
+declare module 'translate-google' {
+  function translate(text: string, options?: any): Promise<string>;
+  export default translate;
+}

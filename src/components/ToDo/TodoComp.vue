@@ -1155,13 +1155,13 @@ export default {
   color: #666;
 }
 
-.filter-input {
+/*.filter-input {
   background-color: pink;
   border-radius: 2px;
   border: 1px solid #ccc;
   padding: 2px 5px;
   width: 80px;
-}
+}*/
 /* Добавляем стиль для поля фильтрации */
 .filter-input {
   background-color: pink;
@@ -1188,7 +1188,6 @@ export default {
 .todo-table td:nth-child(2) .task-input,
 .todo-table td:nth-child(3) .task-input,
 .todo-table td:nth-child(4) .task-input
-
 {
   padding-left: 5px;
 }
@@ -1255,37 +1254,36 @@ export default {
   min-height: 100vh;
   margin: 0;
   width: 100%;
-  overflow-x: auto;
+  position: relative;
+  height: calc(100vh - 60px); /* Высота контейнера, учитывая padding-top */
+  overflow: auto;
 }
 
 .todo-table {
   font-size: calc(12px + 0.3vw); /* Адаптивный базовый размер */
-
+  position: relative;
   border-collapse: collapse;
   width: 100%;
   margin: 0;
   table-layout: fixed;
 }
 
+
 .todo-table th {
+  position: sticky; /* Делаем заголовки фиксированными */
+  top: 0; /* Устанавливаем верхнее положение */
+  z-index: 10; /* Устанавливаем z-index, чтобы заголовки были выше других элементов */
+  background-color: #4CAF50; /* Цвет фона заголовков */
   font-size: 0.85em; /* Базовый размер */
   transition: all 0.3s ease; /* Плавное изменение размеров */
   padding: 10px 8px; /* Адаптивный padding */
-  background-color: #4CAF50;
   font-weight: bold;
-  /*
-  padding: 4px;
-  */
   text-align: center;
   border: 1px solid #000; /* Убираем задвоенные границы */
-  /*
-  font-size: 0.9em;
-  */
   height: 36px;
 }
 
 .todo-table td {
-
   transition: all 0.3s ease;
   border: 1px solid #000; /* Убираем задвоенные границы */
   font-size: 0.9em;
