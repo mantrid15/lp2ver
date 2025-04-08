@@ -124,9 +124,11 @@
             'completed-task': task.status === completedStatus,
             'status-completed': task.status === completedStatus,
             'status-in-progress': task.status === inProgressStatus,
-            'status-not-started': task.status === notStartedStatus
+            'status-not-started': task.status === notStartedStatus,
+            'highlighted-cell': containsFilterText(task)
           }">
         <td class="task-title" :title="task.title"
+            :class="{ 'highlighted': isHighlighted(task.title) }"
             @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'title')"
             @mousemove="(e) => showTooltip(e, task.title)"
             @mouseleave="removeTooltip()">
@@ -138,14 +140,15 @@
               v-focus
               class="task-input"
               :disabled="isTaskCompleted(task) || task.deleted"
-            />
-            <span v-else>{{ task.title }}</span>
-          </td>
+          />
+          <span v-else>{{ task.title }}</span>
+        </td>
         <td :title="task.description"
+            :class="{ 'highlighted': isHighlighted(task.description) }"
             @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'description')"
             @mousemove="(e) => showTooltip(e, task.description)"
             @mouseleave="removeTooltip()">
-            <input
+          <input
               v-if="task.editing && task.editingField === 'description'"
               v-model="task.description"
               @keyup.enter="finishEditing(task)"
@@ -153,9 +156,9 @@
               v-focus
               class="task-input"
               :disabled="isTaskCompleted(task) || task.deleted"
-            />
-            <span v-else>{{ task.description }}</span>
-          </td>
+          />
+          <span v-else>{{ task.description }}</span>
+        </td>
         <td @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'project')">
           <input
               v-if="task.editing && task.editingField === 'project'"
@@ -169,6 +172,7 @@
           <span v-else>{{ task.project || '-' }}</span>
         </td>
         <td :title="task.object"
+            :class="{ 'highlighted': isHighlighted(task.object) }"
             @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'object')"
             @mousemove="(e) => showTooltip(e, task.object)"
             @mouseleave="removeTooltip()">
@@ -181,7 +185,7 @@
               class="task-input"
               :disabled="isTaskCompleted(task) || task.deleted"
           />
-          <span v-else>{{ task.object }}</span>
+                    <span v-else>{{ task.object }}</span>
         </td>
         <td class="status-cell" :class="statusClass(task.status)">
           <select v-model="task.status" @change="updateTask(task)" :disabled="task.deleted && task.status === completedStatus">
@@ -326,6 +330,44 @@ export default {
     const restoreButtonText = 'Восстановить';
     const permanentDeleteButtonText = 'Удалить окончательно';
 
+    const isHighlighted = (value) => {
+      if (!filterText.value) return false;
+      const text = Array.isArray(value) ? value.join(', ') : value?.toString() || '';
+      const searchTerm = filterText.value.toLowerCase();
+      return text.toLowerCase().includes(searchTerm);
+    };
+
+    const containsFilterText = (task) => {
+      const searchText = filterText.value.toLowerCase().trim();
+      return (
+          (task.title?.toLowerCase().includes(searchText)) ||
+          (task.description?.toLowerCase().includes(searchText)) ||
+          (task.object?.toLowerCase().includes(searchText))
+      );
+    };
+
+
+    const highlightMatch = (text, searchText) => {
+      if (!searchText || !text) return escapeHtml(text.toString());
+
+      const escapedSearch = escapeRegExp(searchText);
+      const regex = new RegExp(`(${escapedSearch})`, 'gi');
+      return escapeHtml(text.toString()).replace(regex, '<span class="highlight">$1</span>');
+    };
+
+    const escapeHtml = (unsafe) => {
+      return unsafe
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+    };
+
+    const escapeRegExp = (string) => {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+
     const removeTooltip = () => {
       const tooltips = document.querySelectorAll('.custom-tooltip');
       tooltips.forEach(tooltip => {
@@ -355,7 +397,6 @@ export default {
     const showDeletedTasks = ref(false);
     const currentUserId = ref(null);
     const filterText = ref(''); // Добавляем переменную для фильтрации
-
     // Метод для загрузки уникальных проектов
     const fetchUniqueProjects = async () => {
       try {
@@ -382,6 +423,7 @@ export default {
     const clearProjectFilter = () => {
       selectedProjectFilter.value = '';
     };
+
     const applyDefaultSort = () => {
       // Определяем порядок сортировки для каждого поля
       const statusOrder = {
@@ -515,11 +557,12 @@ export default {
           return String(aValue).toLowerCase().localeCompare(String(bValue).toLowerCase()) * modifier;
         });
       }
-
       return filtered;
     });
     // Методы
     const applyFilter = () => {
+      console.log('Filter text:', filterText.value);
+      console.log('Sample highlight:', highlightMatch('Test string', 'test'));
       // Фильтрация происходит автоматически через computed свойство filteredTasks
     };
 
@@ -585,7 +628,6 @@ export default {
       'complexity-medium': complexity === mediumComplexity,
       'complexity-low': complexity === lowComplexity
     });
-
     // Функции для сортировки
     const handleClick = (event, key) => {
       event.stopPropagation();
@@ -598,14 +640,12 @@ export default {
       emit('sort', key, currentSortOrder.value); // Эмитим событие сортировки
     };
 
-
     const getSortIcon = (key) => {
       if (currentSortKey.value === key) {
         return currentSortOrder.value === 'asc' ? SORT_ASC_ICON : SORT_DESC_ICON;
       }
       return SORT_DEFAULT_ICON;
     };
-
 
     const sortByKey = (a, b, key, order) => {
       const modifier = order === 'asc' ? 1 : -1;
@@ -873,8 +913,6 @@ export default {
        }
      };
     // --- Конец Real-time ---
-
-
     // --- Хуки жизненного цикла ---
     onMounted(async () => {
       await fetchUniqueProjects();
@@ -921,7 +959,9 @@ export default {
      });
     // --- Конец хуков ---
     return {
-
+      isHighlighted,
+      containsFilterText,
+      highlightMatch,
       uniqueProjects,
       applyProjectFilter,
       clearProjectFilter,
@@ -1062,6 +1102,35 @@ export default {
   }
 }
 
+.highlight {
+  background-color: #4CAF50;
+  color: white !important;
+  padding: 0 2px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+.highlighted {
+  background-color: lightblue !important;
+  color: black !important;
+}
+/* Переопределение стилей для completed задач */
+/*.completed-task .highlight {
+  background-color: #2E7D32 !important;
+  text-decoration: line-through;
+}*/
+/* Для тёмной темы (если используется) */
+@media (prefers-color-scheme: dark) {
+  .highlight {
+    background-color: #81C784 !important;
+    color: #000 !important;
+  }
+}
+
+/*.highlighted-cell {
+  background-color: #4CAF50; !* Зеленый цвет фона *!
+  color: white; !* Белый цвет текста *!
+}*/
 .project-filter-container {
   position: relative;
   margin-left: 30px;
