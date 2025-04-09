@@ -2,9 +2,62 @@
   <div class="input-group">
     <input v-model="newTask.title" placeholder="Название задачи" />
     <input v-model="newTask.description" placeholder="Описание задачи" />
-    <input v-model="newTask.object" placeholder="Объект" />
+    <!-- Поле проекта с переключением между select и input -->
+    <select
+        v-if="!showNewProjectInput"
+        v-model="newTask.project"
+        title="Project"
+        @change="handleProjectChange"
+    >
+      <option value="" selected>Проект</option>
+      <option
+          v-for="project in uniqueProjects"
+          :key="project"
+          :value="project"
+      >
+        {{ project }}
+      </option>
+      <option value="new-project">Project</option>
+    </select>
+    <input
+        v-else
+        v-model="newProjectName"
+        @blur="addNewProject"
+        @keyup.enter="addNewProject"
+        placeholder="Новый проект"
+        ref="newProjectInput"
+        autofocus
+    />
 
+    <!-- Поле объекта с переключением между select и input -->
+    <select
+        v-if="!showNewObjectInput"
+        v-model="newTask.object"
+        title="Объект"
+        @change="handleObjectChange"
+    >
+      <option value="" selected>Объект</option>
+      <option
+        v-for="obj in uniqueObjects"
+        :key="obj"
+        :value="obj"
+      >
+        {{ obj }}
+      </option>
+      <option value="new-object">Object</option>
+    </select>
+    <input
+      v-else
+      v-model="newObjectName"
+      @blur="addNewObject"
+      @keyup.enter="addNewObject"
+      placeholder="Введите новый объект"
+      class="transform-input"
+      ref="newObjectInput"
+      autofocus
+    />
 
+    <!-- Поле приватности -->
     <select
         v-model="newTask.privacy"
         title="Приватность"
@@ -13,27 +66,7 @@
       <option value="рабочее" selected>Рабочее</option>
       <option value="иное">Иное</option>
     </select>
-    <select
-        v-model="newTask.project"
-        title="Project"
-    >
-      <option value="" selected>Проект</option>
-      <option
-        v-for="project in uniqueProjects"
-        :key="project"
-        :value="project"
-      >
-        {{ project }}
-      </option>
-      <option value="new-project">+newProject</option>
-    </select>
-    <input
-      v-if="showNewProjectInput"
-      v-model="newProjectName"
-      @blur="addNewProject"
-      placeholder="newProject"
-      class="new-project-input"
-    />
+
 
     <select
         v-model="newTask.importance_tag"
@@ -55,19 +88,14 @@
 </template>
 
 <script>
-// Убираем defineEmits из импорта
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import { supabase } from '@/clients/supabase.js';
 
 export default {
   name: 'NewTask',
   // Добавляем emits на уровне опций компонента для декларации событий
   emits: ['task-added'],
-  // setup теперь принимает props и context (нам нужен context)
-  setup(props, context) { // <--- Изменено здесь
-
-    // Убрали: const emit = defineEmits(['task-added']);
-
+  setup(props, context) {
     const newTask = ref({
       title: '',
       description: '',
@@ -81,13 +109,19 @@ export default {
 
     const internalDate = ref(null);
     const uniqueProjects = ref([]);
+    const uniqueObjects = ref([]);
     const showNewProjectInput = ref(false);
     const newProjectName = ref('');
+    const showNewObjectInput = ref(false);
+    const newObjectName = ref('');
+    const newProjectInput = ref(null);
+    const newObjectInput = ref(null);
 
     // Устанавливаем текущую дату при монтировании компонента
     onMounted(() => {
       setDefaultDate();
       fetchUniqueProjects();
+      fetchUniqueObjects();
     });
 
     function setDefaultDate() {
@@ -131,14 +165,38 @@ export default {
       }
     };
 
-    watch(() => newTask.value.project, (newValue) => {
-      if (newValue === 'new-project') {
-        showNewProjectInput.value = true;
-        newTask.value.project = '';
-      } else {
-        showNewProjectInput.value = false;
+    const fetchUniqueObjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('todolist')
+          .select('object')
+          .not('object', 'is', null)
+          .order('object', { ascending: true });
+
+        if (error) throw error;
+
+        const objects = [...new Set(data.map(item => item.object).filter(Boolean))];
+        uniqueObjects.value = objects;
+      } catch (error) {
+        console.error('Ошибка при загрузке объектов:', error);
       }
-    });
+    };
+
+    const handleProjectChange = async (event) => {
+      if (event.target.value === 'new-project') {
+        showNewProjectInput.value = true;
+        await nextTick();
+        newProjectInput.value?.focus();
+      }
+    };
+
+    const handleObjectChange = async (event) => {
+      if (event.target.value === 'new-object') {
+        showNewObjectInput.value = true;
+        await nextTick();
+        newObjectInput.value?.focus();
+      }
+    };
 
     const addNewProject = async () => {
       if (!newProjectName.value.trim()) {
@@ -161,6 +219,26 @@ export default {
         context.emit('project-added', newTask.value.project);
       } catch (error) {
         console.error('Ошибка при добавлении проекта:', error);
+      }
+    };
+
+    const addNewObject = async () => {
+      if (!newObjectName.value.trim()) {
+        showNewObjectInput.value = false;
+        return;
+      }
+
+      try {
+        if (!uniqueObjects.value.includes(newObjectName.value)) {
+          uniqueObjects.value.push(newObjectName.value);
+          uniqueObjects.value.sort();
+        }
+
+        newTask.value.object = newObjectName.value;
+        newObjectName.value = '';
+        showNewObjectInput.value = false;
+      } catch (error) {
+        console.error('Ошибка при добавлении объекта:', error);
       }
     };
 
@@ -237,12 +315,20 @@ export default {
       newTask,
       internalDate,
       uniqueProjects,
+      uniqueObjects,
       showNewProjectInput,
       newProjectName,
+      showNewObjectInput,
+      newObjectName,
+      newProjectInput,
+      newObjectInput,
       getCurrentDate,
       handleDateChange,
+      handleProjectChange,
+      handleObjectChange,
       addTask,
-      addNewProject
+      addNewProject,
+      addNewObject
     };
   }
 };
@@ -266,9 +352,27 @@ export default {
   cursor: pointer;
 }
 
+/* Специфичные стили для каждого типа полей */
+.input-group input[placeholder="Название задачи"],
+.input-group input[placeholder="Описание задачи"],
+.input-group input[type="date"] {
+  width: 150px; /* Ширина 150px для title, description и даты */
+}
+
+.input-group select[title="Объект"],
+.input-group input[placeholder="Введите новый объект"],
+.input-group select[title="Project"],
+.input-group input[placeholder="Новый проект"] {
+  width: 100px; /* Ширина 100px для object и project */
+}
+
+.input-group select[title="Приватность"],
+.input-group select[title="Важность"] {
+  width: 100px; /* Ширина 75px для privacy и importance_tag */
+}
+
 .input-group select:hover {
   box-shadow: 0 0 5px rgba(0,0,0,0.2);
-  backrgound: rgba(9, 178, 17, 0.9);
 }
 
 .input-group button {
@@ -279,14 +383,18 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   flex: none;
+  width: auto; /* Для кнопки оставляем автоматическую ширину */
 }
 
 .input-group button:hover {
   background-color: #45a049;
 }
 
-.new-project-input {
-  width: 150px;
-  transition: width 0.3s ease;
+.transform-input {
+  padding: 8px;
+  border: 1px solid black;
+  border-radius: 4px;
+  width: 100px; /* Установлена ширина 50px */
+  transition: all 0.3s ease;
 }
 </style>
