@@ -277,7 +277,6 @@ export default {
     const currentSortOrder = ref('desc');
 
     const tasks = ref([]);
-
     // Константы для сортировки
     const SORT_ASC_ICON = '↑';
     const SORT_DESC_ICON = '↓';
@@ -724,21 +723,21 @@ export default {
           privacy: task.privacy,
           project: task.project,
           status: task.status,
+          deleted: task.deleted || false, // Убедимся, что значение всегда false, если не задано
           importance_tag: task.importance_tag,
         };
 
-         const { error } = await supabase
-           .from('todolist')
-           .update(taskToUpdate)
-           .match({ id: task.id, user_id: currentUserId.value }); // Обновляем только свою задачу
+        const { error } = await supabase
+            .from('todolist')
+            .update(taskToUpdate)
+            .match({ id: task.id, user_id: currentUserId.value });
 
         if (error) throw error;
       } catch (error) {
         console.error(errorMessages.updateTask, error);
         await fetchAllTasks();
       }
-    };
-    // ИЗМЕНЕНО: Обновление даты
+    };    // ИЗМЕНЕНО: Обновление даты
     // Нужна промежуточная функция, чтобы поймать значение из @input
     const updateDueDateValue = (task, newDateValue_YYYYMMDD) => {
          if (isTaskCompleted(task) || task.deleted) return;
@@ -1345,14 +1344,14 @@ export default {
   padding-top: 30px;
   padding-left: 5px; /* Отступы по краям */
   padding-right: 1px; /* Отступы по краям */
-  min-height: 100vh;
+  /*
+  min-height: 90vh;
+  */
   margin: 0;
   width: 100%;
-  position: relative;
-  height: calc(100vh - 60px); /* Высота контейнера, учитывая padding-top */
-  /*
-  overflow: auto;
-  */
+
+  height: calc(100vh - 70px); /* Высота контейнера, учитывая padding-top */
+
   overflow-x: hidden;
 }
 

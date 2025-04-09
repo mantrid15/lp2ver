@@ -60,10 +60,10 @@ export default {
 .container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 107px);
+  height: calc(100vh - 75px);
   overflow: hidden;
   margin-top: 15px;
-  gap: 20px; /* Добавляем промежуток между компонентами */
+  gap: 50px; /* Добавляем промежуток между компонентами */
 }
 
 .auth-message {
