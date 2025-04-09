@@ -117,29 +117,35 @@ export default {
     const newProjectInput = ref(null);
     const newObjectInput = ref(null);
 
-    // Состояние для хранения последних введенных значений
-    const lastUsedProject = ref('');
-    const lastUsedObject = ref('');
+    // Загрузка последних значений из localStorage при инициализации
+    const loadLastValues = () => {
+      const lastProject = localStorage.getItem('lastProject');
+      const lastObject = localStorage.getItem('lastObject');
+
+      if (lastProject) {
+        newTask.value.project = lastProject;
+      }
+      if (lastObject) {
+        newTask.value.object = lastObject;
+      }
+    };
+
+    // Сохранение значений в localStorage
+    const saveLastValues = () => {
+      if (newTask.value.project) {
+        localStorage.setItem('lastProject', newTask.value.project);
+      }
+      if (newTask.value.object) {
+        localStorage.setItem('lastObject', newTask.value.object);
+      }
+    };
 
     onMounted(() => {
       setDefaultDate();
       fetchUniqueProjects();
       fetchUniqueObjects();
-      loadLastUsedValues(); // Загружаем последние значения из localStorage
+      loadLastValues(); // Загружаем последние значения при монтировании
     });
-
-    function loadLastUsedValues() {
-      const savedProject = localStorage.getItem('lastUsedProject');
-      const savedObject = localStorage.getItem('lastUsedObject');
-      if (savedProject) {
-        lastUsedProject.value = savedProject;
-        newTask.value.project = savedProject; // Устанавливаем значение проекта
-      }
-      if (savedObject) {
-        lastUsedObject.value = savedObject;
-        newTask.value.object = savedObject; // Устанавливаем значение объекта
-      }
-    }
 
     function setDefaultDate() {
       const today = new Date();
@@ -205,9 +211,8 @@ export default {
         await nextTick();
         newProjectInput.value?.focus();
       } else {
-        // Сохраняем значение проекта в localStorage
-        lastUsedProject.value = event.target.value;
-        localStorage.setItem('lastUsedProject', lastUsedProject.value);
+        // Сохраняем новое значение проекта в localStorage
+        localStorage.setItem('lastProject', event.target.value);
       }
     };
 
@@ -217,9 +222,8 @@ export default {
         await nextTick();
         newObjectInput.value?.focus();
       } else {
-        // Сохраняем значение объекта в localStorage
-        lastUsedObject.value = event.target.value;
-        localStorage.setItem('lastUsedObject', lastUsedObject.value);
+        // Сохраняем новое значение объекта в localStorage
+        localStorage.setItem('lastObject', event.target.value);
       }
     };
 
@@ -237,8 +241,8 @@ export default {
         }
 
         newTask.value.project = newProjectName.value;
-        lastUsedProject.value = newProjectName.value; // Обновляем последнее значение
-        localStorage.setItem('lastUsedProject', lastUsedProject.value); // Сохраняем в localStorage
+        // Сохраняем новый проект в localStorage
+        localStorage.setItem('lastProject', newTask.value.project);
         newProjectName.value = '';
         showNewProjectInput.value = false;
       } catch (error) {
@@ -260,8 +264,8 @@ export default {
         }
 
         newTask.value.object = newObjectName.value;
-        lastUsedObject.value = newObjectName.value; // Обновляем последнее значение
-        localStorage.setItem('lastUsedObject', lastUsedObject.value); // Сохраняем в localStorage
+        // Сохраняем новый объект в localStorage
+        localStorage.setItem('lastObject', newTask.value.object);
         newObjectName.value = '';
         showNewObjectInput.value = false;
       } catch (error) {
@@ -315,16 +319,19 @@ export default {
 
         if (error) throw error;
 
-        // Сбрасываем форму, но сохраняем последние значения
+        // Сохраняем текущие значения project и object в localStorage
+        saveLastValues();
+
+        // Сбрасываем форму, но сохраняем последние значения project и object
         newTask.value = {
           importance_tag: 'средняя',
           status: 'в очереди',
           privacy: 'рабочее',
           title: '',
           description: '',
-          object: '',
+          object: localStorage.getItem('lastObject') || '',
           due_date: '',
-          project: ''
+          project: localStorage.getItem('lastProject') || ''
         };
         setDefaultDate();
 
