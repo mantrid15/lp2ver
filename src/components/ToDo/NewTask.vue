@@ -101,7 +101,7 @@ export default {
       description: '',
       object: '',
       importance_tag: 'средняя',
-      due_date: '', // Это будет 'дд.мм.гггг' или ''
+      due_date: '',
       status: 'в очереди',
       privacy: 'рабочее',
       project: ''
@@ -117,24 +117,41 @@ export default {
     const newProjectInput = ref(null);
     const newObjectInput = ref(null);
 
-    // Устанавливаем текущую дату при монтировании компонента
+    // Состояние для хранения последних введенных значений
+    const lastUsedProject = ref('');
+    const lastUsedObject = ref('');
+
     onMounted(() => {
       setDefaultDate();
       fetchUniqueProjects();
       fetchUniqueObjects();
+      loadLastUsedValues(); // Загружаем последние значения из localStorage
     });
+
+    function loadLastUsedValues() {
+      const savedProject = localStorage.getItem('lastUsedProject');
+      const savedObject = localStorage.getItem('lastUsedObject');
+      if (savedProject) {
+        lastUsedProject.value = savedProject;
+        newTask.value.project = savedProject; // Устанавливаем значение проекта
+      }
+      if (savedObject) {
+        lastUsedObject.value = savedObject;
+        newTask.value.object = savedObject; // Устанавливаем значение объекта
+      }
+    }
 
     function setDefaultDate() {
       const today = new Date();
       internalDate.value = today.toISOString().split('T')[0];
-      handleDateChange(); // Обновляем форматированную дату
+      handleDateChange();
     }
 
     function getCurrentDate() {
       const today = new Date();
       return today.toISOString().split('T')[0];
     }
-    // Вызывается при изменении значения в input type="date"
+
     function handleDateChange() {
       if (!internalDate.value) {
         newTask.value.due_date = '';
@@ -142,7 +159,7 @@ export default {
       }
       const date = new Date(internalDate.value);
       const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Месяцы с 0
+      const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
       newTask.value.due_date = `${day}.${month}.${year}`;
     }
@@ -157,7 +174,6 @@ export default {
 
         if (error) throw error;
 
-        // Убираем дубликаты и пустые значения
         const projects = [...new Set(data.map(item => item.project).filter(Boolean))];
         uniqueProjects.value = projects;
       } catch (error) {
@@ -165,6 +181,7 @@ export default {
       }
     };
 
+    // Загрузка уникальных объектов
     const fetchUniqueObjects = async () => {
       try {
         const { data, error } = await supabase
@@ -187,6 +204,10 @@ export default {
         showNewProjectInput.value = true;
         await nextTick();
         newProjectInput.value?.focus();
+      } else {
+        // Сохраняем значение проекта в localStorage
+        lastUsedProject.value = event.target.value;
+        localStorage.setItem('lastUsedProject', lastUsedProject.value);
       }
     };
 
@@ -195,9 +216,14 @@ export default {
         showNewObjectInput.value = true;
         await nextTick();
         newObjectInput.value?.focus();
+      } else {
+        // Сохраняем значение объекта в localStorage
+        lastUsedObject.value = event.target.value;
+        localStorage.setItem('lastUsedObject', lastUsedObject.value);
       }
     };
 
+    // Добавление нового проекта
     const addNewProject = async () => {
       if (!newProjectName.value.trim()) {
         showNewProjectInput.value = false;
@@ -205,23 +231,22 @@ export default {
       }
 
       try {
-        // Добавляем проект в список
         if (!uniqueProjects.value.includes(newProjectName.value)) {
           uniqueProjects.value.push(newProjectName.value);
           uniqueProjects.value.sort();
         }
 
         newTask.value.project = newProjectName.value;
+        lastUsedProject.value = newProjectName.value; // Обновляем последнее значение
+        localStorage.setItem('lastUsedProject', lastUsedProject.value); // Сохраняем в localStorage
         newProjectName.value = '';
         showNewProjectInput.value = false;
-
-        // Можно опционально сохранить новый проект в базу данных
-        context.emit('project-added', newTask.value.project);
       } catch (error) {
         console.error('Ошибка при добавлении проекта:', error);
       }
     };
 
+    // Добавление нового объекта
     const addNewObject = async () => {
       if (!newObjectName.value.trim()) {
         showNewObjectInput.value = false;
@@ -235,6 +260,8 @@ export default {
         }
 
         newTask.value.object = newObjectName.value;
+        lastUsedObject.value = newObjectName.value; // Обновляем последнее значение
+        localStorage.setItem('lastUsedObject', lastUsedObject.value); // Сохраняем в localStorage
         newObjectName.value = '';
         showNewObjectInput.value = false;
       } catch (error) {
@@ -251,16 +278,16 @@ export default {
 
         let dueDateForSupabase = null;
         if (newTask.value.due_date) {
-            const [day, month, year] = newTask.value.due_date.split('.');
-            const dateObj = new Date(year, month - 1, day);
-            if (!isNaN(dateObj.getTime())) {
-                 dueDateForSupabase = dateObj.toISOString().split('T')[0];
-            } else {
-                console.warn("Невалидная дата:", newTask.value.due_date);
-                // Можно установить null или показать ошибку
-                dueDateForSupabase = null;
-            }
+          const [day, month, year] = newTask.value.due_date.split('.');
+          const dateObj = new Date(year, month - 1, day);
+          if (!isNaN(dateObj.getTime())) {
+            dueDateForSupabase = dateObj.toISOString().split('T')[0];
+          } else {
+            console.warn("Невалидная дата:", newTask.value.due_date);
+            dueDateForSupabase = null;
+          }
         }
+
         const sessionResult = await supabase.auth.getSession();
         const user = sessionResult?.data?.session?.user;
 
@@ -288,7 +315,7 @@ export default {
 
         if (error) throw error;
 
-        // Сбрасываем форму
+        // Сбрасываем форму, но сохраняем последние значения
         newTask.value = {
           importance_tag: 'средняя',
           status: 'в очереди',
@@ -296,13 +323,12 @@ export default {
           title: '',
           description: '',
           object: '',
-          due_date: '', // Это будет 'дд.мм.гггг' или ''
+          due_date: '',
           project: ''
         };
-        setDefaultDate(); // Сбрасываем на текущую дату после добавления
+        setDefaultDate();
 
-        // Используем context.emit вместо emit
-        context.emit('task-added'); // <--- Изменено здесь
+        context.emit('task-added');
 
       } catch (error) {
         // Логируем полную ошибку
@@ -310,7 +336,6 @@ export default {
       }
     }
 
-    // Возвращаем все необходимое для шаблона
     return {
       newTask,
       internalDate,
@@ -360,7 +385,7 @@ export default {
 }
 
 .input-group select[title="Объект"],
-.input-group input[placeholder="Введите новый объект"],
+.input-group input[placeholder="Новый объект"],
 .input-group select[title="Project"],
 .input-group input[placeholder="Новый проект"] {
   width: 100px; /* Ширина 100px для object и project */
