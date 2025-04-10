@@ -47,7 +47,9 @@
                     @change="applyProjectFilter"
                     class="project-filter-select"
                 >
+<!--
                   <option value="">Project</option>
+-->
                   <option v-for="project in uniqueProjects" :key="project" :value="project">
                     {{ project || '(без проекта)' }}
                   </option>
@@ -226,6 +228,15 @@
           </select>
           <span v-else>{{ task.object }}</span>
         </td>
+        <td class="status-cell" :class="statusClass(task.status)">
+            <select v-model="task.status" @change="updateTask(task)" :disabled="task.deleted && task.status === completedStatus">
+              <option :value="inProgressStatus">{{ inProgressText }}</option>
+              <option :value="completedStatus">{{ completedText }}</option>
+              <option :value="notStartedStatus">{{ notStartedText }}</option>
+              <option :value="waitedStatus">{{ waitedText }}</option>
+              <option :value="cancelledStatus">{{ cancelledText }}</option>
+            </select>
+          </td>
         <td class="importance-cell" :class="importanceClass(task.importance_tag)">
           <select v-model="task.importance_tag" @change="updateTask(task)" :disabled="isTaskCompleted(task) || task.deleted">
             <option :value="highImportance">{{ highImportanceText }}</option>
