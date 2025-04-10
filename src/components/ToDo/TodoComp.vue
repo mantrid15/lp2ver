@@ -160,9 +160,12 @@
           />
           <span v-else>{{ task.description }}</span>
         </td>
-        <td @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'project')">
+        <td
+            @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'project')"
+            @click.ctrl="!isTaskCompleted(task) && !task.deleted && startSelectEditing(task, 'project')"
+        >
           <input
-              v-if="task.editing && task.editingField === 'project'"
+              v-if="task.editing && task.editingField === 'project' && !task.selectEditing"
               v-model="task.project"
               @keyup.enter="finishEditing(task)"
               @blur="finishEditing(task)"
@@ -170,15 +173,34 @@
               class="task-input"
               :disabled="isTaskCompleted(task) || task.deleted"
           />
+          <select
+              v-else-if="task.editing && task.editingField === 'project' && task.selectEditing"
+              v-model="task.project"
+              @change="handleSelectChange(task)"
+              @blur="finishEditing(task)"
+              v-focus
+              class="task-input"
+              :disabled="isTaskCompleted(task) || task.deleted"
+          >
+<!--
+            <option value=""></option>
+-->
+            <option v-for="project in uniqueProjects" :key="project" :value="project">
+              {{ project || '(без проекта)' }}
+            </option>
+          </select>
           <span v-else>{{ task.project || '-' }}</span>
         </td>
-        <td :title="task.object"
+        <td
+            :title="task.object"
             :class="{ 'highlighted': isHighlighted(task.object) }"
             @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'object')"
+            @click.ctrl="!isTaskCompleted(task) && !task.deleted && startSelectEditing(task, 'object')"
             @mousemove="(e) => showTooltip(e, task.object)"
-            @mouseleave="removeTooltip()">
-            <input
-              v-if="task.editing && task.editingField === 'object'"
+            @mouseleave="removeTooltip()"
+        >
+          <input
+              v-if="task.editing && task.editingField === 'object' && !task.selectEditing"
               v-model="task.object"
               @keyup.enter="finishEditing(task)"
               @blur="finishEditing(task)"
@@ -186,16 +208,23 @@
               class="task-input"
               :disabled="isTaskCompleted(task) || task.deleted"
           />
-                    <span v-else>{{ task.object }}</span>
-        </td>
-        <td class="status-cell" :class="statusClass(task.status)">
-          <select v-model="task.status" @change="updateTask(task)" :disabled="task.deleted && task.status === completedStatus">
-            <option :value="inProgressStatus">{{ inProgressText }}</option>
-            <option :value="completedStatus">{{ completedText }}</option>
-            <option :value="notStartedStatus">{{ notStartedText }}</option>
-            <option :value="waitedStatus">{{ waitedText }}</option>
-            <option :value="cancelledStatus">{{ cancelledText }}</option>
+          <select
+              v-else-if="task.editing && task.editingField === 'object' && task.selectEditing"
+              v-model="task.object"
+              @change="handleSelectChange(task)"
+              @blur="finishEditing(task)"
+              v-focus
+              class="task-input"
+              :disabled="isTaskCompleted(task) || task.deleted"
+          >
+<!--
+            <option value=""></option>
+-->
+            <option v-for="object in uniqueObjects" :key="object" :value="object">
+              {{ object || '(без объекта)' }}
+            </option>
           </select>
+          <span v-else>{{ task.object }}</span>
         </td>
         <td class="importance-cell" :class="importanceClass(task.importance_tag)">
           <select v-model="task.importance_tag" @change="updateTask(task)" :disabled="isTaskCompleted(task) || task.deleted">
@@ -269,9 +298,9 @@ export default {
 
   setup(props, { emit }) {
 
+    const uniqueObjects = ref([]);
     const selectedProjectFilter = ref('');
     const uniqueProjects = ref([]);
-
 
     const currentSortKey = ref('created_at');
     const currentSortOrder = ref('desc');
@@ -350,7 +379,6 @@ export default {
       );
     };
 
-
     const highlightMatch = (text, searchText) => {
       if (!searchText || !text) return escapeHtml(text.toString());
 
@@ -402,21 +430,62 @@ export default {
     const currentUserId = ref(null);
     const filterText = ref(''); // Добавляем переменную для фильтрации
     // Метод для загрузки уникальных проектов
+
+    const handleSelectChange = async (task) => {
+      // Немедленно сохраняем изменения в базу данных
+      try {
+        const { error } = await supabase
+            .from('todolist')
+            .update({
+              [task.editingField]: task[task.editingField]
+            })
+            .match({ id: task.id });
+
+        if (error) throw error;
+
+        // Обновляем локальное состояние
+        const taskIndex = tasks.value.findIndex(t => t.id === task.id);
+        if (taskIndex !== -1) {
+          tasks.value[taskIndex][task.editingField] = task[task.editingField];
+        }
+      } catch (error) {
+        console.error('Ошибка при сохранении выбора:', error);
+      } finally {
+        // Завершаем редактирование
+        finishEditing(task, false); // false - чтобы не вызывать повторное сохранение
+      }
+    };
+
+    // В функции fetchUniqueProjects добавляем загрузку уникальных объектов
     const fetchUniqueProjects = async () => {
       try {
-        const { data, error } = await supabase
+        // Загрузка проектов
+        const { data: projectsData, error: projectsError } = await supabase
             .from('todolist')
             .select('project')
             .not('project', 'is', null)
             .order('project', { ascending: true });
 
-        if (error) throw error;
+        if (projectsError) throw projectsError;
 
-        // Убираем дубликаты и пустые значения
-        const projects = [...new Set(data.map(item => item.project).filter(Boolean))];
+        // Загрузка объектов
+        const { data: objectsData, error: objectsError } = await supabase
+            .from('todolist')
+            .select('object')
+            .not('object', 'is', null)
+            .order('object', { ascending: true });
+
+        if (objectsError) throw objectsError;
+
+        // Убираем дубликаты и пустые значения для проектов
+        const projects = [...new Set(projectsData.map(item => item.project).filter(Boolean))];
         uniqueProjects.value = projects;
+
+        // Убираем дубликаты и пустые значения для объектов
+        const objects = [...new Set(objectsData.map(item => item.object).filter(Boolean))];
+        uniqueObjects.value = objects;
       } catch (error) {
-        console.error('Ошибка при загрузке проектов:', error);
+        console.error('Ошибка при загрузке проектов и объектов:', error);
       }
     };
     // Метод для применения фильтра по проекту
@@ -682,24 +751,52 @@ export default {
 
     const isTaskCompleted = (task) => task.status === completedStatus;
 
+    const startSelectEditing = (task, field) => {
+      if (isTaskCompleted(task) || task.deleted) return;
+
+      // Завершаем любое текущее редактирование
+      tasks.value.forEach(t => {
+        if (t.editing) finishEditing(t, false);
+      });
+
+      // Устанавливаем флаг selectEditing
+      task.selectEditing = true;
+      startEditing(task, field);
+    };
+    // Модифицируем метод startEditing
     const startEditing = (task, field) => {
       if (isTaskCompleted(task) || task.deleted) return;
-      tasks.value.forEach(t => { if (t.editing) finishEditing(t, false); });
+
+      tasks.value.forEach(t => {
+        if (t.editing) finishEditing(t, false);
+      });
+
       task.originalValue = task[field];
       task.editing = true;
       task.editingField = field;
+
       nextTick(() => {
-        const inputElement = document.querySelector(`tr[data-task-id="${task.id}"] input.task-input`);
+        const selector = task.selectEditing ? 'select.task-input' : 'input.task-input';
+        const inputElement = document.querySelector(`tr[data-task-id="${task.id}"] ${selector}`);
         if (inputElement) {
           inputElement.focus();
+
+          // Для select автоматически открываем список вариантов
+          if (task.selectEditing && inputElement.tagName === 'SELECT') {
+            inputElement.click();
+          }
         }
       });
     };
 
+    // Модифицируем метод finishEditing
     const finishEditing = (task, shouldUpdateDB = true) => {
       if (task.editing) {
+        // Сбрасываем флаг selectEditing
+        task.selectEditing = false;
         task.editing = false;
         task.editingField = null;
+
         if (shouldUpdateDB && task[task.editingField] !== task.originalValue) {
           updateTask(task);
         } else if (!shouldUpdateDB) {
@@ -762,6 +859,7 @@ export default {
        // Если проверка пройдена, обновляем значение
        updateDueDate(task, newDateValue_YYYYMMDD);
      };
+
     const updateDueDate = async (task, newDate_YYYYMMDD) => {
       if (task.user_id !== currentUserId.value) {
         console.error(errorMessages.updateUserMismatch, `Task ID: ${task.id}`);
@@ -876,20 +974,23 @@ export default {
             .from('todolist')
             .select('*')
             .eq('user_id', currentUserId.value)
-            .order('created_at', { ascending: true }); // Исходная сортировка по дате
+            .order('created_at', { ascending: true });
 
         if (error) throw error;
 
         tasks.value = (data || []).map(task => ({
           ...task,
+          project: task.project || '', // Гарантируем, что project не будет null
+          object: task.object || '', // Гарантируем, что object не будет null
           due_date_edit: formatDateForInput(task.due_date) || '',
           editing: false,
           editingField: null,
+          selectEditing: false,
           originalValue: ''
         }));
 
-        // Сразу применяем сортировку Default при загрузке
         applyDefaultSort();
+        fetchUniqueProjects(); // Обновляем списки уникальных значений
 
       } catch (error) {
         console.error(errorMessages.loadTasks, error);
@@ -984,6 +1085,9 @@ export default {
      });
     // --- Конец хуков ---
     return {
+      handleSelectChange,
+      uniqueObjects,
+      startSelectEditing,
       isHighlighted,
       containsFilterText,
       highlightMatch,
@@ -1318,7 +1422,26 @@ export default {
 .header-label-container:hover .sort-icon {
   opacity: 1;
 }
+/* Добавляем стили для select в режиме редактирования */
+.task-input[type="text"],
+.task-input[type="date"],
+.task-input select {
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 1em;
+  box-sizing: border-box;
+}
 
+.task-input select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-color: white;
+  cursor: pointer;
+}
 .task-title {
   font-weight: bold;
   margin-left: 5px;
@@ -1349,9 +1472,7 @@ export default {
   */
   margin: 0;
   width: 100%;
-
   height: calc(100vh - 70px); /* Высота контейнера, учитывая padding-top */
-
   overflow-x: hidden;
 }
 
