@@ -252,22 +252,24 @@
           </select>
         </td>
         <td class="date-cell">{{ formatDate(task.created_at) }}</td>
-        <td class="date-cell" @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')">
-          <input
-              v-if="task.editing && task.editingField === 'due_date'"
-              :value="task.due_date_edit"
-              @input="updateDueDateValue(task, $event.target.value)"
-              @blur="finishEditing(task)"
-              type="date"
-              :min="formatDateForInput(task.created_at)"
-              class="date-input"
-              v-focus
-          />
-          <span v-else>
-            {{ formatDateForDisplay(task.due_date) }}
-            <i class="fas fa-calendar-alt" @click="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')" title="Редактировать дату" style="cursor: pointer; margin-left: 5px;"></i>
-          </span>
-        </td>
+        <td class="date-cell"
+            :class="getDueDateClass(task)"
+            @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')">
+            <input
+                v-if="task.editing && task.editingField === 'due_date'"
+                :value="task.due_date_edit"
+                @input="updateDueDateValue(task, $event.target.value)"
+                @blur="finishEditing(task)"
+                type="date"
+                :min="formatDateForInput(task.created_at)"
+                class="date-input"
+                v-focus
+            />
+            <span v-else>
+    {{ formatDateForDisplay(task.due_date) }}
+    <i class="fas fa-calendar-alt" @click="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')" title="Редактировать дату" style="cursor: pointer; margin-left: 5px;"></i>
+  </span>
+          </td>
         <td class="delete-cell">
           <template v-if="task.deleted">
             <button
@@ -441,6 +443,37 @@ export default {
     const currentUserId = ref(null);
     const filterText = ref(''); // Добавляем переменную для фильтрации
     // Метод для загрузки уникальных проектов
+    const getDueDateClass = (task) => {
+      // Не окрашиваем выполненные или отмененные задачи
+      if (task.status === completedStatus || task.status === cancelledStatus) return '';
+
+      if (!task.due_date) return '';
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      try {
+        const due = new Date(task.due_date);
+        due.setHours(0, 0, 0, 0);
+
+        const diffTime = due - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) {
+          return ''; // Сегодня - без окраски
+        } else if (diffDays < 0) {
+          // Просрочено
+          const daysOverdue = Math.abs(diffDays);
+          return daysOverdue <= 3 ? 'due-date-warning' : 'due-date-critical';
+        } else {
+          // Впереди
+          return diffDays <= 3 ? 'due-date-soon' : 'due-date-future';
+        }
+      } catch (e) {
+        console.error("Ошибка при обработке даты:", task.due_date, e);
+        return '';
+      }
+    };
 
     const handleSelectChange = async (task) => {
       // Немедленно сохраняем изменения в базу данных
@@ -466,7 +499,6 @@ export default {
         finishEditing(task, false); // false - чтобы не вызывать повторное сохранение
       }
     };
-
     // В функции fetchUniqueProjects добавляем загрузку уникальных объектов
     const fetchUniqueProjects = async () => {
       try {
@@ -1096,6 +1128,7 @@ export default {
      });
     // --- Конец хуков ---
     return {
+      getDueDateClass,
       handleSelectChange,
       uniqueObjects,
       startSelectEditing,
@@ -1722,5 +1755,26 @@ export default {
 .completed-task .importance-cell.importance-high select:disabled,
 .completed-task .complexity-cell.complexity-high select:disabled {
   color: white !important;
+}
+/* Стили для ячеек с датами выполнения */
+.date-cell.due-date-warning {
+  background-color: rgba(250, 137, 137, 0.9) !important; /* Слабый оранжевый */
+}
+
+.date-cell.due-date-critical {
+  background-color: rgba(178, 9, 9, 0.9) !important; /* Бордовый */
+}
+
+.date-cell.due-date-soon {
+  background-color: rgba(144, 238, 144, 0.5) !important; /* Светло-зеленый */
+}
+
+.date-cell.due-date-future {
+  background-color: rgba(6, 100, 6, 0.3) !important; /* Темно-зеленый */
+}
+
+/* Сохраняем стили при наведении */
+.date-cell:hover {
+  opacity: 0.8;
 }
 </style>
