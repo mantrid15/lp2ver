@@ -104,7 +104,8 @@ export default {
       due_date: '',
       status: 'в очереди',
       privacy: 'рабочее',
-      project: ''
+      project: '',
+      deleted: false // Добавлено поле deleted с значением false по умолчанию
     });
 
     const internalDate = ref(null);
@@ -149,13 +150,21 @@ export default {
 
     function setDefaultDate() {
       const today = new Date();
-      internalDate.value = today.toISOString().split('T')[0];
-      handleDateChange();
+      // Получаем дату в локальном времени
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+
+      internalDate.value = `${year}-${month}-${day}`;
+      newTask.value.due_date = `${day}.${month}.${year}`;
     }
 
     function getCurrentDate() {
       const today = new Date();
-      return today.toISOString().split('T')[0];
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
 
     function handleDateChange() {
@@ -163,10 +172,8 @@ export default {
         newTask.value.due_date = '';
         return;
       }
-      const date = new Date(internalDate.value);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
+      // Разбиваем дату на компоненты
+      const [year, month, day] = internalDate.value.split('-');
       newTask.value.due_date = `${day}.${month}.${year}`;
     }
 
@@ -285,7 +292,11 @@ export default {
           const [day, month, year] = newTask.value.due_date.split('.');
           const dateObj = new Date(year, month - 1, day);
           if (!isNaN(dateObj.getTime())) {
-            dueDateForSupabase = dateObj.toISOString().split('T')[0];
+            // Форматируем для Supabase в формате YYYY-MM-DD
+            const formattedYear = dateObj.getFullYear();
+            const formattedMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const formattedDay = String(dateObj.getDate()).padStart(2, '0');
+            dueDateForSupabase = `${formattedYear}-${formattedMonth}-${formattedDay}`;
           } else {
             console.warn("Невалидная дата:", newTask.value.due_date);
             dueDateForSupabase = null;
@@ -309,6 +320,7 @@ export default {
           status: newTask.value.status,
           privacy: newTask.value.privacy,
           project: newTask.value.project,
+          deleted: false, // Добавлено поле deleted со значением false
           created_at: new Date().toISOString(),
           user_id: user.id // Добавляем ID пользователя
         };
@@ -331,7 +343,8 @@ export default {
           description: '',
           object: localStorage.getItem('lastObject') || '',
           due_date: '',
-          project: localStorage.getItem('lastProject') || ''
+          project: localStorage.getItem('lastProject') || '',
+          deleted: false // Добавлено поле deleted при сбросе формы
         };
         setDefaultDate();
 
