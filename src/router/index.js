@@ -5,6 +5,7 @@ import UnauthorizedView from '../views/UnauthorizedView.vue'
 import LoginView from "@/views/LoginView.vue";
 import Info from '@/views/InfoView.vue';
 import LinzerView from '@/views/LinzerTwo.vue';
+import NoteView from '@/views/NoteView.vue';
 import ToDo from '@/views/TodoView.vue';
 import { useStore } from 'vuex';
 
@@ -24,6 +25,13 @@ const router = createRouter({
 			component: LinzerView,
 			meta: { requiresAuth: true }
 		},
+		{
+			path: "/note",
+			name: "LiNote",
+			component: NoteView,
+			meta: { requiresAuth: true }
+		},
+
 		{
 			path: "/todo",
 			name: "ToDo",

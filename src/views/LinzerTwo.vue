@@ -39,7 +39,6 @@ import { useStore } from 'vuex';
 
 export default {
   name: 'LinzerTwo',
-
   components: {
     Left,
     Gate,
