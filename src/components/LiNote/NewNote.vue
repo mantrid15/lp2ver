@@ -4,6 +4,13 @@
 
     <!-- Кнопки управления и поле keywords -->
     <div class="controls-row">
+      <div class="title-input">
+        <input
+          v-model="title"
+          placeholder="Заголовок заметки"
+          class="title-field"
+        >
+      </div>
       <div class="keywords-input">
         <input
           v-model="keywords"
@@ -29,15 +36,18 @@
         class="note-editable-area"
         placeholder="Введите текст заметки..."
         @paste="handlePaste"
+        @input="updateTitleFromContent"
       ></div>
     </div>
 
     <!-- Окно предпросмотра -->
-    <div v-if="isPreviewVisible" class="preview-modal">
+    <div v-if="isPreviewVisible" class="preview-modal" @keydown.esc="closePreview" tabindex="0">
       <div class="preview-content">
         <div class="preview-header">
           <h3>Предпросмотр заметки</h3>
-          <button @click="closePreview" class="close-preview">&times;</button>
+          <button @click="closePreview" class="close-button-top" title="Закрыть (Esc)">
+            &times;
+          </button>
         </div>
         <div class="preview-scroll-container">
           <div class="preview-html" v-html="previewContent"></div>
@@ -59,7 +69,7 @@
 </template>
 
 <script>
-import { ref } from 'vue';
+import { ref, nextTick , onMounted, onUnmounted } from 'vue';
 import { supabase } from '@/clients/supabase.js';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -75,6 +85,25 @@ export default {
     const keywords = ref('');
     const title = ref('');
 
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && isPreviewVisible.value) {
+        closePreview();
+      }
+    };
+
+    // Автоматическое определение заголовка из первого абзаца
+    const updateTitleFromContent = () => {
+      if (!editableArea.value) return;
+
+      const textContent = editableArea.value.textContent || '';
+      const firstParagraph = textContent.split('\n')[0] || '';
+
+      // Если заголовок еще не задан вручную или пуст, обновляем его
+      if (!title.value || title.value === '') {
+        title.value = firstParagraph.substring(0, 255);
+      }
+    };
+
     const addLog = (message, type = 'info') => {
       logMessages.value.unshift({
         message,
@@ -87,7 +116,13 @@ export default {
     const showPreview = () => {
       if (!editableArea.value) return;
 
-      previewContent.value = editableArea.value.innerHTML;
+      // Обновляем заголовок перед показом предпросмотра
+      updateTitleFromContent();
+
+      previewContent.value = `
+        <h1>${title.value}</h1>
+        ${editableArea.value.innerHTML}
+      `;
       isPreviewVisible.value = true;
       addLog('Открыт предпросмотр заметки');
     };
@@ -110,6 +145,12 @@ export default {
           const cleanHtml = await cleanPastedHtml(html);
           document.execCommand('insertHTML', false, cleanHtml);
           addLog('HTML-контент добавлен из буфера');
+
+          // Прокрутка после вставки
+          await nextTick();
+          if (editableArea.value) {
+            editableArea.value.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }
           return;
         } catch (error) {
           addLog(`Ошибка обработки HTML: ${error.message}`, 'error');
@@ -133,7 +174,16 @@ export default {
             const img = document.createElement('img');
             img.src = imageUrl;
             img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.style.display = 'block';
+            img.style.margin = '10px auto';
             editableArea.value.appendChild(img);
+
+            // Прокрутка после вставки изображения
+            await nextTick();
+            if (editableArea.value) {
+              editableArea.value.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
 
             addLog(`Публичная ссылка: ${imageUrl}`);
           } catch (error) {
@@ -144,12 +194,20 @@ export default {
     };
 
     const cleanPastedHtml = (html) => {
-      return html
-        .replace(/<meta[^>]*>/g, '')
-        .replace(/<style[^>]*>.*?<\/style>/g, '')
-        .replace(/<script[^>]*>.*?<\/script>/g, '')
-        .replace(/<font[^>]*>/g, '<span>')
-        .replace(/<\/font>/g, '</span>');
+      // Обработка изображений в HTML
+      const processedHtml = html
+          .replace(/<img([^>]*)>/g, (match, attrs) => {
+            return `<img${attrs} style="max-width:100%; height:auto; display:block; margin:10px auto;">`;
+          })
+          .replace(/width="[^"]*"/g, '')
+          .replace(/height="[^"]*"/g, '')
+          .replace(/<meta[^>]*>/g, '')
+          .replace(/<style[^>]*>.*?<\/style>/g, '')
+          .replace(/<script[^>]*>.*?<\/script>/g, '')
+          .replace(/<font[^>]*>/g, '<span>')
+          .replace(/<\/font>/g, '</span>');
+
+      return processedHtml;
     };
 
     const uploadImage = async (blob) => {
@@ -188,9 +246,8 @@ export default {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError || !user) throw userError || new Error('Требуется авторизация');
 
-        // Извлекаем первый абзац как заголовок
-        const firstParagraph = editableArea.value.textContent.split('\n')[0] || 'Без названия';
-        title.value = firstParagraph.substring(0, 255);
+        // Обновляем заголовок перед сохранением
+        updateTitleFromContent();
 
         // Очищаем HTML перед сохранением
         const cleanContent = DOMPurify.sanitize(editableArea.value.innerHTML);
@@ -223,12 +280,21 @@ export default {
         // Очищаем поля после сохранения
         editableArea.value.innerHTML = '';
         keywords.value = '';
+        title.value = '';
         noteContent.value = '';
 
       } catch (error) {
         addLog(`Ошибка сохранения заметки: ${error.message}`, 'error');
       }
     };
+
+    onMounted(() => {
+      window.addEventListener('keydown', handleKeyDown);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('keydown', handleKeyDown);
+    });
 
     return {
       editableArea,
@@ -241,13 +307,107 @@ export default {
       handlePaste,
       showPreview,
       closePreview,
-      saveNote
+      saveNote,
+      updateTitleFromContent
     };
   }
 };
 </script>
 
 <style scoped>
+
+.note-editable-area {
+  width: 100%;
+  min-height: 200px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #000000;
+  border-radius: 4px;
+  font-family: inherit;
+  outline: none;
+  white-space: pre-wrap;
+  background: white;
+  line-height: 1.5;
+}
+
+.note-editable-area img {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  margin: 10px auto !important;
+}
+
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  position: relative;
+}
+
+.close-button-top {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 30px;
+  height: 30px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
+}
+
+.close-button-top:hover {
+  background-color: #cc0000;
+  transform: scale(1.1);
+}
+
+.close-button-top:active {
+  transform: scale(0.95);
+}
+
+.close-preview {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #555;
+  padding: 0 8px;
+  transition: color 0.2s;
+}
+
+.close-preview:hover {
+  color: #000;
+}
+/* Добавляем стили для поля заголовка */
+.title-input {
+  flex-grow: 1;
+  min-width: 200px;
+  border: 1px solid #000;
+}
+
+.title-field {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: inherit;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
 .new-note-container {
   width: 100%;
   max-width: 800px;
@@ -255,7 +415,6 @@ export default {
   padding: 20px;
   position: relative;
 }
-
 /* Фиксированный блок управления */
 .controls-row {
   position: sticky;
@@ -271,7 +430,6 @@ export default {
   border-bottom: 1px solid #eee;
   box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
-
 /* Контейнер редактора с отступом */
 .editor-container {
   margin-top: 70px; /* Отступ под фиксированный блок */
@@ -325,7 +483,6 @@ export default {
 .save-button:hover {
   background-color: #007E33;
 }
-
 /* Остальные стили остаются без изменений */
 .note-editable-area {
   width: 100%;
