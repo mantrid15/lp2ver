@@ -2,14 +2,23 @@
   <div class="new-note-container">
     <h2>Создание заметки</h2>
 
-    <!-- Кнопки управления - теперь над редактором -->
-    <div class="button-group">
-      <button @click="showPreview" class="preview-button">
-        Предпросмотр
-      </button>
-      <button @click="saveNote" class="save-button">
-        Сохранить заметку
-      </button>
+    <!-- Кнопки управления и поле keywords -->
+    <div class="controls-row">
+      <div class="keywords-input">
+        <input
+          v-model="keywords"
+          placeholder="Ключевые слова (через запятую)"
+          class="keywords-field"
+        >
+      </div>
+      <div class="button-group">
+        <button @click="showPreview" class="preview-button">
+          Предпросмотр
+        </button>
+        <button @click="saveNote" class="save-button">
+          Сохранить заметку
+        </button>
+      </div>
     </div>
 
     <!-- Редактор -->
@@ -50,6 +59,8 @@
 <script>
 import { ref, onMounted } from 'vue';
 import { supabase } from '@/clients/supabase.js';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 export default {
   name: "NewNote",
@@ -59,6 +70,8 @@ export default {
     const logMessages = ref([]);
     const isPreviewVisible = ref(false);
     const previewContent = ref('');
+    const keywords = ref('');
+    const title = ref('');
 
     const addLog = (message, type = 'info') => {
       logMessages.value.unshift({
@@ -69,113 +82,53 @@ export default {
       console.log(`[${type}] ${message}`);
     };
 
-    const showPreview = () => {
+    const saveNote = async () => {
       if (!editableArea.value) return;
 
-      previewContent.value = editableArea.value.innerHTML;
-      isPreviewVisible.value = true;
-      addLog('Открыт предпросмотр заметки');
-    };
-
-    const closePreview = () => {
-      isPreviewVisible.value = false;
-      addLog('Предпросмотр закрыт');
-    };
-
-    const handlePaste = async (event) => {
-      event.preventDefault();
-      addLog('Начало обработки вставки');
-
-      const clipboardData = event.clipboardData || window.clipboardData;
-      const text = clipboardData.getData('text/plain');
-      const html = clipboardData.getData('text/html');
-
-      // Если есть HTML (например, при копировании из Word или веб-страницы)
-      if (html) {
-        try {
-          const cleanHtml = await cleanPastedHtml(html);
-          document.execCommand('insertHTML', false, cleanHtml);
-          addLog('HTML-контент добавлен из буфера');
-          return;
-        } catch (error) {
-          addLog(`Ошибка обработки HTML: ${error.message}`, 'error');
-        }
-      }
-
-      // Обработка текста
-      const text1 = event.clipboardData.getData('text/plain');
-      if (text) {
-        document.execCommand('insertText', false, text1);
-        addLog('Текст добавлен из буфера');
-      }
-
-      // Обработка изображений
-      for (const item of clipboardData.items) {
-        if (item.type.startsWith('image/')) {
-          addLog(`Обнаружено изображение: ${item.type}`);
-          const blob = item.getAsFile();
-
-          try {
-            const imageUrl = await uploadImage(blob);
-            addLog(`Изображение загружено: ${imageUrl}`);
-
-            // Вставляем изображение в редактор
-            const img = document.createElement('img');
-            img.src = imageUrl;
-            img.style.maxWidth = '100%';
-            editableArea.value.appendChild(img);
-
-            addLog(`Публичная ссылка: ${imageUrl}`);
-          } catch (error) {
-            addLog(`Ошибка загрузки изображения: ${error.message}`, 'error');
-          }
-        }
-      }
-    };
-
-    const cleanPastedHtml = (html) => {
-      // Упрощенная очистка HTML (можно расширить по необходимости)
-      return html
-        .replace(/<meta[^>]*>/g, '')
-        .replace(/<style[^>]*>.*?<\/style>/g, '')
-        .replace(/<script[^>]*>.*?<\/script>/g, '')
-        .replace(/<font[^>]*>/g, '<span>')
-        .replace(/<\/font>/g, '</span>');
-    };
-
-    const uploadImage = async (blob) => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Требуется авторизация');
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) throw userError || new Error('Требуется авторизация');
 
-        const fileExt = blob.type.split('/')[1] || 'png';
-        const fileName = `image-${Date.now()}.${fileExt}`;
-        const filePath = `user_${user.id}/${fileName}`;
+        // Извлекаем первый абзац как заголовок
+        const firstParagraph = editableArea.value.textContent.split('\n')[0] || 'Без названия';
+        title.value = firstParagraph.substring(0, 255);
 
-        const { error } = await supabase.storage
-          .from('linknote')
-          .upload(filePath, blob);
+        // Очищаем HTML перед сохранением
+        const cleanContent = DOMPurify.sanitize(editableArea.value.innerHTML);
+
+        // Подготовка тегов из keywords
+        const tagsArray = keywords.value
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(tag => tag.length > 0);
+
+        // Извлекаем первое изображение для image_url
+        const firstImg = editableArea.value.querySelector('img');
+        const imageUrl = firstImg ? firstImg.src : null;
+
+        const { error } = await supabase
+          .from('linote')
+          .insert([{
+            title: title.value,
+            content: cleanContent,
+            image_url: imageUrl,
+            user_id: user.id,
+            tags: tagsArray,
+            visibility: 'private' // или другой статус по умолчанию
+          }]);
 
         if (error) throw error;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('linknote')
-          .getPublicUrl(filePath);
+        addLog('Заметка успешно сохранена в базе данных', 'success');
 
-        return publicUrl;
+        // Очищаем поля после сохранения
+        editableArea.value.innerHTML = '';
+        keywords.value = '';
+        noteContent.value = '';
+
       } catch (error) {
-        console.error('Upload error:', error);
-        throw error;
+        addLog(`Ошибка сохранения заметки: ${error.message}`, 'error');
       }
-    };
-
-    const saveNote = () => {
-      if (!editableArea.value) return;
-
-      noteContent.value = editableArea.value.innerHTML;
-      addLog('Заметка сохранена', 'success');
-
-      // Здесь можно добавить сохранение в базу данных
     };
 
     return {
@@ -184,9 +137,11 @@ export default {
       logMessages,
       isPreviewVisible,
       previewContent,
-      handlePaste,
-      showPreview,
-      closePreview,
+      keywords,
+      title,
+      // handlePaste,
+      // showPreview,
+      // closePreview,
       saveNote
     };
   }
@@ -194,6 +149,29 @@ export default {
 </script>
 
 <style scoped>
+
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 15px;
+  align-items: center;
+}
+
+.keywords-input {
+  flex-grow: 1;
+  min-width: 200px;
+  border: 1px solid #000000;
+}
+
+.keywords-field {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: inherit;
+}
+
 .note-editable-area {
   width: 100%;
   min-height: 200px;
@@ -255,7 +233,9 @@ export default {
 .button-group {
   display: flex;
   gap: 10px;
+  /*
   margin-bottom: 15px;
+  */
 }
 
 /* Улучшенное окно предпросмотра */
