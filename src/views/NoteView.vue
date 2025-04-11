@@ -1,9 +1,9 @@
 <template>
   <div v-if="account?.data?.session" class="container">
-    <div>
+<!--    <div>
       LiNote - инструмент для создания заметок
-    </div>
-    <NoteView width="100%"/>
+    </div>-->
+    <NewNote width="80%"/>
   </div>
   <div v-else class="auth-message">
     Пожалуйста, войдите в систему
@@ -11,14 +11,14 @@
 </template>
 
 <script>
-import NoteView from "@/components/Columns/Left.vue";
+import NewNote from "@/components/LiNote/NewNote.vue";
 import { supabase } from '@/clients/supabase.js';
 import { computed, onMounted, ref, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 
 export default {
-  name: "HomeView", // Изменил имя компонента, так как NoteView - это дочерний компонент
-  components: { NoteView },
+  name: "NoteView", // Изменил имя компонента, так как NoteView - это дочерний компонент
+  components: {NewNote},
   setup() {
     const store = useStore();
     const userId = computed(() => store.state.userId);
@@ -79,7 +79,11 @@ export default {
 .container {
   display: flex;
   height: calc(100vh - 107px);
+  /*
+  max-width: 1200px;
+  */
+
   overflow: hidden;
-  margin-top: 45px;
+  margin-top: 50px;
 }
 </style>
