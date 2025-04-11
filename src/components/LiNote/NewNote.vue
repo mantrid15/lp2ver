@@ -19,6 +19,9 @@
         >
       </div>
       <div class="button-group">
+        <button @click="clearAll" class="clear-button">
+          Очистить
+        </button>
         <button @click="showPreview" class="preview-button">
           Предпросмотр
         </button>
@@ -45,9 +48,14 @@
       <div class="preview-content">
         <div class="preview-header">
           <h3>Предпросмотр заметки</h3>
-          <button @click="closePreview" class="close-button-top" title="Закрыть (Esc)">
-            &times;
-          </button>
+          <div class="preview-actions">
+            <button @click="saveNote" class="save-button">
+              Сохранить заметку
+            </button>
+            <button @click="closePreview" class="close-button-top" title="Закрыть (Esc)">
+              &times;
+            </button>
+          </div>
         </div>
         <div class="preview-scroll-container">
           <div class="preview-html" v-html="previewContent"></div>
@@ -56,6 +64,7 @@
     </div>
 
     <!-- Логи -->
+<!--
     <div v-if="logMessages.length" class="log-console">
       <h3>Лог выполнения:</h3>
       <div v-for="(log, index) in logMessages"
@@ -65,6 +74,7 @@
         [{{ log.timestamp }}] {{ log.message }}
       </div>
     </div>
+-->
   </div>
 </template>
 
@@ -84,6 +94,16 @@ export default {
     const previewContent = ref('');
     const keywords = ref('');
     const title = ref('');
+
+    const clearAll = () => {
+      if (editableArea.value) {
+        editableArea.value.innerHTML = '';
+      }
+      title.value = '';
+      keywords.value = '';
+      addLog('Все поля очищены', 'info');
+    };
+
 
     const handleKeyDown = (event) => {
       if (event.key === 'Escape' && isPreviewVisible.value) {
@@ -137,8 +157,13 @@ export default {
       addLog('Начало обработки вставки');
 
       const clipboardData = event.clipboardData || window.clipboardData;
-      const text = clipboardData.getData('text/plain');
+      let text = clipboardData.getData('text/plain');
       const html = clipboardData.getData('text/html');
+
+      // Функция для очистки текста от начальных пробелов и непечатаемых символов
+      const cleanText = (str) => {
+        return str.replace(/^[\s\uFEFF\xA0]+/, '').replace(/[\s\uFEFF\xA0]+$/, '');
+      };
 
       if (html) {
         try {
@@ -158,6 +183,8 @@ export default {
       }
 
       if (text) {
+        // Очищаем текст перед вставкой
+        text = cleanText(text);
         document.execCommand('insertText', false, text);
         addLog('Текст добавлен из буфера');
       }
@@ -254,24 +281,24 @@ export default {
 
         // Подготовка тегов из keywords
         const tagsArray = keywords.value
-          .split(',')
-          .map(tag => tag.trim())
-          .filter(tag => tag.length > 0);
+            .split(',')
+            .map(tag => tag.trim())
+            .filter(tag => tag.length > 0);
 
         // Извлекаем первое изображение для image_url
         const firstImg = editableArea.value.querySelector('img');
         const imageUrl = firstImg ? firstImg.src : null;
 
         const { error } = await supabase
-          .from('linote')
-          .insert([{
-            title: title.value,
-            content: cleanContent,
-            image_url: imageUrl,
-            user_id: user.id,
-            tags: tagsArray,
-            visibility: 'private' // или другой статус по умолчанию
-          }]);
+            .from('linote')
+            .insert([{
+              title: title.value,
+              content: cleanContent,
+              image_url: imageUrl,
+              user_id: user.id,
+              tags: tagsArray,
+              visibility: 'private' // или другой статус по умолчанию
+            }]);
 
         if (error) throw error;
 
@@ -282,6 +309,9 @@ export default {
         keywords.value = '';
         title.value = '';
         noteContent.value = '';
+
+        // Закрываем окно предпросмотра после сохранения
+        isPreviewVisible.value = false;
 
       } catch (error) {
         addLog(`Ошибка сохранения заметки: ${error.message}`, 'error');
@@ -308,13 +338,48 @@ export default {
       showPreview,
       closePreview,
       saveNote,
-      updateTitleFromContent
+      updateTitleFromContent,
+      clearAll
     };
   }
 };
 </script>
 
 <style scoped>
+/* Добавляем стиль для кнопки Очистить */
+.clear-button {
+  padding: 10px 15px;
+  background-color: #9c27b0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.clear-button:hover {
+  background-color: #7b1fa2;
+}
+
+/* Обновляем стили для заголовка предпросмотра */
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  position: relative;
+}
+
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+
 
 .note-editable-area {
   width: 100%;
