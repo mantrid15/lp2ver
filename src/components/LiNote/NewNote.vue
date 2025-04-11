@@ -21,16 +21,18 @@
       </div>
     </div>
 
-    <!-- Редактор -->
-    <div
-      ref="editableArea"
-      contenteditable="true"
-      class="note-editable-area"
-      placeholder="Введите текст заметки..."
-      @paste="handlePaste"
-    ></div>
+    <!-- Редактор с отступом -->
+    <div class="editor-container">
+      <div
+        ref="editableArea"
+        contenteditable="true"
+        class="note-editable-area"
+        placeholder="Введите текст заметки..."
+        @paste="handlePaste"
+      ></div>
+    </div>
 
-    <!-- Окно предпросмотра с улучшенной прокруткой -->
+    <!-- Окно предпросмотра -->
     <div v-if="isPreviewVisible" class="preview-modal">
       <div class="preview-content">
         <div class="preview-header">
@@ -57,7 +59,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { supabase } from '@/clients/supabase.js';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -82,8 +84,105 @@ export default {
       console.log(`[${type}] ${message}`);
     };
 
-    const saveNote = async () => {
+    const showPreview = () => {
       if (!editableArea.value) return;
+
+      previewContent.value = editableArea.value.innerHTML;
+      isPreviewVisible.value = true;
+      addLog('Открыт предпросмотр заметки');
+    };
+
+    const closePreview = () => {
+      isPreviewVisible.value = false;
+      addLog('Предпросмотр закрыт');
+    };
+
+    const handlePaste = async (event) => {
+      event.preventDefault();
+      addLog('Начало обработки вставки');
+
+      const clipboardData = event.clipboardData || window.clipboardData;
+      const text = clipboardData.getData('text/plain');
+      const html = clipboardData.getData('text/html');
+
+      if (html) {
+        try {
+          const cleanHtml = await cleanPastedHtml(html);
+          document.execCommand('insertHTML', false, cleanHtml);
+          addLog('HTML-контент добавлен из буфера');
+          return;
+        } catch (error) {
+          addLog(`Ошибка обработки HTML: ${error.message}`, 'error');
+        }
+      }
+
+      if (text) {
+        document.execCommand('insertText', false, text);
+        addLog('Текст добавлен из буфера');
+      }
+
+      for (const item of clipboardData.items) {
+        if (item.type.startsWith('image/')) {
+          addLog(`Обнаружено изображение: ${item.type}`);
+          const blob = item.getAsFile();
+
+          try {
+            const imageUrl = await uploadImage(blob);
+            addLog(`Изображение загружено: ${imageUrl}`);
+
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.style.maxWidth = '100%';
+            editableArea.value.appendChild(img);
+
+            addLog(`Публичная ссылка: ${imageUrl}`);
+          } catch (error) {
+            addLog(`Ошибка загрузки изображения: ${error.message}`, 'error');
+          }
+        }
+      }
+    };
+
+    const cleanPastedHtml = (html) => {
+      return html
+        .replace(/<meta[^>]*>/g, '')
+        .replace(/<style[^>]*>.*?<\/style>/g, '')
+        .replace(/<script[^>]*>.*?<\/script>/g, '')
+        .replace(/<font[^>]*>/g, '<span>')
+        .replace(/<\/font>/g, '</span>');
+    };
+
+    const uploadImage = async (blob) => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Требуется авторизация');
+
+        const fileExt = blob.type.split('/')[1] || 'png';
+        const fileName = `image-${Date.now()}.${fileExt}`;
+        const filePath = `user_${user.id}/${fileName}`;
+
+        const { error } = await supabase.storage
+          .from('linknote')
+          .upload(filePath, blob);
+
+        if (error) throw error;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('linknote')
+          .getPublicUrl(filePath);
+
+        return publicUrl;
+      } catch (error) {
+        console.error('Upload error:', error);
+        throw error;
+      }
+    };
+
+    const saveNote = async () => {
+      if (!editableArea.value || !editableArea.value.textContent.trim()) {
+        addLog('Заметка пуста, сохранение отменено', 'warning');
+        return;
+      }
 
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -139,9 +238,9 @@ export default {
       previewContent,
       keywords,
       title,
-      // handlePaste,
-      // showPreview,
-      // closePreview,
+      handlePaste,
+      showPreview,
+      closePreview,
       saveNote
     };
   }
@@ -149,13 +248,33 @@ export default {
 </script>
 
 <style scoped>
+.new-note-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  position: relative;
+}
 
+/* Фиксированный блок управления */
 .controls-row {
+  position: sticky;
+  top: 0;
+  background: white;
+  padding: 15px 0;
+  z-index: 100;
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
   margin-bottom: 15px;
   align-items: center;
+  border-bottom: 1px solid #eee;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Контейнер редактора с отступом */
+.editor-container {
+  margin-top: 70px; /* Отступ под фиксированный блок */
 }
 
 .keywords-input {
@@ -172,6 +291,42 @@ export default {
   font-family: inherit;
 }
 
+.button-group {
+  display: flex;
+  gap: 10px;
+}
+
+.preview-button {
+  padding: 10px 15px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.preview-button:hover {
+  background-color: #cc0000;
+}
+
+.save-button {
+  padding: 10px 15px;
+  background-color: #00C851;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.save-button:hover {
+  background-color: #007E33;
+}
+
+/* Остальные стили остаются без изменений */
 .note-editable-area {
   width: 100%;
   min-height: 200px;
@@ -200,45 +355,6 @@ export default {
   border: 1px solid #eee;
 }
 
-.preview-button {
-  padding: 10px 15px;
-  background-color: #ff4444; /* Красный цвет */
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  font-weight: bold;
-}
-
-.preview-button:hover {
-  background-color: #cc0000; /* Темнее красный при наведении */
-}
-
-.save-button {
-  padding: 10px 15px;
-  background-color: #00C851; /* Зеленый цвет */
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  font-weight: bold;
-}
-
-.save-button:hover {
-  background-color: #007E33; /* Темнее зеленый при наведении */
-}
-
-.button-group {
-  display: flex;
-  gap: 10px;
-  /*
-  margin-bottom: 15px;
-  */
-}
-
-/* Улучшенное окно предпросмотра */
 .preview-modal {
   position: fixed;
   top: 0;
@@ -275,14 +391,24 @@ export default {
 .preview-scroll-container {
   overflow-y: auto;
   flex-grow: 1;
-  padding-right: 10px; /* Для компенсации скроллбара */
+  padding-right: 10px;
 }
 
 .preview-html {
   padding: 10px;
 }
 
-/* Стили полосы прокрутки */
+.close-preview {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #555;
+}
+
 .preview-scroll-container::-webkit-scrollbar {
   width: 8px;
 }
@@ -301,4 +427,40 @@ export default {
   background: #555;
 }
 
+.log-console {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.log-message {
+  padding: 5px 0;
+  border-bottom: 1px solid #e0e0e0;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.log-message.info {
+  color: #31708f;
+  background-color: #d9edf7;
+}
+
+.log-message.success {
+  color: #3c763d;
+  background-color: #dff0d8;
+}
+
+.log-message.warning {
+  color: #8a6d3b;
+  background-color: #fcf8e3;
+}
+
+.log-message.error {
+  color: #a94442;
+  background-color: #f2dede;
+}
 </style>
