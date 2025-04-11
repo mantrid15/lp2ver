@@ -1,48 +1,37 @@
 <template>
   <div class="new-note-container">
-    <h2>Создание заметки</h2>
-
     <!-- Кнопки управления и поле keywords -->
     <div class="controls-row">
-      <div class="title-input">
-        <input
+      <input
           v-model="title"
-          placeholder="Заголовок заметки"
+          placeholder="Заголовок"
           class="title-field"
-        >
-      </div>
-      <div class="keywords-input">
-        <input
+      >
+      <input
           v-model="keywords"
-          placeholder="Ключевые слова (через запятую)"
+          placeholder="Ключевые слова"
           class="keywords-field"
-        >
-      </div>
+      >
+      <div
+          ref="editableArea"
+          contenteditable="true"
+          class="note-editable-area"
+          placeholder="Текст заметки..."
+          @paste="handlePaste"
+          @input="updateTitleFromContent"
+      ></div>
       <div class="button-group">
         <button @click="clearAll" class="clear-button">
           Очистить
         </button>
         <button @click="showPreview" class="preview-button">
-          Предпросмотр
+          Просмотр
         </button>
         <button @click="saveNote" class="save-button">
-          Сохранить заметку
+          Сохранить
         </button>
       </div>
     </div>
-
-    <!-- Редактор с отступом -->
-    <div class="editor-container">
-      <div
-        ref="editableArea"
-        contenteditable="true"
-        class="note-editable-area"
-        placeholder="Введите текст заметки..."
-        @paste="handlePaste"
-        @input="updateTitleFromContent"
-      ></div>
-    </div>
-
     <!-- Окно предпросмотра -->
     <div v-if="isPreviewVisible" class="preview-modal" @keydown.esc="closePreview" tabindex="0">
       <div class="preview-content">
@@ -50,7 +39,7 @@
           <h3>Предпросмотр заметки</h3>
           <div class="preview-actions">
             <button @click="saveNote" class="save-button">
-              Сохранить заметку
+              Сохранить
             </button>
             <button @click="closePreview" class="close-button-top" title="Закрыть (Esc)">
               &times;
@@ -348,20 +337,25 @@ export default {
 <style scoped>
 /* Добавляем стиль для кнопки Очистить */
 .clear-button {
-  padding: 10px 15px;
   background-color: #9c27b0;
   color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
 }
-
 .clear-button:hover {
   background-color: #7b1fa2;
 }
 
+.clear-button,
+.preview-button,
+.save-button {
+  height: 100%;
+  padding: 0 10px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 12px;
+  transition: background-color 0.2s;
+}
 /* Обновляем стили для заголовка предпросмотра */
 .preview-header {
   display: flex;
@@ -379,15 +373,15 @@ export default {
   gap: 10px;
 }
 
-
-
 .note-editable-area {
   width: 100%;
-  min-height: 200px;
-  max-height: 500px;
+  min-height: 30px;
+  max-height: 30px;
   overflow-y: auto;
   padding: 10px;
+  /*
   margin-bottom: 15px;
+  */
   border: 1px solid #000000;
   border-radius: 4px;
   font-family: inherit;
@@ -474,26 +468,21 @@ export default {
 }
 
 .new-note-container {
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  position: relative;
+  height: 50px; /* Общая высота компонента */
+  background-color: orange;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
 }
 /* Фиксированный блок управления */
 .controls-row {
-  position: sticky;
-  top: 0;
-  background: white;
-  padding: 15px 0;
-  z-index: 100;
   display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  margin-bottom: 15px;
   align-items: center;
-  border-bottom: 1px solid #eee;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  gap: 5px;
+  height: 100%;
+  width: 100%;
+  background-color: orange;
+  padding: 0 5px;
 }
 /* Контейнер редактора с отступом */
 .editor-container {
@@ -516,18 +505,13 @@ export default {
 
 .button-group {
   display: flex;
-  gap: 10px;
+  gap: 5px;
+  height: 30px;
 }
 
 .preview-button {
-  padding: 10px 15px;
   background-color: #ff4444;
   color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
 }
 
 .preview-button:hover {
@@ -535,14 +519,8 @@ export default {
 }
 
 .save-button {
-  padding: 10px 15px;
   background-color: #00C851;
   color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
 }
 
 .save-button:hover {
@@ -550,17 +528,23 @@ export default {
 }
 /* Остальные стили остаются без изменений */
 .note-editable-area {
-  width: 100%;
-  min-height: 200px;
-  padding: 10px;
-  margin-bottom: 15px;
-  border: 1px solid #000000;
-  border-radius: 4px;
-  font-family: inherit;
-  outline: none;
-  white-space: pre-wrap;
-  background: white;
-  line-height: 1.5;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  line-height: 18px;
+}
+
+.title-field,
+.keywords-field,
+.note-editable-area {
+  flex: 1;
+  height: 30px; /* Чуть меньше общей высоты для визуального комфорта */
+  padding: 5px 8px;
+  border: 1px solid #000;
+  border-radius: 3px;
+  background-color: white;
+  font-size: 12px;
+  box-sizing: border-box;
 }
 
 .note-editable-area:empty::before {
