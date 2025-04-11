@@ -83,7 +83,7 @@
         type="date"
         :min="getCurrentDate()"
     />
-    <button @click="addTask">Добавить задачу</button>
+    <button @click="addTask">Добавить</button>
   </div>
 </template>
 

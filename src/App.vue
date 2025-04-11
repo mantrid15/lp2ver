@@ -30,6 +30,7 @@
         <v-spacer></v-spacer>
         <div class="row-tool-container">
           <NewTask v-if="$route.path === '/todo'" />
+          <NewNote v-else-if="$route.path === '/note'" />
           <RowTool v-else
                    :buttonColor="buttonColor"
                    @change-button-color="changeButtonColorHandler"
@@ -64,10 +65,11 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useRoute } from 'vue-router'; // Добавленный импорт
-import RowTool from "@/components/MainRowTool.vue";
 import { supabase } from "@/clients/supabase";
 import { useStore } from 'vuex';
+import RowTool from "@/components/MainRowTool.vue";
 import NewTask from '@/components/ToDo/NewTask.vue';
+import NewNote from "@/components/LiNote/NewNote.vue";
 
 const route = useRoute();
 const drawer = ref(false);
@@ -92,7 +94,6 @@ const handleLoginStateChange = (loggedIn) => { // Переименовали д�
   loginButtonText.value = loggedIn ? 'Logout' : 'Login';
   buttonColor.value = loggedIn ? 'purple' : 'red';
 };
-
 // Добавили функцию выхода
 const handleLogout = async () => {
   try {
@@ -152,6 +153,8 @@ function formatDateForInput(dateString) {
   left: 0;
   right: 0;
   z-index: 1000;
+  display: flex;
+  justify-content: space-between;
 }
 .main-with-margin {
   height: calc(100vh - 85px); /* Высота v-main с учетом header и отступа */
@@ -161,9 +164,19 @@ function formatDateForInput(dateString) {
   padding-top: 20px;
 }
 .row-tool-container {
+  /*
+  width: 80%;
+  */
   display: flex;
   align-items: center;
+  justify-content: flex-end; /* Выравнивание содержимого по правому краю */
   margin-right: 10px;
+}
+.bg-red {
+    background-color: rgba(255, 0, 0, 0.2) !important;
+}
+.bg-red:hover {
+    background-color: rgba(255, 0, 0) !important;
 }
 .bg-purple {
   background-color: rgba(128, 0, 128, 0.2) !important;

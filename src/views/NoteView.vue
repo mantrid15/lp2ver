@@ -3,7 +3,9 @@
 <!--    <div>
       LiNote - инструмент для создания заметок
     </div>-->
+<!--
     <NewNote width="80%"/>
+-->
   </div>
   <div v-else class="auth-message">
     Пожалуйста, войдите в систему
