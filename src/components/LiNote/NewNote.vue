@@ -40,9 +40,9 @@
           <h3>{{ isEditMode ? 'Редактирование заметки' : 'Предпросмотр заметки' }}</h3>
           <div class="preview-actions">
             <button
-                @click="toggleEditMode"
-                class="edit-button"
-                :class="{ 'active': isEditMode }"
+              @click="toggleEditMode"
+              class="edit-button"
+              :class="{ 'active': isEditMode }"
             >
               {{ isEditMode ? 'Просмотр' : 'Редактировать' }}
             </button>

@@ -92,11 +92,7 @@ export default {
 .container {
   display: flex;
   height: calc(100vh - 107px);
-  /*
-  max-width: 1200px;
-  */
   border-left: 2px solid blue; /* добавим синюю границу слева (если надо) */
-
   overflow: hidden;
   margin-top: 50px;
 }
