@@ -1,11 +1,10 @@
 <template>
-  <div v-if="account?.data?.session" class="container">
-<!--    <div>
-      LiNote - инструмент для создания заметок
-    </div>-->
-<!--
-    <NewNote width="80%"/>
--->
+  <div v-if="account?.data?.session && userId" class="container">    <Sidebar
+        :user-id="userId"
+        :selected-id="selectedNoteId"
+        @select="note => selectedNoteId = note.id"
+    />
+    <Note :note-id="selectedNoteId" />
   </div>
   <div v-else class="auth-message">
     Пожалуйста, войдите в систему
@@ -13,18 +12,24 @@
 </template>
 
 <script>
+/*
 import NewNote from "@/components/LiNote/NewNote.vue";
+*/
+import Sidebar from "@/components/LiNote/Sidebar.vue";
+import Note from "@/components/LiNote/Note.vue";
 import { supabase } from '@/clients/supabase.js';
 import { computed, onMounted, ref, onUnmounted } from 'vue';
 import { useStore } from 'vuex';
 
 export default {
   name: "NoteView", // Изменил имя компонента, так как NoteView - это дочерний компонент
-  components: {NewNote},
+  components: { Sidebar, Note},
   setup() {
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const account = ref(null);
+    const selectedNoteId = ref(null); // добавляем отслеживание выбранной заметки
+
     let authSubscription = null; // Храним подписку здесь
 
 
@@ -46,23 +51,29 @@ export default {
       }
     }
 
+    onMounted(async () => {
+      await store.dispatch('restoreSession'); // ⬅️ ВОТ ЭТО ОБЯЗАТЕЛЬНО
+      await getSession();
+      console.log('NoteView: userId из Vuex =', userId.value);
+      // Подписываемся на изменения аутентификации
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+      authSubscription = subscription; // Сохраняем подписку
+      console.log('NoteView: userId =', userId.value);
+    });
+
     onUnmounted(() => {
       if (authSubscription) {
         authSubscription.unsubscribe();
       }
     });
 
-    onMounted(async () => {
-      await getSession();
 
-      // Подписываемся на изменения аутентификации
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
-      authSubscription = subscription; // Сохраняем подписку
-    });
 
 
     return {
       account,
+      userId,
+      selectedNoteId, // возвращаем, чтобы Vue знал об этом в шаблоне
     };
   }
 };
@@ -84,6 +95,7 @@ export default {
   /*
   max-width: 1200px;
   */
+  border-left: 2px solid blue; /* добавим синюю границу слева (если надо) */
 
   overflow: hidden;
   margin-top: 50px;

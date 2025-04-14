@@ -40,9 +40,9 @@
           <h3>{{ isEditMode ? 'Редактирование заметки' : 'Предпросмотр заметки' }}</h3>
           <div class="preview-actions">
             <button
-              @click="toggleEditMode"
-              class="edit-button"
-              :class="{ 'active': isEditMode }"
+                @click="toggleEditMode"
+                class="edit-button"
+                :class="{ 'active': isEditMode }"
             >
               {{ isEditMode ? 'Просмотр' : 'Редактировать' }}
             </button>
@@ -57,19 +57,19 @@
         <div class="preview-scroll-container">
           <!-- Режим редактирования -->
           <div
-            v-if="isEditMode"
-            ref="previewEditableArea"
-            contenteditable="true"
-            class="preview-editable-area"
-            v-html="previewContent"
-            @input="updatePreviewContent"
+              v-if="isEditMode"
+              ref="previewEditableArea"
+              contenteditable="true"
+              class="preview-editable-area"
+              v-html="previewContent"
+              @input="updatePreviewContent"
           ></div>
 
           <!-- Режим просмотра -->
           <div
-            v-else
-            class="preview-html"
-            v-html="previewContent"
+              v-else
+              class="preview-html"
+              v-html="previewContent"
           ></div>
         </div>
       </div>
@@ -300,14 +300,14 @@ export default {
         const filePath = `user_${user.id}/${fileName}`;
 
         const { error } = await supabase.storage
-          .from('linknote')
-          .upload(filePath, blob);
+            .from('linknote')
+            .upload(filePath, blob);
 
         if (error) throw error;
 
         const { data: { publicUrl } } = supabase.storage
-          .from('linknote')
-          .getPublicUrl(filePath);
+            .from('linknote')
+            .getPublicUrl(filePath);
 
         return publicUrl;
       } catch (error) {
@@ -490,9 +490,9 @@ export default {
 }
 
 .note-editable-area {
-  width: 100%;
-  min-height: 40px;
-  max-height: 40px;
+  resize: none;
+  width: 200px;
+  height: 40px;
   overflow-y: auto;
   padding: 10px;
   border: 1px solid #000000;
