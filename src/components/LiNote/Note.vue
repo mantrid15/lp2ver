@@ -1,9 +1,9 @@
 <template>
   <div class="note-content-wrapper">
     <button
-      v-if="note && isEditing"
-      class="save-button"
-      @click="saveChanges"
+        v-if="note && isEditing"
+        class="save-button"
+        @click="saveChanges"
     >
       Сохранить
     </button>
@@ -12,16 +12,16 @@
       <div v-if="note" class="note-container">
         <h2>{{ note.title }}</h2>
         <div
-          class="markdown-content"
-          v-html="renderedMarkdown"
-          v-if="!isEditing"
-          @dblclick="startEditing"
+            class="markdown-content"
+            v-html="renderedMarkdown"
+            v-if="!isEditing"
+            @dblclick="startEditing"
         ></div>
         <textarea
-          v-else
-          class="edit-textarea"
-          v-model="editableContent"
-          ref="textarea"
+            v-else
+            class="edit-textarea"
+            v-model="editableContent"
+            ref="textarea"
         ></textarea>
       </div>
       <div v-else class="empty-note">Выберите заметку из списка</div>
@@ -37,6 +37,8 @@ import { supabase } from '@/clients/supabase';
 const props = defineProps({
   noteId: String,
 });
+
+const emit = defineEmits(['editing-change']);
 
 const note = ref(null);
 const isEditing = ref(false);
@@ -97,6 +99,7 @@ const renderedMarkdown = computed(() => {
 
 const startEditing = () => {
   isEditing.value = true;
+  emit('editing-change', true);
   editableContent.value = note.value.content;
   nextTick(() => {
     textarea.value.focus();
@@ -105,22 +108,22 @@ const startEditing = () => {
 
 const saveChanges = async () => {
   isEditing.value = false;
+  emit('editing-change', false);
   note.value.content = editableContent.value;
 
   const { error } = await supabase
-    .from('linote')
-    .update({
-      content: editableContent.value,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', props.noteId);
+      .from('linote')
+      .update({
+        content: editableContent.value,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', props.noteId);
 
   if (error) {
     console.error('Ошибка при сохранении заметки:', error);
   }
 };
 
-// Функция для добавления возможности изменения размера изображений
 const setupImageResizing = () => {
   nextTick(() => {
     document.querySelectorAll('.resizable').forEach(img => {
@@ -164,28 +167,33 @@ const setupImageResizing = () => {
 
 watch(renderedMarkdown, setupImageResizing);
 watch(
-  () => props.noteId,
-  (newId) => {
-    if (newId) {
-      loadNote(newId);
-    } else {
-      note.value = null;
-    }
-  },
-  { immediate: true }
+    () => props.noteId,
+    (newId) => {
+      if (newId) {
+        loadNote(newId);
+      } else {
+        note.value = null;
+      }
+    },
+    { immediate: true }
 );
 </script>
 
 <style scoped>
 .note-content-wrapper {
   position: relative;
+  /*
+  margin-left: 50px;
+  */
   flex: 1;
+  /*
   height: 100%;
+  */
   overflow-y: auto;
 }
 
 .note-content {
-  padding: 60px 20px 20px; /* Добавляем отступ сверху для кнопки */
+  padding: 60px 20px 20px;
   display: flex;
   justify-content: center;
   min-height: 100%;
@@ -203,7 +211,7 @@ watch(
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
-  z-index: 1000; /* Увеличиваем z-index */
+  z-index: 1000;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   transition: all 0.2s;
 }
@@ -218,18 +226,21 @@ watch(
   transform: scale(0.98);
 }
 
-/* Остальные стили остаются без изменений */
 .note-container {
   width: 90%;
-  max-width: 1000px;
+  /*
+  max-width: 800px;
+  */
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
 .markdown-content {
-  width: 90%;
+  width: 100%;
+  /*
   padding-left: 40px;
+  */
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -323,7 +334,6 @@ watch(
   text-align: center;
 }
 
-/* Стили для элементов внутри markdown-content */
 .markdown-content >>> .markdown-paragraph {
   line-height: 1.6;
   margin: 0;

@@ -5,12 +5,15 @@
     <div v-else-if="!notes.length" class="empty-message">Нет заметок</div>
     <ul v-else>
       <li
-        v-for="note in notes"
-        :key="note.id"
-        @click="selectNote(note)"
-        :class="{ active: note.id === selectedId }"
-        class="note-item"
-        :title="note.title"
+          v-for="note in notes"
+          :key="note.id"
+          @click="!disabled && selectNote(note)"
+          :class="{
+          active: note.id === selectedId,
+          disabled: disabled
+        }"
+          class="note-item"
+          :title="note.title"
       >
         <span class="note-title">{{ note.title || 'Без названия' }}</span>
       </li>
@@ -27,6 +30,7 @@ const store = useStore();
 const props = defineProps({
   userId: String,
   selectedId: String,
+  disabled: Boolean
 });
 const emit = defineEmits(['select']);
 
@@ -40,10 +44,10 @@ const fetchNotes = async () => {
     error.value = null;
 
     const { data, error: supabaseError } = await supabase
-      .from('linote')
-      .select('id, title, created_at')
-      .eq('user_id', props.userId)
-      .order('created_at', { ascending: false });
+        .from('linote')
+        .select('id, title, created_at')
+        .eq('user_id', props.userId)
+        .order('created_at', { ascending: false });
 
     if (supabaseError) throw supabaseError;
 
@@ -60,7 +64,6 @@ const selectNote = (note) => {
   emit('select', note);
 };
 
-// Загружаем заметки при монтировании и при изменении userId
 onMounted(fetchNotes);
 watch(() => props.userId, fetchNotes);
 </script>
@@ -68,10 +71,10 @@ watch(() => props.userId, fetchNotes);
 <style scoped>
 .sidebar {
   width: 25%;
-  background: rgba(141, 178, 9, 0.9); /* красный фон */
+  background: rgba(141, 178, 9, 0.9);
   overflow-y: auto;
   padding: 10px;
-  border-right: 3px solid blue; /* синяя граница справа */
+  border-right: 3px solid blue;
   min-height: 100%;
 }
 
@@ -96,22 +99,31 @@ watch(() => props.userId, fetchNotes);
   transition: background-color 0.2s;
   display: flex;
   align-items: center;
-  white-space: nowrap; /* Запрещаем перенос строк */
-  overflow: hidden; /* Скрываем выходящий за пределы текст */
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .note-title {
   overflow: hidden;
-  text-overflow: ellipsis; /* Добавляем многоточие */
-  max-width: 100%; /* Ограничиваем ширину */
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-.note-item:hover {
+.note-item:hover:not(.disabled) {
   background-color: #ff6200;
 }
 
 .note-item.active {
   background-color: #2196f3;
   color: white;
+}
+
+.note-item.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.note-item.disabled:hover {
+  background-color: inherit;
 }
 </style>

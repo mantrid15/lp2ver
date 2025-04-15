@@ -3,18 +3,24 @@
     <Sidebar
         :user-id="userId"
         :selected-id="selectedNoteId"
-        @select="note => selectedNoteId = note.id"
+        @select="handleNoteSelect"
         :style="{ width: sidebarWidth + 'px' }"
+        :disabled="isEditing"
     />
     <div
-      class="resizer"
-      @mousedown="startResize"
-      :style="{ left: sidebarWidth + 'px' }"
+        class="resizer"
+        @mousedown="startResize"
+        :style="{ left: sidebarWidth + 'px' }"
     ></div>
     <Note
-      :note-id="selectedNoteId"
-      :style="{ marginLeft: sidebarWidth + 5 + 'px' }"
+        :note-id="selectedNoteId"
+        :style="{ marginLeft: sidebarWidth + 5 + 'px' }"
+        @editing-change="handleEditingChange"
     />
+
+    <div v-if="showSnackbar" class="snackbar">
+      Для перехода в другую заметку выйдите из режима редактирования!
+    </div>
   </div>
   <div v-else class="auth-message">
     Пожалуйста, войдите в систему
@@ -22,9 +28,6 @@
 </template>
 
 <script>
-/*
-import NewNote from "@/components/LiNote/NewNote.vue";
-*/
 import Sidebar from "@/components/LiNote/Sidebar.vue";
 import Note from "@/components/LiNote/Note.vue";
 import { supabase } from '@/clients/supabase.js';
@@ -39,29 +42,48 @@ export default {
     const userId = computed(() => store.state.userId);
     const account = ref(null);
     const selectedNoteId = ref(null);
+    const isEditing = ref(false);
+    const showSnackbar = ref(false);
 
-    // Получаем сохраненную ширину для текущего пользователя или устанавливаем по умолчанию
     const getInitialWidth = () => {
       if (!userId.value) return Math.min(300, Math.max(100, window.innerWidth * 0.25));
 
       const savedWidth = localStorage.getItem(`sidebarWidth_${userId.value}`);
       return savedWidth
-        ? parseInt(savedWidth, 10)
-        : Math.min(300, Math.max(100, window.innerWidth * 0.25));
+          ? parseInt(savedWidth, 10)
+          : Math.min(300, Math.max(100, window.innerWidth * 0.25));
     };
 
     const sidebarWidth = ref(getInitialWidth());
     const isResizing = ref(false);
 
-    // Сохраняем ширину при изменении
     watch([sidebarWidth, userId], ([newWidth, newUserId]) => {
       if (newUserId) {
         localStorage.setItem(`sidebarWidth_${newUserId}`, newWidth.toString());
       }
     });
 
+    const handleEditingChange = (editing) => {
+      isEditing.value = editing;
+    };
+
+    const handleNoteSelect = (note) => {
+      if (isEditing.value) {
+        showSnackbarMessage();
+        return;
+      }
+      selectedNoteId.value = note.id;
+    };
+
+    const showSnackbarMessage = () => {
+      showSnackbar.value = true;
+      setTimeout(() => {
+        showSnackbar.value = false;
+      }, 3000);
+    };
+
     const startResize = (e) => {
-      if (!e.ctrlKey) return; // Разрешаем ресайз только при нажатом Ctrl
+      if (!e.ctrlKey) return;
       e.preventDefault();
       isResizing.value = true;
       document.addEventListener('mousemove', handleResize);
@@ -112,11 +134,10 @@ export default {
     }
 
     onMounted(async () => {
-      await store.dispatch('restoreSession'); // ⬅️ ВОТ ЭТО ОБЯЗАТЕЛЬНО
+      await store.dispatch('restoreSession');
       await getSession();
       console.log('NoteView: userId из Vuex =', userId.value);
 
-      // Загружаем сохраненную ширину после аутентификации
       if (userId.value) {
         const savedWidth = localStorage.getItem(`sidebarWidth_${userId.value}`);
         if (savedWidth) {
@@ -127,7 +148,6 @@ export default {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
       authSubscription = subscription;
 
-      // Обработчик изменения размера окна
       const handleWindowResize = () => {
         const minWidth = window.innerWidth * 0.1;
         const maxWidth = window.innerWidth * 0.3;
@@ -155,14 +175,17 @@ export default {
       userId,
       selectedNoteId,
       sidebarWidth,
-      startResize
+      isEditing,
+      showSnackbar,
+      startResize,
+      handleEditingChange,
+      handleNoteSelect
     };
   }
 };
 </script>
 
 <style scoped>
-/* Стили остаются без изменений */
 .auth-message {
   display: flex;
   justify-content: center;
@@ -177,9 +200,7 @@ export default {
   display: flex;
   position: relative;
   height: calc(100vh - 107px);
-  /*
-  border-left: 2px solid blue; !* добавим синюю границу слева (если надо) *!
-  */
+  border-left: 2px solid blue;
   overflow: hidden;
   margin-top: 45px;
 }
@@ -196,5 +217,26 @@ export default {
 
 .resizer:hover {
   background-color: darkblue;
+}
+
+.snackbar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #ff4444;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 4px;
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  animation: fadeInOut 3s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
 }
 </style>
