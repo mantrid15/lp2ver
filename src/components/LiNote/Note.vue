@@ -1,12 +1,21 @@
 <template>
   <div class="note-content-wrapper">
-    <button
-        v-if="note && isEditing"
-        class="save-button"
-        @click="saveChanges"
-    >
-      Сохранить
-    </button>
+    <div class="note-actions" v-if="note">
+      <button
+          v-if="isEditing"
+          class="save-button"
+          @click="saveChanges"
+      >
+        Сохранить
+      </button>
+<!--      <button
+          class="delete-button"
+          @click="deleteNote"
+          v-if="!isEditing"
+      >
+        Удалить
+      </button>-->
+    </div>
 
     <div class="note-content">
       <div v-if="note" class="note-container">
@@ -38,12 +47,12 @@ const props = defineProps({
   noteId: String,
 });
 
-const emit = defineEmits(['editing-change']);
+const emit = defineEmits(['editing-change', 'note-deleted']);
 
 const note = ref(null);
 const isEditing = ref(false);
-const editableDiv = ref(null);
-const originalHtml = ref('');
+const editableContent = ref('');
+const textarea = ref(null);
 
 marked.use({
   renderer: {
@@ -80,16 +89,22 @@ marked.use({
 });
 
 const loadNote = async (id) => {
+  if (!id) {
+    note.value = null;
+    return;
+  }
+
   const { data, error } = await supabase
       .from('linote')
-      .select('title, content')
-      .eq('id', props.noteId)
+      .select('id, title, content, is_deleted')
+      .eq('id', id)
       .single();
 
   if (!error) {
     note.value = data;
   } else {
     console.error('Ошибка при загрузке заметки:', error);
+    note.value = null;
   }
 };
 
@@ -121,6 +136,24 @@ const saveChanges = async () => {
 
   if (error) {
     console.error('Ошибка при сохранении заметки:', error);
+  }
+};
+
+const deleteNote = async () => {
+  if (!note.value?.id) return;
+
+  if (confirm('Вы уверены, что хотите удалить эту заметку?')) {
+    const { error } = await supabase
+        .from('linote')
+        .delete()
+        .eq('id', note.value.id);
+
+    if (error) {
+      console.error('Ошибка при удалении заметки:', error);
+    } else {
+      emit('note-deleted');
+      note.value = null;
+    }
   }
 };
 
@@ -169,11 +202,7 @@ watch(renderedMarkdown, setupImageResizing);
 watch(
     () => props.noteId,
     (newId) => {
-      if (newId) {
-        loadNote(newId);
-      } else {
-        note.value = null;
-      }
+      loadNote(newId);
     },
     { immediate: true }
 );
@@ -182,28 +211,21 @@ watch(
 <style scoped>
 .note-content-wrapper {
   position: relative;
-  /*
-  margin-left: 50px;
-  */
   flex: 1;
-  /*
-  height: 100%;
-  */
   overflow-y: auto;
 }
 
-.note-content {
-  padding: 60px 20px 20px;
-  display: flex;
-  justify-content: center;
-  min-height: 100%;
-}
-
-.save-button {
+.note-actions {
   position: fixed;
   top: 20px;
   left: 20px;
-  background-color: #ff4444;
+  display: flex;
+  gap: 10px;
+  z-index: 1000;
+}
+
+.save-button {
+  background-color: #4CAF50;
   color: white;
   border: none;
   border-radius: 4px;
@@ -211,7 +233,6 @@ watch(
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
-  z-index: 1000;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   transition: all 0.2s;
 }
@@ -221,16 +242,33 @@ watch(
   transform: scale(1.05);
 }
 
-.save-button:active {
-  background-color: #cc0000;
-  transform: scale(0.98);
+.delete-button {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s;
+}
+
+.delete-button:hover {
+  background-color: #d32f2f;
+  transform: scale(1.05);
+}
+
+.note-content {
+  padding: 80px 20px 20px;
+  display: flex;
+  justify-content: center;
+  min-height: 100%;
 }
 
 .note-container {
   width: 90%;
-  /*
-  max-width: 800px;
-  */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -238,9 +276,6 @@ watch(
 
 .markdown-content {
   width: 100%;
-  /*
-  padding-left: 40px;
-  */
   display: flex;
   flex-direction: column;
   gap: 16px;

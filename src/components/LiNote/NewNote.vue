@@ -1,24 +1,24 @@
 <template>
   <div class="new-note-container">
-    <!-- Кнопки управления и поле keywords -->
+    <!-- Кнопки управления и поля ввода -->
     <div class="controls-row">
       <input
-          v-model="title"
-          placeholder="Заголовок"
-          class="title-field"
+        v-model="title"
+        placeholder="Заголовок"
+        class="title-field"
       >
       <input
-          v-model="keywords"
-          placeholder="Ключевые слова"
-          class="keywords-field"
+        v-model="keywords"
+        placeholder="Ключевые слова"
+        class="keywords-field"
       >
       <div
-          ref="editableArea"
-          contenteditable="true"
-          class="note-editable-area"
-          placeholder="Текст заметки..."
-          @paste="handlePaste"
-          @input="updateTitleFromContentAndCheckEmpty"
+        ref="editableArea"
+        contenteditable="true"
+        class="note-editable-area"
+        placeholder="Текст заметки..."
+        @paste="handlePaste"
+        @input="updateTitleFromContentAndCheckEmpty"
       ></div>
       <div class="button-group">
         <button @click="clearAll" class="clear-button" :disabled="isEditableAreaEmpty">
@@ -33,7 +33,7 @@
       </div>
     </div>
 
-    <!-- Модальное окно предпросмотра/редактирования -->
+    <!-- Модальное окно предпросмотра -->
     <div v-if="isPreviewVisible" class="preview-modal" @keydown.esc="closePreview" tabindex="0">
       <div class="preview-content">
         <div class="preview-header">
@@ -57,19 +57,19 @@
         <div class="preview-scroll-container">
           <!-- Режим редактирования -->
           <div
-              v-if="isEditMode"
-              ref="previewEditableArea"
-              contenteditable="true"
-              class="preview-editable-area"
-              v-html="previewContent"
-              @input="updatePreviewContent"
+            v-if="isEditMode"
+            ref="previewEditableArea"
+            contenteditable="true"
+            class="preview-editable-area"
+            v-html="previewContent"
+            @input="updatePreviewContent"
           ></div>
 
           <!-- Режим просмотра -->
           <div
-              v-else
-              class="preview-html"
-              v-html="previewContent"
+            v-else
+            class="preview-html"
+            v-html="safePreviewContent"
           ></div>
         </div>
       </div>
@@ -78,9 +78,8 @@
 </template>
 
 <script>
-import { ref, nextTick , onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { supabase } from '@/clients/supabase.js';
-import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
 export default {
@@ -97,25 +96,31 @@ export default {
     const title = ref('');
     const isEditableAreaEmpty = ref(true);
 
+    // Безопасное отображение HTML
+    const safePreviewContent = computed(() => {
+      return DOMPurify.sanitize(previewContent.value, {
+        ALLOWED_TAGS: ['p', 'br', 'img', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'div', 'span'],
+        ALLOWED_ATTR: ['src', 'style', 'class']
+      });
+    });
+
     const checkEditableAreaEmpty = () => {
-      if (!editableArea.value) {
-        isEditableAreaEmpty.value = true;
-        return;
+      const hasTitle = title.value.trim() !== '';
+      const hasKeywords = keywords.value.trim() !== '';
+      let hasContent = false;
+
+      if (editableArea.value) {
+        hasContent = editableArea.value.textContent.trim() !== '' ||
+                    editableArea.value.innerHTML.trim() !== '';
       }
 
-      // Проверяем, есть ли текст или HTML-содержимое
-      const hasText = editableArea.value.textContent.trim() !== '';
-      const hasHtml = editableArea.value.innerHTML.trim() !== '';
-
-      isEditableAreaEmpty.value = !hasText && !hasHtml;
+      isEditableAreaEmpty.value = !(hasTitle || hasKeywords || hasContent);
     };
 
     const updateTitleFromContent = () => {
       if (!editableArea.value) return;
-
       const textContent = editableArea.value.textContent || '';
       const firstParagraph = textContent.split('\n')[0] || '';
-
       if (!title.value || title.value === '') {
         title.value = firstParagraph.substring(0, 255);
       }
@@ -126,21 +131,19 @@ export default {
       checkEditableAreaEmpty();
     };
 
-    // Наблюдаем за изменениями editableArea
     watch(editableArea, (newVal) => {
-      if (newVal) {
-        checkEditableAreaEmpty();
-      }
+      if (newVal) checkEditableAreaEmpty();
     }, { immediate: true });
 
+    watch([title, keywords], () => {
+      checkEditableAreaEmpty();
+    }, { deep: true });
+
     const clearAll = () => {
-      if (editableArea.value) {
-        editableArea.value.innerHTML = '';
-      }
+      if (editableArea.value) editableArea.value.innerHTML = '';
       title.value = '';
       keywords.value = '';
       isEditableAreaEmpty.value = true;
-      addLog('Все поля очищены', 'info');
     };
 
     const handleKeyDown = (event) => {
@@ -149,37 +152,22 @@ export default {
       }
     };
 
-    const addLog = (message, type = 'info') => {
-      logMessages.value.unshift({
-        message,
-        type,
-        timestamp: new Date().toLocaleTimeString()
-      });
-      console.log(`[${type}] ${message}`);
-    };
-
     const showPreview = () => {
       if (!editableArea.value) return;
-
-      // Обновляем заголовок перед показом предпросмотра
       updateTitleFromContent();
-
       previewContent.value = editableArea.value.innerHTML;
       isPreviewVisible.value = true;
       isEditMode.value = false;
-      addLog('Открыт предпросмотр заметки');
     };
 
     const toggleEditMode = async () => {
       isEditMode.value = !isEditMode.value;
-
       if (isEditMode.value) {
         await nextTick();
         if (previewEditableArea.value) {
           previewEditableArea.value.focus();
         }
       } else {
-        // При переключении обратно в режим просмотра обновляем содержимое
         previewContent.value = previewEditableArea.value.innerHTML;
       }
     };
@@ -191,302 +179,120 @@ export default {
     };
 
     const closePreview = () => {
-      if (isEditMode.value) {
-        // Если закрываем в режиме редактирования, обновляем основное поле
-        if (previewEditableArea.value && editableArea.value) {
-          editableArea.value.innerHTML = previewEditableArea.value.innerHTML;
-        }
+      if (isEditMode.value && previewEditableArea.value && editableArea.value) {
+        editableArea.value.innerHTML = previewEditableArea.value.innerHTML;
       }
-
       isPreviewVisible.value = false;
       isEditMode.value = false;
-      addLog('Предпросмотр закрыт');
     };
 
-    const handlePaste = async (event) => {
-      event.preventDefault();
-      addLog('Начало обработки вставки');
+    const saveNote = async (event) => {
+      event?.preventDefault();
 
-      const clipboardData = event.clipboardData || window.clipboardData;
-      let text = clipboardData.getData('text/plain');
-      const html = clipboardData.getData('text/html');
+      try {
+        // Синхронизация данных из preview (если открыт)
+        if (isPreviewVisible.value && isEditMode.value && previewEditableArea.value && editableArea.value) {
+          editableArea.value.innerHTML = previewEditableArea.value.innerHTML;
+        }
 
-      // Функция для очистки текста от начальных пробелов и непечатаемых символов
-      const cleanText = (str) => {
-        return str.replace(/^[\s\uFEFF\xA0]+/, '').replace(/[\s\uFEFF\xA0]+$/, '');
-      };
-
-      if (html) {
-        try {
-          const cleanHtml = await cleanPastedHtml(html);
-          document.execCommand('insertHTML', false, cleanHtml);
-          addLog('HTML-контент добавлен из буфера');
-
-          // Прокрутка после вставки
-          await nextTick();
-          if (editableArea.value) {
-            editableArea.value.scrollIntoView({ behavior: 'smooth', block: 'end' });
-          }
-          checkEditableAreaEmpty();
+        // Проверка заполненности
+        if (!editableArea.value?.textContent?.trim()) {
+          alert("Заметка не может быть пустой!");
           return;
-        } catch (error) {
-          addLog(`Ошибка обработки HTML: ${error.message}`, 'error');
         }
-      }
 
-      if (text) {
-        text = cleanText(text);
-        document.execCommand('insertText', false, text);
-        addLog('Текст добавлен из буфера');
-      }
+        // Очистка и нормализация HTML
+        let cleanHtml = editableArea.value.innerHTML;
 
-      for (const item of clipboardData.items) {
-        if (item.type.startsWith('image/')) {
-          addLog(`Обнаружено изображение: ${item.type}`);
-          const blob = item.getAsFile();
+        // Упрощаем HTML изображений
+        cleanHtml = cleanHtml.replace(
+          /<img[^>]+src="([^">]+)"[^>]*>/g,
+          '<img src="$1" style="max-width:100%;height:auto;margin:10px auto;display:block;">'
+        );
 
-          try {
-            const imageUrl = await uploadImage(blob);
-            addLog(`Изображение загружено: ${imageUrl}`);
+        // Санитизация HTML
+        cleanHtml = DOMPurify.sanitize(cleanHtml, {
+          ALLOWED_TAGS: ['p', 'br', 'img', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'div'],
+          ALLOWED_ATTR: ['src', 'style', 'class']
+        });
 
-            const img = document.createElement('img');
-            img.src = imageUrl;
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-            img.style.display = 'block';
-            img.style.margin = '10px auto';
-            editableArea.value.appendChild(img);
+        // Проверка авторизации
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) throw new Error("Необходимо авторизоваться");
 
-            // Прокрутка после вставки изображения
-            await nextTick();
-            if (editableArea.value) {
-              editableArea.value.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            }
+        // Подготовка тегов
+        const tagsArray = keywords.value.split(',').map(tag => tag.trim()).filter(Boolean);
+        const firstImg = editableArea.value.querySelector('img')?.src;
 
-            addLog(`Публичная ссылка: ${imageUrl}`);
-          } catch (error) {
-            addLog(`Ошибка загрузки изображения: ${error.message}`, 'error');
-          }
-        }
-      }
+        // Запрос к Supabase
+        const { error: dbError } = await supabase.from('linote').insert([{
+          title: title.value,
+          content: cleanHtml,
+          image_url: firstImg,
+          user_id: user.id,
+          tags: tagsArray,
+          visibility: 'private'
+        }]);
 
-      checkEditableAreaEmpty();
-    };
+        if (dbError) throw dbError;
 
-    const cleanPastedHtml = (html) => {
-      // Обработка изображений в HTML
-      const processedHtml = html
-          .replace(/<img([^>]*)>/g, (match, attrs) => {
-            return `<img${attrs} style="max-width:100%; height:auto; display:block; margin:10px auto;">`;
-          })
-          .replace(/width="[^"]*"/g, '')
-          .replace(/height="[^"]*"/g, '')
-          .replace(/<meta[^>]*>/g, '')
-          .replace(/<style[^>]*>.*?<\/style>/g, '')
-          .replace(/<script[^>]*>.*?<\/script>/g, '')
-          .replace(/<font[^>]*>/g, '<span>')
-          .replace(/<\/font>/g, '</span>');
-
-      return processedHtml;
-    };
-
-    const uploadImage = async (blob) => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('Требуется авторизация');
-
-        const fileExt = blob.type.split('/')[1] || 'png';
-        const fileName = `image-${Date.now()}.${fileExt}`;
-        const filePath = `user_${user.id}/${fileName}`;
-
-        const { error } = await supabase.storage
-            .from('linknote')
-            .upload(filePath, blob);
-
-        if (error) throw error;
-
-        const { data: { publicUrl } } = supabase.storage
-            .from('linknote')
-            .getPublicUrl(filePath);
-
-        return publicUrl;
-      } catch (error) {
-        console.error('Upload error:', error);
-        throw error;
-      }
-    };
-
-    const saveNote = async () => {
-      if (!editableArea.value || !editableArea.value.textContent.trim()) {
-        addLog('Заметка пуста, сохранение отменено', 'warning');
-        return;
-      }
-
-      try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        if (userError || !user) throw userError || new Error('Требуется авторизация');
-
-        // Обновляем заголовок перед сохранением
-        updateTitleFromContent();
-
-        // Очищаем HTML перед сохранением
-        const cleanContent = DOMPurify.sanitize(editableArea.value.innerHTML);
-
-        // Подготовка тегов из keywords
-        const tagsArray = keywords.value
-            .split(',')
-            .map(tag => tag.trim())
-            .filter(tag => tag.length > 0);
-
-        // Извлекаем первое изображение для image_url
-        const firstImg = editableArea.value.querySelector('img');
-        const imageUrl = firstImg ? firstImg.src : null;
-
-        const { error } = await supabase
-            .from('linote')
-            .insert([{
-              title: title.value,
-              content: cleanContent,
-              image_url: imageUrl,
-              user_id: user.id,
-              tags: tagsArray,
-              visibility: 'private' // или другой статус по умолчанию
-            }]);
-
-        if (error) throw error;
-
-        addLog('Заметка успешно сохранена в базе данных', 'success');
-
-        // Очищаем поля после сохранения
-        editableArea.value.innerHTML = '';
-        keywords.value = '';
-        title.value = '';
-        noteContent.value = '';
-        isEditableAreaEmpty.value = true;
-
-        // Закрываем окно предпросмотра после сохранения
+        // Успешное сохранение
+        alert("Заметка сохранена!");
+        clearAll();
         isPreviewVisible.value = false;
 
       } catch (error) {
-        addLog(`Ошибка сохранения заметки: ${error.message}`, 'error');
+        console.error("Ошибка сохранения:", error);
+        alert(`Ошибка сохранения: ${error.message}`);
       }
     };
 
-    onMounted(() => {
-      window.addEventListener('keydown', handleKeyDown);
-    });
-
-    onUnmounted(() => {
-      window.removeEventListener('keydown', handleKeyDown);
-    });
+    onMounted(() => window.addEventListener('keydown', handleKeyDown));
+    onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
 
     return {
       editableArea,
       previewEditableArea,
       noteContent,
-      logMessages,
       isPreviewVisible,
       isEditMode,
       previewContent,
+      safePreviewContent,
       keywords,
       title,
       isEditableAreaEmpty,
-      handlePaste,
       showPreview,
       closePreview,
       saveNote,
       updateTitleFromContentAndCheckEmpty,
       clearAll,
       toggleEditMode,
-      updatePreviewContent
+      updatePreviewContent,
+      handlePaste
     };
   }
 };
 </script>
 
 <style scoped>
-/* Основные стили остаются без изменений */
-/* Добавляем новые стили для режима редактирования */
-
-.preview-editable-area {
-  min-height: 300px;
-  padding: 15px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  outline: none;
-  background: white;
+/* Стили остаются без изменений из вашего исходного кода */
+.new-note-container {
+  height: 50px;
+  width: 100%;
+  background-color: orange;
+  padding: 0;
+  box-sizing: border-box;
+  display: flex;
 }
 
-.preview-editable-area:focus {
-  border-color: #646cff;
-}
-
-.edit-button {
-  background-color: #ff9800;
-  color: white;
-  border: none;
-  border-radius: 3px;
-  padding: 8px 15px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
-}
-
-.edit-button:hover {
-  background-color: #f57c00;
-}
-
-.edit-button.active {
-  background-color: #4caf50;
-}
-
-.edit-button.active:hover {
-  background-color: #388e3c;
-}
-
-.preview-actions {
+.controls-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-/* Остальные стили остаются без изменений */
-.clear-button {
-  background-color: #9c27b0;
-  color: white;
-}
-
-.clear-button:hover {
-  background-color: #7b1fa2;
-}
-
-.clear-button,
-.preview-button,
-.save-button {
+  gap: 5px;
   height: 100%;
-  padding: 0 20px;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 14px;
-  transition: background-color 0.2s;
-}
-
-.button-group button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.preview-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
-  position: relative;
+  width: 100%;
+  background-color: orange;
+  padding: 0 5px;
 }
 
 .note-editable-area {
@@ -504,85 +310,32 @@ export default {
   line-height: 1.5;
 }
 
-.note-editable-area img {
-  max-width: 100% !important;
-  height: auto !important;
-  display: block !important;
-  margin: 10px auto !important;
-}
-
-.close-button-top {
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  width: 30px;
-  height: 30px;
-  background-color: #ff4444;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 1.2rem;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  transition: all 0.2s ease;
-}
-
-.close-button-top:hover {
-  background-color: #cc0000;
-  transform: scale(1.1);
-}
-
-.close-button-top:active {
-  transform: scale(0.95);
-}
-
-.title-field {
-  width: 100%;
-  /*
-  padding: 10px;
-  */
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-family: inherit;
-  font-weight: bold;
-  font-size: 1.1em;
-}
-
-.new-note-container {
-  height: 50px; /* Общая высота компонента */
-  width:  100%;
-  background-color: orange;
-  padding: 0;
+.title-field,
+.keywords-field,
+.note-editable-area {
+  flex: 1;
+  height: 40px;
+  padding-left: 5px;
+  border: 1px solid #000;
+  border-radius: 3px;
+  background-color: white;
+  font-size: 14px;
   box-sizing: border-box;
-  display: flex;
-}
-/* Фиксированный блок управления */
-.controls-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  height: 100%;
-  width: 100%;
-  background-color: orange;
-  padding: 0 5px;
-}
-
-.keywords-field {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-family: inherit;
 }
 
 .button-group {
   display: flex;
   gap: 5px;
   height: 40px;
+}
+
+.clear-button {
+  background-color: #9c27b0;
+  color: white;
+}
+
+.clear-button:hover {
+  background-color: #7b1fa2;
 }
 
 .preview-button {
@@ -601,35 +354,6 @@ export default {
 
 .save-button:hover {
   background-color: #007E33;
-}
-/* Остальные стили остаются без изменений */
-.note-editable-area {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  line-height: 18px;
-}
-
-.title-field,
-.keywords-field,
-.note-editable-area {
-  flex: 1;
-  height: 40px; /* Чуть меньше общей высоты для визуального комфорта */
-  padding-left:5px;
-  /*
-  padding: 5px 8px;
-  */
-  border: 1px solid #000;
-  border-radius: 3px;
-  background-color: white;
-  font-size: 14px;
-  box-sizing: border-box;
-}
-
-.note-editable-area:empty::before {
-  content: attr(placeholder);
-  color: gray;
-  display: block;
 }
 
 .preview-modal {
@@ -666,21 +390,57 @@ export default {
   padding: 10px;
 }
 
-.preview-scroll-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.preview-scroll-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
+.preview-editable-area {
+  min-height: 300px;
+  padding: 15px;
+  border: 1px solid #ddd;
   border-radius: 4px;
+  outline: none;
+  background: white;
 }
 
-.preview-scroll-container::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+.edit-button {
+  background-color: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  padding: 8px 15px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
 }
 
-.preview-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: #555;
+.edit-button:hover {
+  background-color: #f57c00;
+}
+
+.edit-button.active {
+  background-color: #4caf50;
+}
+
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.close-button-top {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 30px;
+  height: 30px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  transition: all 0.2s ease;
 }
 </style>

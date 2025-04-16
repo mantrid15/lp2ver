@@ -16,6 +16,7 @@
         :note-id="selectedNoteId"
         :style="{ marginLeft: sidebarWidth + 5 + 'px' }"
         @editing-change="handleEditingChange"
+        @note-deleted="handleNoteDeleted"
     />
 
     <div v-if="showSnackbar" class="snackbar">
@@ -68,11 +69,20 @@ export default {
     };
 
     const handleNoteSelect = (note) => {
+      if (!note) {
+        selectedNoteId.value = null;
+        return;
+      }
+
       if (isEditing.value) {
         showSnackbarMessage();
         return;
       }
       selectedNoteId.value = note.id;
+    };
+
+    const handleNoteDeleted = () => {
+      selectedNoteId.value = null;
     };
 
     const showSnackbarMessage = () => {
@@ -179,7 +189,8 @@ export default {
       showSnackbar,
       startResize,
       handleEditingChange,
-      handleNoteSelect
+      handleNoteSelect,
+      handleNoteDeleted
     };
   }
 };
