@@ -99,8 +99,8 @@ export default {
     // Безопасное отображение HTML
     const safePreviewContent = computed(() => {
       return DOMPurify.sanitize(previewContent.value, {
-        ALLOWED_TAGS: ['p', 'br', 'img', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'div', 'span'],
-        ALLOWED_ATTR: ['src', 'style', 'class']
+        ALLOWED_TAGS: ['p', 'br', 'img', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'div', 'span', 'a'],
+        ALLOWED_ATTR: ['src', 'style', 'class', 'href', 'target']
       });
     });
 
@@ -131,114 +131,99 @@ export default {
       checkEditableAreaEmpty();
     };
 
+    // Извлекаем ID видео из URL Rutube
+    const extractVideoId = (url) => {
+      const match = url.match(/rutube\.ru\/video\/([a-f0-9]+)/);
+      return match ? match[1] : null;
+    };
+
+    // Функция для очистки HTML
+    const sanitizePastedHtml = (html) => {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+
+      // Удаляем нежелательные элементы
+      const unwanted = tempDiv.querySelectorAll('script, iframe, link, meta, style');
+      unwanted.forEach(el => el.remove());
+
+      // Очищаем атрибуты
+      const allElements = tempDiv.getElementsByTagName('*');
+      for (let el of allElements) {
+        Array.from(el.attributes).forEach(attr => {
+          if (attr.name.startsWith('on') || attr.name === 'style') {
+            el.removeAttribute(attr.name);
+          }
+        });
+      }
+
+      return tempDiv.innerHTML;
+    };
+
     const handlePaste = async (e) => {
       e.preventDefault();
 
-      // Проверяем, есть ли в буфере HTML или изображения
-      const clipboardItems = e.clipboardData.items;
-      let hasImage = false;
-      let hasHtml = false;
+      // Проверяем наличие HTML в буфере
+      const html = e.clipboardData.getData('text/html');
+      if (html) {
+        // Очищаем HTML
+        const cleanHtml = await sanitizePastedHtml(html);
 
-      // Проверяем на наличие изображений
-      for (let i = 0; i < clipboardItems.length; i++) {
-        if (clipboardItems[i].type.indexOf('image') !== -1) {
-          hasImage = true;
-          const blob = clipboardItems[i].getAsFile();
+        const selection = window.getSelection();
+        if (selection.rangeCount) {
+          const range = selection.getRangeAt(0);
+          range.deleteContents();
 
-          try {
-            // Загружаем изображение в storage
-            const fileExt = blob.name.split('.').pop() || 'png';
-            const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-            const filePath = `${fileName}`;
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = cleanHtml;
 
-            const { data, error } = await supabase.storage
-                .from('linknote')
-                .upload(filePath, blob);
+          // Обрабатываем видео-превью
+          const videoEmbeds = tempDiv.querySelectorAll('iframe, script');
+          videoEmbeds.forEach(embed => {
+            if (embed.tagName === 'IFRAME' && embed.src) {
+              // Создаем красный блок вместо iframe
+              const videoBlock = document.createElement('div');
+              videoBlock.className = 'video-placeholder';
 
-            if (error) throw error;
+              // Создаем ссылку
+              const link = document.createElement('a');
+              link.href = embed.src;
+              link.textContent = 'Перейти к видео';
+              link.target = '_blank';
+              link.style.color = 'white';
+              link.style.textDecoration = 'underline';
 
-            // Получаем публичный URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('linknote')
-                .getPublicUrl(filePath);
+              // Добавляем текст
+              const text = document.createElement('p');
+              text.textContent = 'Видео контент';
+              text.style.margin = '0 0 10px 0';
+              text.style.color = 'white';
 
-            // Вставляем изображение в редактор
-            const img = document.createElement('img');
-            img.src = publicUrl;
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-            img.style.margin = '10px auto';
-            img.style.display = 'block';
-
-            const selection = window.getSelection();
-            if (selection.rangeCount) {
-              const range = selection.getRangeAt(0);
-              range.deleteContents();
-              range.insertNode(img);
-              range.collapse(false);
-              selection.removeAllRanges();
-              selection.addRange(range);
+              videoBlock.appendChild(text);
+              videoBlock.appendChild(link);
+              embed.replaceWith(videoBlock);
             }
 
-            // Обновляем содержимое
-            updateTitleFromContentAndCheckEmpty();
+            if (embed.tagName === 'SCRIPT') {
+              embed.remove();
+            }
+          });
 
-          } catch (error) {
-            console.error('Ошибка загрузки изображения:', error);
-            // Вставляем как обычный текст, если не удалось загрузить изображение
-            const text = e.clipboardData.getData('text/plain');
-            document.execCommand('insertText', false, text);
+          const fragment = document.createDocumentFragment();
+          while (tempDiv.firstChild) {
+            fragment.appendChild(tempDiv.firstChild);
           }
-          break;
+          range.insertNode(fragment);
+          range.collapse(false);
         }
-      }
-
-      // Если нет изображений, проверяем HTML
-      if (!hasImage) {
-        for (let i = 0; i < clipboardItems.length; i++) {
-          if (clipboardItems[i].type === 'text/html') {
-            hasHtml = true;
-            const html = e.clipboardData.getData('text/html');
-
-            // Создаем временный div для обработки HTML
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = html;
-
-            // Обрабатываем изображения в HTML
-            const images = tempDiv.getElementsByTagName('img');
-            for (let img of images) {
-              if (img.src && !img.src.includes(supabase.storage.url)) {
-                img.setAttribute('data-external-image', 'true');
-                img.style.maxWidth = '100%';
-                img.style.height = 'auto';
-                img.style.margin = '10px auto';
-                img.style.display = 'block';
-              }
-            }
-
-            // Вставляем обработанный HTML
-            const selection = window.getSelection();
-            if (selection.rangeCount) {
-              const range = selection.getRangeAt(0);
-              range.deleteContents();
-              range.insertNode(tempDiv);
-              range.collapse(false);
-              selection.removeAllRanges();
-              selection.addRange(range);
-            }
-            break;
-          }
-        }
-      }
-
-      // Если нет ни изображений, ни HTML, вставляем как текст
-      if (!hasImage && !hasHtml) {
+      } else {
+        // Обычная обработка текста/изображений
         const text = e.clipboardData.getData('text/plain');
         document.execCommand('insertText', false, text);
       }
 
       updateTitleFromContentAndCheckEmpty();
     };
+
     watch(editableArea, (newVal) => {
       if (newVal) checkEditableAreaEmpty();
     }, { immediate: true });
@@ -303,90 +288,77 @@ export default {
           editableArea.value.innerHTML = previewEditableArea.value.innerHTML;
         }
 
+        // Проверка заполненности
         if (!editableArea.value?.textContent?.trim()) {
           alert("Заметка не может быть пустой!");
           return;
         }
 
-        // Создаем временный контейнер для обработки
+        // Создаем копию контента для обработки
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = editableArea.value.innerHTML;
 
-        // Обрабатываем все элементы
-        const allElements = tempDiv.children;
-        const imageUrls = [];
-        let previousWasImage = false;
+        // Удаляем оставшиеся скрипты
+        const scripts = tempDiv.querySelectorAll('script');
+        scripts.forEach(script => script.remove());
 
-        // Обрабатываем каждый элемент отдельно
-        for (let i = 0; i < allElements.length; i++) {
-          const el = allElements[i];
-
-          // Обработка изображений
-          if (el.tagName === 'IMG') {
-            const imgSrc = el.src;
-            if (imgSrc) {
-              imageUrls.push(imgSrc);
-              if (!imgSrc.includes(supabase.storage.url)) {
-                el.setAttribute('data-external-image', 'true');
-              }
-
-              // Создаем контейнер для изображения
-              const imgContainer = document.createElement('div');
-              imgContainer.style.margin = '20px 0';
-              imgContainer.style.padding = '10px 0';
-              imgContainer.style.borderTop = '1px solid #eee';
-              imgContainer.style.borderBottom = '1px solid #eee';
-              imgContainer.style.textAlign = 'center';
-
-              // Копируем изображение в контейнер
-              const newImg = el.cloneNode(true);
-              newImg.style.maxWidth = '100%';
-              newImg.style.height = 'auto';
-              newImg.style.display = 'block';
-              imgContainer.appendChild(newImg);
-
-              // Заменяем оригинальный элемент
-              el.parentNode.replaceChild(imgContainer, el);
-              previousWasImage = true;
-            }
+        // Обрабатываем видео-блоки
+        const videoBlocks = tempDiv.querySelectorAll('.video-placeholder');
+        videoBlocks.forEach(block => {
+          // Сохраняем только ссылку внутри блока
+          const link = block.querySelector('a');
+          if (link) {
+            block.innerHTML = `<a href="${link.href}" target="_blank" style="color: white; text-decoration: underline;">Видео контент (перейти)</a>`;
+            block.style.backgroundColor = '#ff4444';
+            block.style.padding = '10px';
+            block.style.textAlign = 'center';
+            block.style.margin = '15px 0';
+            block.style.width = '100%';
+            block.style.display = 'block';
           }
-          // Обработка текстовых блоков
-          else {
-            // Добавляем отступы перед текстом после изображения
-            if (previousWasImage) {
-              el.style.marginTop = '20px';
-            }
-            // Добавляем отступы перед текстом перед изображением
-            if (i < allElements.length - 1 && allElements[i+1].tagName === 'IMG') {
-              el.style.marginBottom = '20px';
-            }
+        });
 
-            // Удаляем пустые элементы
-            if (!el.textContent.trim() && !el.querySelector('img, br')) {
-              el.remove();
-              i--; // Уменьшаем счетчик, так как элемент удален
-            } else {
-              previousWasImage = false;
-            }
+        // Обрабатываем изображения
+        const images = tempDiv.querySelectorAll('img');
+        const imageUrls = [];
+
+        images.forEach(img => {
+          if (img.src) {
+            imageUrls.push(img.src);
+            // Добавляем базовые стили
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.style.display = 'block';
+            img.style.margin = '15px auto';
+          }
+        });
+
+        // Добавляем отступы между элементами
+        const elements = tempDiv.children;
+        for (let i = 0; i < elements.length; i++) {
+          elements[i].style.marginBottom = '15px';
+          if (i === 0) {
+            elements[i].style.marginTop = '0';
           }
         }
 
-        // Получаем обработанный HTML
-        let contentHtml = tempDiv.innerHTML;
-
         // Санитизация HTML
-        const cleanHtml = DOMPurify.sanitize(contentHtml, {
-          ALLOWED_TAGS: ['p', 'br', 'img', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'div'],
-          ALLOWED_ATTR: ['src', 'style', 'class', 'data-external-image']
+        const cleanHtml = DOMPurify.sanitize(tempDiv.innerHTML, {
+          ALLOWED_TAGS: ['p', 'br', 'img', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'div', 'a'],
+          ALLOWED_ATTR: ['src', 'style', 'class', 'href', 'target']
         });
 
-        // Проверка авторизации и сохранение (остается без изменений)
+        // Проверка авторизации
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) throw new Error("Необходимо авторизоваться");
 
+        // Подготовка тегов
         const tagsArray = keywords.value.split(',').map(tag => tag.trim()).filter(Boolean);
+
+        // Обрезаем заголовок до 255 символов
         const trimmedTitle = title.value.substring(0, 255);
 
+        // Запрос к Supabase
         const { error: dbError } = await supabase.from('linote').insert([{
           title: trimmedTitle,
           content: cleanHtml,
@@ -398,6 +370,7 @@ export default {
 
         if (dbError) throw dbError;
 
+        // Успешное сохранение
         alert("Заметка сохранена!");
         clearAll();
         isPreviewVisible.value = false;
@@ -406,7 +379,6 @@ export default {
         alert(`Ошибка сохранения: ${error.message}`);
       }
     };
-
 
     onMounted(() => window.addEventListener('keydown', handleKeyDown));
     onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
@@ -436,7 +408,6 @@ export default {
 </script>
 
 <style scoped>
-
 .new-note-container {
   height: 50px;
   width: 100%;
@@ -567,37 +538,58 @@ export default {
   background: white;
 }
 
+/* Стили для изображений */
+.note-editable-area img,
 .preview-html img,
-.preview-editable-area img,
-.note-editable-area img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-  margin: 20px auto !important;
-  padding: 10px 0;
-  border-top: 1px solid #eee;
-  border-bottom: 1px solid #eee;
+.preview-editable-area img {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block !important;
+  margin: 15px auto !important;
 }
 
-.preview-html p,
-.preview-editable-area p,
-.note-editable-area p {
-  margin: 20px 0 !important;
-  line-height: 1.6;
+/* Стили для видео-блоков */
+.video-placeholder {
+  width: 100% !important;
+  background-color: #ff4444 !important;
+  padding: 20px !important;
+  margin: 15px 0 !important;
+  border-radius: 4px !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  display: block !important;
 }
 
-.preview-html div,
-.preview-editable-area div,
-.note-editable-area div {
-  margin: 20px 0 !important;
+.video-placeholder a {
+  color: white !important;
+  text-decoration: underline !important;
+  font-weight: bold !important;
 }
 
-.preview-html br,
-.preview-editable-area br,
-.note-editable-area br {
-  content: "";
-  display: block;
-  margin: 10px 0;
+.video-placeholder p {
+  color: white !important;
+  margin: 0 0 10px 0 !important;
+}
+
+.video-placeholder::before {
+  content: '▶';
+  margin-right: 8px;
+  font-size: 1.2em;
+  color: white;
+}
+
+/* Отступы между элементами */
+.note-editable-area > *,
+.preview-html > *,
+.preview-editable-area > * {
+  margin-bottom: 15px !important;
+  margin-top: 0 !important;
+}
+
+.note-editable-area > *:first-child,
+.preview-html > *:first-child,
+.preview-editable-area > *:first-child {
+  margin-top: 0 !important;
 }
 
 .edit-button {
