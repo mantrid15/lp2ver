@@ -22,16 +22,17 @@
         <h2>{{ note.title }}</h2>
         <div
             class="markdown-content"
-            v-html="renderedMarkdown"
+            v-html="renderedContent"
             v-if="!isEditing"
             @dblclick="startEditing"
         ></div>
-        <textarea
+        <div
             v-else
-            class="edit-textarea"
-            v-model="editableContent"
-            ref="textarea"
-        ></textarea>
+            ref="editableDiv"
+            contenteditable="true"
+            class="edit-content"
+            @input="updateEditableContent"
+        ></div>
       </div>
       <div v-else class="empty-note">Выберите заметку из списка</div>
     </div>
@@ -40,8 +41,8 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue';
-import { marked } from 'marked';
 import { supabase } from '@/clients/supabase';
+import DOMPurify from 'dompurify';
 
 const props = defineProps({
   noteId: String,
@@ -51,42 +52,8 @@ const emit = defineEmits(['editing-change', 'note-deleted']);
 
 const note = ref(null);
 const isEditing = ref(false);
+const editableDiv = ref(null);
 const editableContent = ref('');
-const textarea = ref(null);
-
-marked.use({
-  renderer: {
-    image(href, title, text) {
-      return `
-        <div class="image-container" draggable="false">
-          <img
-            src="${href}"
-            alt="${text}"
-            title="${title || ''}"
-            class="markdown-image resizable"
-            loading="lazy"
-            onload="this.style.opacity = 1; this.parentElement.dataset.originalWidth = this.naturalWidth; this.parentElement.dataset.originalHeight = this.naturalHeight;"
-            draggable="false"
-          >
-          <div class="resize-handle" draggable="false"></div>
-        </div>
-      `;
-    },
-    paragraph(text) {
-      return `<p class="markdown-paragraph">${text}</p>`;
-    },
-    heading(text, level) {
-      return `<h${level} class="markdown-heading">${text}</h${level}>`;
-    },
-    list(body, ordered) {
-      const tag = ordered ? 'ol' : 'ul';
-      return `<${tag} class="markdown-list">${body}</${tag}>`;
-    },
-    code(code, infostring, escaped) {
-      return `<pre class="markdown-code"><code>${code}</code></pre>`;
-    }
-  }
-});
 
 const loadNote = async (id) => {
   if (!id) {
@@ -102,14 +69,24 @@ const loadNote = async (id) => {
 
   if (!error) {
     note.value = data;
+    // Убедимся, что content - это строка
+    if (note.value.content && typeof note.value.content !== 'string') {
+      note.value.content = JSON.stringify(note.value.content);
+    }
   } else {
     console.error('Ошибка при загрузке заметки:', error);
     note.value = null;
   }
 };
 
-const renderedMarkdown = computed(() => {
-  return note.value ? marked(note.value.content || '') : '';
+const renderedContent = computed(() => {
+  if (!note.value?.content) return '';
+
+  // Очищаем HTML перед отображением
+  return DOMPurify.sanitize(note.value.content, {
+    ALLOWED_TAGS: ['p', 'br', 'img', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'div'],
+    ALLOWED_ATTR: ['src', 'style', 'class']
+  });
 });
 
 const startEditing = () => {
@@ -117,19 +94,35 @@ const startEditing = () => {
   emit('editing-change', true);
   editableContent.value = note.value.content;
   nextTick(() => {
-    textarea.value.focus();
+    if (editableDiv.value) {
+      editableDiv.value.innerHTML = note.value.content;
+      editableDiv.value.focus();
+    }
   });
+};
+
+const updateEditableContent = () => {
+  if (editableDiv.value) {
+    editableContent.value = editableDiv.value.innerHTML;
+  }
 };
 
 const saveChanges = async () => {
   isEditing.value = false;
   emit('editing-change', false);
-  note.value.content = editableContent.value;
+
+  // Сохраняем очищенный HTML
+  const cleanHtml = DOMPurify.sanitize(editableContent.value, {
+    ALLOWED_TAGS: ['p', 'br', 'img', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'div'],
+    ALLOWED_ATTR: ['src', 'style', 'class']
+  });
+
+  note.value.content = cleanHtml;
 
   const { error } = await supabase
       .from('linote')
       .update({
-        content: editableContent.value,
+        content: cleanHtml,
         updated_at: new Date().toISOString()
       })
       .eq('id', props.noteId);
@@ -139,66 +132,6 @@ const saveChanges = async () => {
   }
 };
 
-const deleteNote = async () => {
-  if (!note.value?.id) return;
-
-  if (confirm('Вы уверены, что хотите удалить эту заметку?')) {
-    const { error } = await supabase
-        .from('linote')
-        .delete()
-        .eq('id', note.value.id);
-
-    if (error) {
-      console.error('Ошибка при удалении заметки:', error);
-    } else {
-      emit('note-deleted');
-      note.value = null;
-    }
-  }
-};
-
-const setupImageResizing = () => {
-  nextTick(() => {
-    document.querySelectorAll('.resizable').forEach(img => {
-      const container = img.parentElement;
-      const resizeHandle = container.querySelector('.resize-handle');
-
-      if (!resizeHandle || resizeHandle.classList.contains('initialized')) return;
-
-      resizeHandle.classList.add('initialized');
-
-      let startX, startY, startWidth, startHeight;
-
-      const initResize = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        startX = e.clientX;
-        startY = e.clientY;
-        startWidth = parseInt(document.defaultView.getComputedStyle(img).width, 10);
-        startHeight = parseInt(document.defaultView.getComputedStyle(img).height, 10);
-        document.documentElement.addEventListener('mousemove', doResize, false);
-        document.documentElement.addEventListener('mouseup', stopResize, false);
-      };
-
-      const doResize = (e) => {
-        const newWidth = startWidth + e.clientX - startX;
-        const newHeight = startHeight + e.clientY - startY;
-        img.style.width = `${Math.max(50, newWidth)}px`;
-        img.style.height = 'auto';
-        container.dataset.resized = 'true';
-      };
-
-      const stopResize = () => {
-        document.documentElement.removeEventListener('mousemove', doResize, false);
-        document.documentElement.removeEventListener('mouseup', stopResize, false);
-      };
-
-      resizeHandle.addEventListener('mousedown', initResize, false);
-    });
-  });
-};
-
-watch(renderedMarkdown, setupImageResizing);
 watch(
     () => props.noteId,
     (newId) => {
@@ -242,24 +175,6 @@ watch(
   transform: scale(1.05);
 }
 
-.delete-button {
-  background-color: #f44336;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  padding: 10px 20px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-  transition: all 0.2s;
-}
-
-.delete-button:hover {
-  background-color: #d32f2f;
-  transform: scale(1.05);
-}
-
 .note-content {
   padding: 80px 20px 20px;
   display: flex;
@@ -283,83 +198,14 @@ watch(
   user-select: text;
 }
 
-.edit-textarea {
+.edit-content {
   width: 100%;
   min-height: 500px;
   padding: 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-family: monospace;
-  font-size: 14px;
-  line-height: 1.6;
-  resize: vertical;
-  white-space: pre;
-}
-
-.image-container {
-  width: fit-content;
-  max-width: 100%;
-  display: inline-flex;
-  justify-content: center;
-  margin: 12px 0;
-  padding: 0;
-  position: relative;
-  background-color: #000000;
-  border-radius: 4px;
-}
-
-.markdown-image {
-  max-width: 100%;
-  height: auto;
-  border-radius: 4px;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  display: block;
-}
-
-.resize-handle {
-  position: absolute;
-  right: -6px;
-  bottom: -6px;
-  width: 12px;
-  height: 12px;
-  background-color: #4285f4;
-  border: 2px solid white;
-  cursor: nwse-resize;
-  border-radius: 50%;
-  opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 10;
-}
-
-.image-container:hover .resize-handle,
-.image-container:active .resize-handle {
-  opacity: 1;
-}
-
-.markdown-paragraph {
-  line-height: 1.6;
-  margin: 0;
-  padding: 0;
-}
-
-.markdown-heading {
-  margin: 24px 0 16px 0;
-  padding: 0;
-}
-
-.markdown-list {
-  padding-left: 24px;
-  margin: 8px 0;
-}
-
-.markdown-code {
-  background-color: #f5f5f5;
-  padding: 12px;
-  border-radius: 4px;
-  overflow-x: auto;
-  margin: 8px 0;
-  font-family: monospace;
+  outline: none;
+  white-space: pre-wrap;
 }
 
 .empty-note {
@@ -370,28 +216,35 @@ watch(
   padding: 20px;
 }
 
-.markdown-content >>> .markdown-paragraph {
+/* Стили для контента */
+.markdown-content >>> p {
   line-height: 1.6;
-  margin: 0;
+  margin: 0 0 16px 0;
 }
 
-.markdown-content >>> .markdown-heading {
-  margin: 1em 0 0.5em 0;
+.markdown-content >>> img {
+  max-width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border-radius: 4px;
 }
 
-.markdown-content >>> .markdown-list {
+.markdown-content >>> h1,
+.markdown-content >>> h2,
+.markdown-content >>> h3 {
+  margin: 24px 0 16px 0;
+}
+
+.markdown-content >>> ul,
+.markdown-content >>> ol {
   padding-left: 24px;
   margin: 8px 0;
 }
 
-.markdown-content >>> .markdown-code {
+.markdown-content >>> pre {
   background-color: #f5f5f5;
   padding: 12px;
   border-radius: 4px;
   overflow-x: auto;
-}
-
-.markdown-content >>> .image-container:hover .resize-handle {
-  opacity: 1;
 }
 </style>

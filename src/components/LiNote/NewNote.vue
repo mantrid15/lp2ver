@@ -207,17 +207,17 @@ export default {
           return;
         }
 
-        // Очистка и нормализация HTML
-        let cleanHtml = editableArea.value.innerHTML;
+        // Получаем содержимое как HTML
+        let contentHtml = editableArea.value.innerHTML;
 
         // Упрощаем HTML изображений
-        cleanHtml = cleanHtml.replace(
-          /<img[^>]+src="([^">]+)"[^>]*>/g,
-          '<img src="$1" style="max-width:100%;height:auto;margin:10px auto;display:block;">'
+        contentHtml = contentHtml.replace(
+            /<img[^>]+src="([^">]+)"[^>]*>/g,
+            '<img src="$1" style="max-width:100%;height:auto;margin:10px auto;display:block;">'
         );
 
         // Санитизация HTML
-        cleanHtml = DOMPurify.sanitize(cleanHtml, {
+        const cleanHtml = DOMPurify.sanitize(contentHtml, {
           ALLOWED_TAGS: ['p', 'br', 'img', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'div'],
           ALLOWED_ATTR: ['src', 'style', 'class']
         });
@@ -234,11 +234,9 @@ export default {
         const trimmedTitle = title.value.substring(0, 255);
 
         // Запрос к Supabase
-        const { error: dbError } = await supabase
-            .from('linote')
-            .insert([{
-          title: trimmedTitle, // обрезанный заголовок
-          content: cleanHtml,   // содержимое из editableArea
+        const { error: dbError } = await supabase.from('linote').insert([{
+          title: trimmedTitle,
+          content: cleanHtml, // Сохраняем как чистый HTML
           image_url: firstImg,
           user_id: user.id,
           tags: tagsArray,
@@ -257,7 +255,6 @@ export default {
         alert(`Ошибка сохранения: ${error.message}`);
       }
     };
-
     onMounted(() => window.addEventListener('keydown', handleKeyDown));
     onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
 
