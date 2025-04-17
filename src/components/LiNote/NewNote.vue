@@ -131,6 +131,12 @@ export default {
       checkEditableAreaEmpty();
     };
 
+    const handlePaste = (e) => {
+      e.preventDefault();
+      const text = e.clipboardData.getData('text/plain');
+      document.execCommand('insertText', false, text);
+    };
+
     watch(editableArea, (newVal) => {
       if (newVal) checkEditableAreaEmpty();
     }, { immediate: true });
@@ -318,7 +324,8 @@ export default {
   padding-left: 5px;
   border: 1px solid #000;
   border-radius: 3px;
-  background-color: white;
+  color: black;
+  background-color: #ffffff;
   font-size: 14px;
   box-sizing: border-box;
 }

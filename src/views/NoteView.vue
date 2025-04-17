@@ -45,7 +45,6 @@ export default {
     const selectedNoteId = ref(null);
     const isEditing = ref(false);
     const showSnackbar = ref(false);
-
     const getInitialWidth = () => {
       if (!userId.value) return Math.min(300, Math.max(100, window.innerWidth * 0.25));
 
@@ -54,9 +53,10 @@ export default {
           ? parseInt(savedWidth, 10)
           : Math.min(300, Math.max(100, window.innerWidth * 0.25));
     };
-
     const sidebarWidth = ref(getInitialWidth());
     const isResizing = ref(false);
+
+
 
     watch([sidebarWidth, userId], ([newWidth, newUserId]) => {
       if (newUserId) {
@@ -125,6 +125,7 @@ export default {
     };
 
     let authSubscription = null;
+    let windowResizeHandler = null;
 
     const handleAuthChange = (event, session) => {
       console.log('Auth state changed:', event, session);
@@ -143,6 +144,15 @@ export default {
       }
     }
 
+    onUnmounted(() => {
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+      if (windowResizeHandler) {
+        window.removeEventListener('resize', windowResizeHandler);
+      }
+    });
+
     onMounted(async () => {
       await store.dispatch('restoreSession');
       await getSession();
@@ -158,29 +168,19 @@ export default {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
       authSubscription = subscription;
 
-      const handleWindowResize = () => {
+      windowResizeHandler = () => {
         const minWidth = window.innerWidth * 0.1;
         const maxWidth = window.innerWidth * 0.3;
         sidebarWidth.value = Math.min(maxWidth, Math.max(minWidth, sidebarWidth.value));
       };
+      window.addEventListener('resize', windowResizeHandler);
 
-      window.addEventListener('resize', handleWindowResize);
 
-      onUnmounted(() => {
-        if (authSubscription) {
-          authSubscription.unsubscribe();
-        }
-        window.removeEventListener('resize', handleWindowResize);
-      });
     });
 
-    onUnmounted(() => {
-      if (authSubscription) {
-        authSubscription.unsubscribe();
-      }
-    });
 
     return {
+      windowResizeHandler,
       account,
       userId,
       selectedNoteId,
