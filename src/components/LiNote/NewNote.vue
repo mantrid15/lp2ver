@@ -369,6 +369,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
+  
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
@@ -384,6 +385,7 @@ export default {
   max-width: 800px;
   max-height: 80vh;
   display: flex;
+  color: black;
   flex-direction: column;
 }
 
