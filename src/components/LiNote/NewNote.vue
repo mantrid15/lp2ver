@@ -35,9 +35,9 @@
 
     <!-- Модальное окно предпросмотра -->
     <div v-if="isPreviewVisible" class="preview-modal" @keydown.esc="closePreview" tabindex="0">
-      <div class="preview-content">
+      <div class="preview-content" :class="{ 'edit-mode': isEditMode }">
         <div class="preview-header">
-          <h3>{{ isEditMode ? 'Редактирование заметки' : 'Предпросмотр заметки' }}</h3>
+          <h3>{{ title || 'Без названия' }}</h3>
           <div class="preview-actions">
             <button
               @click="toggleEditMode"
@@ -230,10 +230,15 @@ export default {
         const tagsArray = keywords.value.split(',').map(tag => tag.trim()).filter(Boolean);
         const firstImg = editableArea.value.querySelector('img')?.src;
 
+        // Обрезаем заголовок до 255 символов
+        const trimmedTitle = title.value.substring(0, 255);
+
         // Запрос к Supabase
-        const { error: dbError } = await supabase.from('linote').insert([{
-          title: title.value,
-          content: cleanHtml,
+        const { error: dbError } = await supabase
+            .from('linote')
+            .insert([{
+          title: trimmedTitle, // обрезанный заголовок
+          content: cleanHtml,   // содержимое из editableArea
           image_url: firstImg,
           user_id: user.id,
           tags: tagsArray,
@@ -369,7 +374,6 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
@@ -387,6 +391,11 @@ export default {
   display: flex;
   color: black;
   flex-direction: column;
+  border: 5px solid #a5d6a7; /* Светло-зеленый цвет по умолчанию */
+}
+
+.preview-content.edit-mode {
+  border: 5px solid #ef9a9a; /* Светло-красный цвет в режиме редактирования */
 }
 
 .preview-scroll-container {
