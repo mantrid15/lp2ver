@@ -84,7 +84,8 @@ import DOMPurify from 'dompurify';
 
 export default {
   name: "NewNote",
-  setup() {
+  emits: ['note-created'], // Добавляем здесь декларацию emits
+  setup(props, { emit }) { // Получаем emit через контекст
     const editableArea = ref(null);
     const previewEditableArea = ref(null);
     const noteContent = ref('');
@@ -161,8 +162,9 @@ export default {
 
     const handlePaste = async (e) => {
       e.preventDefault();
+// Получаем URL источника из буфера обмена
+      const sourceUrl = e.clipboardData.getData('text/plain').match(/(https?:\/\/[^\s]+)/)?.[0] || '';
 
-      // Проверяем наличие HTML в буфере
       const html = e.clipboardData.getData('text/html');
       if (html) {
         // Очищаем HTML
@@ -175,7 +177,28 @@ export default {
 
           const tempDiv = document.createElement('div');
           tempDiv.innerHTML = cleanHtml;
+// Добавляем блок с URL источника (если есть)
+          if (sourceUrl) {
+            const sourceBlock = document.createElement('div');
+            sourceBlock.className = 'source-url-block';
 
+            const sourceText = document.createElement('p');
+            sourceText.textContent = 'Источник:';
+            sourceText.style.margin = '0 0 5px 0';
+            sourceText.style.color = 'white';
+
+            const sourceLink = document.createElement('a');
+            sourceLink.href = sourceUrl;
+            sourceLink.textContent = sourceUrl;
+            sourceLink.target = '_blank';
+            sourceLink.style.color = 'white';
+            sourceLink.style.textDecoration = 'underline';
+            sourceLink.style.wordBreak = 'break-all';
+
+            sourceBlock.appendChild(sourceText);
+            sourceBlock.appendChild(sourceLink);
+            tempDiv.insertBefore(sourceBlock, tempDiv.firstChild);
+          }
           // Обрабатываем видео-превью
           const videoEmbeds = tempDiv.querySelectorAll('iframe, script');
           videoEmbeds.forEach(embed => {
@@ -216,7 +239,7 @@ export default {
           range.collapse(false);
         }
       } else {
-        // Обычная обработка текста/изображений
+        // Обычная обработка текста
         const text = e.clipboardData.getData('text/plain');
         document.execCommand('insertText', false, text);
       }
@@ -374,6 +397,8 @@ export default {
         alert("Заметка сохранена!");
         clearAll();
         isPreviewVisible.value = false;
+        // Добавляем эмит события
+        emit('note-created');
       } catch (error) {
         console.error("Ошибка сохранения:", error);
         alert(`Ошибка сохранения: ${error.message}`);
@@ -408,6 +433,35 @@ export default {
 </script>
 
 <style scoped>
+/*
+* Стили для блока с URL источника *!
+*/
+
+.source-url-block {
+  width: 100% !important;
+  background-color: #ff4444 !important;
+  padding: 15px !important;
+  margin-bottom: 20px !important;
+  border-radius: 4px !important;
+  box-sizing: border-box !important;
+  display: block !important;
+}
+
+.source-url-block p {
+  color: white !important;
+  margin: 0 0 5px 0 !important;
+  font-size: 14px !important;
+}
+
+.source-url-block a {
+  color: white !important;
+  text-decoration: underline !important;
+  font-size: 14px !important;
+  word-break: break-all !important;
+  display: inline-block !important;
+  max-width: 100% !important;
+}
+
 .new-note-container {
   height: 50px;
   width: 100%;

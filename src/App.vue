@@ -30,7 +30,8 @@
         <v-spacer></v-spacer>
         <div class="row-tool-container">
           <NewTask v-if="$route.path === '/todo'" />
-          <NewNote v-else-if="$route.path === '/note'" />
+          <NewNote v-else-if="$route.path === '/note'"
+                   @note-created="triggerNotesRefresh" />
           <RowTool v-else
                    :buttonColor="buttonColor"
                    @change-button-color="changeButtonColorHandler"
@@ -79,6 +80,11 @@ const buttonColor = ref('red');
 const loginButtonText = ref('Login');
 const isLoggedIn = ref(false);
 const tasks = ref([]);
+const refreshNotes = ref(false);
+
+const triggerNotesRefresh = () => {
+  refreshNotes.value = !refreshNotes.value;
+};
 
 supabase.auth.onAuthStateChange((event, session) => {
   isLoggedIn.value = !!session;
@@ -119,10 +125,7 @@ const handleLogout = async () => {
 
 function formatDateForDisplay(dateString) {
   if (!dateString) return '';
-
-  if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
-    return dateString;
-  }
+  if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) return dateString;
 
   const date = new Date(dateString);
   const day = String(date.getDate()).padStart(2, '0');
@@ -133,7 +136,6 @@ function formatDateForDisplay(dateString) {
 
 function formatDateForInput(dateString) {
   if (!dateString) return '';
-
   if (dateString.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
     const [day, month, year] = dateString.split('.');
     return `${year}-${month}-${day}`;

@@ -38,6 +38,7 @@ import { useStore } from 'vuex';
 export default {
   name: "NoteView",
   components: { Sidebar, Note },
+  props: ['buttonColor'], // Добавляем пропсы, если они используются
   setup() {
     const store = useStore();
     const userId = computed(() => store.state.userId);
@@ -45,6 +46,9 @@ export default {
     const selectedNoteId = ref(null);
     const isEditing = ref(false);
     const showSnackbar = ref(false);
+    const sidebar = ref(null);
+    const refreshTrigger = ref(false);
+
     const getInitialWidth = () => {
       if (!userId.value) return Math.min(300, Math.max(100, window.innerWidth * 0.25));
 
@@ -53,10 +57,9 @@ export default {
           ? parseInt(savedWidth, 10)
           : Math.min(300, Math.max(100, window.innerWidth * 0.25));
     };
+
     const sidebarWidth = ref(getInitialWidth());
     const isResizing = ref(false);
-
-
 
     watch([sidebarWidth, userId], ([newWidth, newUserId]) => {
       if (newUserId) {
@@ -144,6 +147,12 @@ export default {
       }
     }
 
+    watch(refreshTrigger, () => {
+      if (sidebar.value) {
+        sidebar.value.refreshNotes();
+      }
+    });
+
     onUnmounted(() => {
       if (authSubscription) {
         authSubscription.unsubscribe();
@@ -174,19 +183,17 @@ export default {
         sidebarWidth.value = Math.min(maxWidth, Math.max(minWidth, sidebarWidth.value));
       };
       window.addEventListener('resize', windowResizeHandler);
-
-
     });
 
-
     return {
-      windowResizeHandler,
       account,
       userId,
       selectedNoteId,
       sidebarWidth,
       isEditing,
       showSnackbar,
+      sidebar,
+      refreshTrigger,
       startResize,
       handleEditingChange,
       handleNoteSelect,
