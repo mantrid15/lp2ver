@@ -67,7 +67,6 @@
       <option value="иное">Иное</option>
     </select>
 
-
     <select
         v-model="newTask.importance_tag"
         title="Важность"
@@ -348,6 +347,7 @@ export default {
         };
         setDefaultDate();
 
+        // Вызываем событие task-added
         context.emit('task-added');
 
       } catch (error) {

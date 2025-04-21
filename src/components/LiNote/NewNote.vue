@@ -393,12 +393,12 @@ export default {
 
         if (dbError) throw dbError;
 
-        // Успешное сохранение
+        // Добавляем эмит события
         alert("Заметка сохранена!");
         clearAll();
-        isPreviewVisible.value = false;
-        // Добавляем эмит события
         emit('note-created');
+        // Успешное сохранение
+        isPreviewVisible.value = false;
       } catch (error) {
         console.error("Ошибка сохранения:", error);
         alert(`Ошибка сохранения: ${error.message}`);

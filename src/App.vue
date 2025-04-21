@@ -31,7 +31,7 @@
         <div class="row-tool-container">
           <NewTask v-if="$route.path === '/todo'" />
           <NewNote v-else-if="$route.path === '/note'"
-                   @note-created="triggerNotesRefresh" />
+                   @note-created="triggerNotesRefresh"/>
           <RowTool v-else
                    :buttonColor="buttonColor"
                    @change-button-color="changeButtonColorHandler"
@@ -81,7 +81,7 @@ const loginButtonText = ref('Login');
 const isLoggedIn = ref(false);
 const tasks = ref([]);
 const refreshNotes = ref(false);
-
+const refreshTrigger = ref(0); // Добавить реактивный триггер
 const triggerNotesRefresh = () => {
   refreshNotes.value = !refreshNotes.value;
 };

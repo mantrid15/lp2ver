@@ -6,7 +6,10 @@
         @select="handleNoteSelect"
         :style="{ width: sidebarWidth + 'px' }"
         :disabled="isEditing"
+        :refresh-trigger="refreshTrigger"
+
     />
+
     <div
         class="resizer"
         @mousedown="startResize"
@@ -47,7 +50,17 @@ export default {
     const isEditing = ref(false);
     const showSnackbar = ref(false);
     const sidebar = ref(null);
-    const refreshTrigger = ref(false);
+
+    const refreshTrigger = ref(false); // Добавить реактивный триггер
+
+    const handleNoteCreated = () => {
+      refreshNotes();
+    };
+    const refreshNotes = async () => {
+      if (sidebar.value) {
+        await sidebar.value.fetchNotes();
+      }
+    };
 
     const getInitialWidth = () => {
       if (!userId.value) return Math.min(300, Math.max(100, window.innerWidth * 0.25));
@@ -186,6 +199,9 @@ export default {
     });
 
     return {
+      refreshTrigger,
+      refreshNotes,
+      handleNoteCreated,
       account,
       userId,
       selectedNoteId,
@@ -193,7 +209,6 @@ export default {
       isEditing,
       showSnackbar,
       sidebar,
-      refreshTrigger,
       startResize,
       handleEditingChange,
       handleNoteSelect,

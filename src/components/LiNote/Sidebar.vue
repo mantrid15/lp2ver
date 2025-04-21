@@ -53,180 +53,192 @@
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
+<script>
+import { ref, computed, onMounted, onUnmounted, defineExpose, watch } from 'vue';
 import { supabase } from '@/clients/supabase';
 import { useStore } from 'vuex';
 
-const store = useStore();
-const props = defineProps({
-  userId: String,
-  selectedId: String,
-  disabled: Boolean
-});
+export default {
+  name: "Sidebar",
+  props: {
+    userId: String,
+    selectedId: String,
+    disabled: Boolean,
+/*
+    refreshTrigger: Boolean
+*/
+  },
+  setup(props, { emit }) {
+    const notes = ref([]);
+    const loading = ref(false);
+    const error = ref(null);
+    const showDeleted = ref(false);
+    let subscription = null;
 
-const emit = defineEmits(['select']);
-
-// Состояния компонента
-const notes = ref([]);
-const loading = ref(false);
-const error = ref(null);
-const showDeleted = ref(false);
-let subscription = null;
-
-// Вычисляемые свойства
-const filteredNotes = computed(() => {
-  return showDeleted.value
-    ? notes.value
-    : notes.value.filter(note => !note.is_deleted);
-});
-
-const selectedNote = computed(() => {
-  return notes.value.find(note => note.id === props.selectedId);
-});
-
-// Методы
-const setupRealtimeSubscription = () => {
-  if (subscription) {
-    supabase.removeChannel(subscription);
-  }
-
-  subscription = supabase
-    .channel('custom-linote-channel')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'linote',
-        filter: `user_id=eq.${props.userId}`
-      },
-      async (payload) => {
-        console.log('Change received:', payload);
-        await fetchNotes();
-
-        // Особый случай: если удаляем текущую выбранную заметку
-        if (payload.eventType === 'DELETE' && payload.old?.id === props.selectedId) {
-          emit('select', null);
-        }
-        // Если обновляем текущую выбранную заметку
-        else if (payload.eventType === 'UPDATE' && payload.new?.id === props.selectedId) {
-          const updatedNote = notes.value.find(n => n.id === props.selectedId);
-          if (updatedNote) {
-            emit('select', updatedNote);
-          }
-        }
+    const refreshNotes = async () => {
+      await fetchNotes();
+      // Принудительно обновляем selectedId, если заметка была удалена
+      if (props.selectedId && !notes.value.some(note => note.id === props.selectedId)) {
+        emit('select', null);
       }
-    )
-    .subscribe();
-};
+    };
 
-const fetchNotes = async () => {
-  try {
-    loading.value = true;
-    error.value = null;
+    const filteredNotes = computed(() => {
+      return showDeleted.value
+          ? notes.value
+          : notes.value.filter(note => !note.is_deleted);
+    });
 
-    const { data, error: supabaseError } = await supabase
-      .from('linote')
-      .select('id, title, created_at, is_deleted')
-      .eq('user_id', props.userId)
-      .order('created_at', { ascending: false });
+    const selectedNote = computed(() => {
+      return notes.value.find(note => note.id === props.selectedId);
+    });
 
-    if (supabaseError) throw supabaseError;
+    const fetchNotes = async () => {
+      try {
+        loading.value = true;
+        error.value = null;
 
-    notes.value = data || [];
-  } catch (err) {
-    console.error('Ошибка загрузки заметок:', err);
-    error.value = err.message;
-  } finally {
-    loading.value = false;
+        const { data, error: supabaseError } = await supabase
+            .from('linote')
+            .select('id, title, created_at, is_deleted')
+            .eq('user_id', props.userId)
+            .order('created_at', { ascending: false });
+
+        if (supabaseError) throw supabaseError;
+
+        notes.value = data || [];
+      } catch (err) {
+        console.error('Ошибка загрузки заметок:', err);
+        error.value = err.message;
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const selectNote = (note) => {
+      emit('select', note);
+    };
+
+    const toggleDeleteStatus = async (isDeleted) => {
+      if (!props.selectedId) return;
+
+      try {
+        loading.value = true;
+        const { error: supabaseError } = await supabase
+            .from('linote')
+            .update({ is_deleted: isDeleted })
+            .eq('id', props.selectedId);
+
+        if (supabaseError) throw supabaseError;
+
+        await fetchNotes();
+      } catch (err) {
+        console.error('Ошибка изменения статуса заметки:', err);
+        error.value = err.message;
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const deleteNotePermanently = async () => {
+      if (!props.selectedId) return;
+
+      try {
+        loading.value = true;
+        const { error: supabaseError } = await supabase
+            .from('linote')
+            .delete()
+            .eq('id', props.selectedId);
+
+        if (supabaseError) throw supabaseError;
+
+        emit('select', null);
+        await fetchNotes();
+      } catch (err) {
+        console.error('Ошибка удаления заметки:', err);
+        error.value = err.message;
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const handleDeleteClick = async () => {
+      if (!props.selectedId) return;
+
+      if (showDeleted.value && selectedNote.value?.is_deleted) {
+        if (confirm('Вы уверены, что хотите удалить заметку навсегда? Это действие нельзя отменить.')) {
+          await deleteNotePermanently();
+        }
+      } else {
+        await toggleDeleteStatus(true);
+      }
+    };
+
+    const setupRealtimeSubscription = () => {
+      subscription = supabase
+        .channel('custom-linote-channel')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'linote',
+            filter: `user_id=eq.${props.userId}`
+          },
+          async (payload) => {
+            console.log('Change received:', payload);
+            await fetchNotes();
+
+            if (payload.eventType === 'DELETE' && payload.old?.id === props.selectedId) {
+              emit('select', null);
+            } else if (payload.eventType === 'UPDATE' && payload.new?.id === props.selectedId) {
+              const updatedNote = notes.value.find(n => n.id === props.selectedId);
+              if (updatedNote) {
+                emit('select', updatedNote);
+              }
+            }
+          }
+        )
+        .subscribe();
+    };
+
+    onMounted(() => {
+      fetchNotes();
+      setupRealtimeSubscription();
+    });
+
+    onUnmounted(() => {
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    });
+
+   /* watch(() => props.refreshTrigger, async () => {
+      await fetchNotes();
+    });*/
+
+/*
+    defineExpose({
+      refreshNotes
+    });
+*/
+
+    return {
+      refreshNotes,
+      notes,
+      loading,
+      error,
+      showDeleted,
+      filteredNotes,
+      selectedNote,
+      fetchNotes,
+      selectNote,
+      toggleDeleteStatus,
+      deleteNotePermanently,
+      handleDeleteClick
+    };
   }
 };
-
-const selectNote = (note) => {
-  emit('select', note);
-};
-
-const toggleDeleteStatus = async (isDeleted) => {
-  if (!props.selectedId) return;
-
-  try {
-    loading.value = true;
-    const { error: supabaseError } = await supabase
-      .from('linote')
-      .update({ is_deleted: isDeleted })
-      .eq('id', props.selectedId);
-
-    if (supabaseError) throw supabaseError;
-
-    // Явно обновляем список после изменения статуса
-    await fetchNotes();
-  } catch (err) {
-    console.error('Ошибка изменения статуса заметки:', err);
-    error.value = err.message;
-  } finally {
-    loading.value = false;
-  }
-};
-
-const deleteNotePermanently = async () => {
-  if (!props.selectedId) return;
-
-  try {
-    loading.value = true;
-    const { error: supabaseError } = await supabase
-      .from('linote')
-      .delete()
-      .eq('id', props.selectedId);
-
-    if (supabaseError) throw supabaseError;
-
-    // Явно сбрасываем выделение и обновляем список
-    emit('select', null);
-    await fetchNotes();
-  } catch (err) {
-    console.error('Ошибка удаления заметки:', err);
-    error.value = err.message;
-  } finally {
-    loading.value = false;
-  }
-};
-
-const handleDeleteClick = async () => {
-  if (!props.selectedId) return;
-
-  if (showDeleted.value && selectedNote.value?.is_deleted) {
-    if (confirm('Вы уверены, что хотите удалить заметку навсегда? Это действие нельзя отменить.')) {
-      await deleteNotePermanently();
-    }
-  } else {
-    await toggleDeleteStatus(true);
-  }
-};
-
-// Хуки жизненного цикла
-onMounted(async () => {
-  await fetchNotes();
-  setupRealtimeSubscription();
-});
-
-onUnmounted(() => {
-  if (subscription) {
-    supabase.removeChannel(subscription);
-  }
-});
-
-// Обновление при изменении пользователя
-watch(() => props.userId, (newUserId) => {
-  if (newUserId) {
-    fetchNotes();
-    setupRealtimeSubscription();
-  }
-});
-
-defineExpose({
-  refreshNotes: fetchNotes
-});
 </script>
 
 <style scoped>
