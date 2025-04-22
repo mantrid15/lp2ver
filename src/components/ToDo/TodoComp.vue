@@ -375,6 +375,11 @@ export default {
     const deleteButtonText = 'Удалить';
     const restoreButtonText = 'Восстановить';
     const permanentDeleteButtonText = 'Удалить окончательно';
+    // Состояние компонента
+    const subscription = ref(null);
+    const showDeletedTasks = ref(false);
+    const currentUserId = ref(null);
+    const filterText = ref(''); // Добавляем переменную для фильтрации
 
     const isHighlighted = (value) => {
       if (!filterText.value) return false;
@@ -437,11 +442,6 @@ export default {
       fetchUser: 'Не удалось получить ID пользователя для загрузки задач.',
       updateUserMismatch: 'Попытка обновить задачу другого пользователя.'
     };
-    // Состояние компонента
-    const subscription = ref(null);
-    const showDeletedTasks = ref(false);
-    const currentUserId = ref(null);
-    const filterText = ref(''); // Добавляем переменную для фильтрации
     // Метод для загрузки уникальных проектов
     const getDueDateClass = (task) => {
       // Не окрашиваем выполненные или отмененные задачи
@@ -1080,6 +1080,7 @@ export default {
        }
      };
     // --- Конец Real-time ---
+
     // --- Хуки жизненного цикла ---
     onMounted(async () => {
       await fetchUniqueProjects();
@@ -1164,7 +1165,6 @@ export default {
       handleClick,
       getSortIcon,
       selectedProjectFilter,
-
       currentSortKey,
       currentSortOrder,
       SORT_ASC_ICON,

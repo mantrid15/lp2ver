@@ -50,7 +50,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted, defineExpose, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { supabase } from '@/clients/supabase';
 import { useStore } from 'vuex';
 
@@ -69,7 +69,9 @@ export default {
     const loading = ref(false);
     const error = ref(null);
     const showDeleted = ref(false);
-    let subscription = null;
+    const subscription = ref(null);
+
+    // let subscription = null;
 
     const refreshNotes = async () => {
       await fetchNotes();
@@ -172,12 +174,12 @@ export default {
 
     const setupRealtimeSubscription = () => {
       // Отписываемся от предыдущей подписки, если она существует
-      unsubscribeFromRealtimeChanges();
+      // unsubscribeFromRealtimeChanges();
 
       console.log('Setting up realtime subscription for notes...');
 
       try {
-        subscription = supabase
+        subscription.value = supabase
             .channel('linote_changes')
             .on(
                 'postgres_changes',
@@ -216,7 +218,7 @@ export default {
                   }
                 }
             )
-            .subscribe((status, err) => {
+/*            .subscribe((status, err) => {
               if (status === 'SUBSCRIBED') {
                 console.log('Realtime notes subscription active.');
               }
@@ -226,8 +228,13 @@ export default {
               }
               if (status === 'CLOSED') {
                 console.log('Realtime subscription closed.');
-              }
-            });
+              }*/
+
+            // });
+            .subscribe();
+
+        return subscription
+
       } catch (error) {
         console.error("Ошибка при создании realtime подписки:", error);
         error.value = "Не удалось подключиться к реальным обновлениям";
@@ -236,35 +243,30 @@ export default {
 
 // Функция для отписки
     const unsubscribeFromRealtimeChanges = () => {
-      if (subscription) {
-        supabase.removeChannel(subscription);
+      if (subscription.value) {
+        supabase.removeChannel(subscription.value);
         console.log('Unsubscribed from previous realtime changes');
-        subscription = null;
+        subscription.value = null;
       }
-    };    onMounted(() => {
-      fetchNotes();
+    };
+
+    onMounted(async () => {
+      await fetchNotes();
       setupRealtimeSubscription();
-      watch(() => props.userId, () => {
-        fetchNotes();
-        setupRealtimeSubscription();
-      });
+
     });
 
     onUnmounted(() => {
       if (subscription) {
         supabase.removeChannel(subscription);
+        console.log("Sidebar Unmounted.");
+        unsubscribeFromRealtimeChanges(); // Отписываемся при размонтировании
       }
     });
-
-   /* watch(() => props.refreshTrigger, async () => {
+    watch(() => props.userId, async () => {
       await fetchNotes();
-    });*/
-
-/*
-    defineExpose({
-      refreshNotes
+      setupRealtimeSubscription();
     });
-*/
 
     return {
       refreshNotes,

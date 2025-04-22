@@ -347,7 +347,6 @@ export default {
         isCtrlPressed.value = true;
       }
     };
-
     // Обработчик отпускания клавиши Ctrl
     const handleKeyUp = (event) => {
       if (!event.ctrlKey) {
@@ -532,6 +531,7 @@ export default {
         console.error('Ошибка при получении директорий:', error);
       }
     };
+
     onMounted(() => {
       subscribeToRealtimeChanges();
       fetchFolders().then(() => {
