@@ -8,9 +8,7 @@
           :disabled="!selectedId"
           :title="showDeleted && selectedNote?.is_deleted ? 'Удалить навсегда' : 'Удалить'"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-          </svg>
+          <i class="fas fa-trash-alt"></i>
         </button>
         <button
           class="restore-btn"
@@ -18,9 +16,7 @@
           :disabled="!selectedId || !showDeleted || !selectedNote?.is_deleted"
           title="Восстановить"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
-          </svg>
+          <i class="fas fa-undo-alt"></i>
         </button>
         <label class="show-deleted">
           <input type="checkbox" v-model="showDeleted" @change="fetchNotes" />
@@ -175,36 +171,83 @@ export default {
     };
 
     const setupRealtimeSubscription = () => {
-      subscription = supabase
-        .channel('custom-linote-channel')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'linote',
-            filter: `user_id=eq.${props.userId}`
-          },
-          async (payload) => {
-            console.log('Change received:', payload);
-            await fetchNotes();
+      // Отписываемся от предыдущей подписки, если она существует
+      unsubscribeFromRealtimeChanges();
 
-            if (payload.eventType === 'DELETE' && payload.old?.id === props.selectedId) {
-              emit('select', null);
-            } else if (payload.eventType === 'UPDATE' && payload.new?.id === props.selectedId) {
-              const updatedNote = notes.value.find(n => n.id === props.selectedId);
-              if (updatedNote) {
-                emit('select', updatedNote);
+      console.log('Setting up realtime subscription for notes...');
+
+      try {
+        subscription = supabase
+            .channel('linote_changes')
+            .on(
+                'postgres_changes',
+                {
+                  event: '*',
+                  schema: 'public',
+                  table: 'linote',
+                  filter: `user_id=eq.${props.userId}` // Добавляем фильтр по пользователю
+                },
+                (payload) => {
+                  console.log('Realtime change received:', payload);
+
+                  // Обрабатываем разные типы событий
+                  switch (payload.eventType) {
+                    case 'INSERT':
+                      // Добавляем новую заметку
+                      if (!notes.value.some(note => note.id === payload.new.id)) {
+                        notes.value = [payload.new, ...notes.value];
+                      }
+                      break;
+
+                    case 'UPDATE':
+                      // Обновляем существующую заметку
+                      notes.value = notes.value.map(note =>
+                          note.id === payload.new.id ? { ...note, ...payload.new } : note
+                      );
+                      break;
+
+                    case 'DELETE':
+                      // Удаляем заметку
+                      notes.value = notes.value.filter(note => note.id !== payload.old.id);
+                      if (props.selectedId === payload.old.id) {
+                        emit('select', null); // Сбрасываем выбор, если удалена выбранная заметка
+                      }
+                      break;
+                  }
+                }
+            )
+            .subscribe((status, err) => {
+              if (status === 'SUBSCRIBED') {
+                console.log('Realtime notes subscription active.');
               }
-            }
-          }
-        )
-        .subscribe();
+              if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.error('Realtime subscription error:', status, err);
+                error.value = 'Ошибка подключения к реальным обновлениям';
+              }
+              if (status === 'CLOSED') {
+                console.log('Realtime subscription closed.');
+              }
+            });
+      } catch (error) {
+        console.error("Ошибка при создании realtime подписки:", error);
+        error.value = "Не удалось подключиться к реальным обновлениям";
+      }
     };
 
-    onMounted(() => {
+// Функция для отписки
+    const unsubscribeFromRealtimeChanges = () => {
+      if (subscription) {
+        supabase.removeChannel(subscription);
+        console.log('Unsubscribed from previous realtime changes');
+        subscription = null;
+      }
+    };    onMounted(() => {
       fetchNotes();
       setupRealtimeSubscription();
+      watch(() => props.userId, () => {
+        fetchNotes();
+        setupRealtimeSubscription();
+      });
     });
 
     onUnmounted(() => {

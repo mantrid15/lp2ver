@@ -831,7 +831,6 @@ export default {
         }
       });
     };
-
     // Модифицируем метод finishEditing
     const finishEditing = (task, shouldUpdateDB = true) => {
       if (task.editing) {
@@ -889,7 +888,6 @@ export default {
     // Получаем новую дату выполнения
     const dueDate = new Date(newDateValue_YYYYMMDD);
     dueDate.setHours(0, 0, 0, 0); // Убираем время для сравнения
-
          // Проверяем, что дата выполнения не раньше даты создания
          if (dueDate < createdDate) {
            alert(errorMessages.dateValidation);
@@ -1072,7 +1070,7 @@ export default {
       }
     };
 
-     const unsubscribeFromRealtimeChanges = () => {
+    const unsubscribeFromRealtimeChanges = () => {
        if (subscription.value) {
          console.log('Removing realtime subscription...');
          supabase.removeChannel(subscription.value)

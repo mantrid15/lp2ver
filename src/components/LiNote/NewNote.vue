@@ -310,21 +310,17 @@ export default {
         if (isPreviewVisible.value && isEditMode.value && previewEditableArea.value && editableArea.value) {
           editableArea.value.innerHTML = previewEditableArea.value.innerHTML;
         }
-
         // Проверка заполненности
         if (!editableArea.value?.textContent?.trim()) {
           alert("Заметка не может быть пустой!");
           return;
         }
-
         // Создаем копию контента для обработки
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = editableArea.value.innerHTML;
-
         // Удаляем оставшиеся скрипты
         const scripts = tempDiv.querySelectorAll('script');
         scripts.forEach(script => script.remove());
-
         // Обрабатываем видео-блоки
         const videoBlocks = tempDiv.querySelectorAll('.video-placeholder');
         videoBlocks.forEach(block => {
@@ -340,11 +336,9 @@ export default {
             block.style.display = 'block';
           }
         });
-
         // Обрабатываем изображения
         const images = tempDiv.querySelectorAll('img');
         const imageUrls = [];
-
         images.forEach(img => {
           if (img.src) {
             imageUrls.push(img.src);
@@ -355,7 +349,6 @@ export default {
             img.style.margin = '15px auto';
           }
         });
-
         // Добавляем отступы между элементами
         const elements = tempDiv.children;
         for (let i = 0; i < elements.length; i++) {
@@ -364,23 +357,18 @@ export default {
             elements[i].style.marginTop = '0';
           }
         }
-
         // Санитизация HTML
         const cleanHtml = DOMPurify.sanitize(tempDiv.innerHTML, {
           ALLOWED_TAGS: ['p', 'br', 'img', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'div', 'a'],
           ALLOWED_ATTR: ['src', 'style', 'class', 'href', 'target']
         });
-
         // Проверка авторизации
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) throw new Error("Необходимо авторизоваться");
-
         // Подготовка тегов
         const tagsArray = keywords.value.split(',').map(tag => tag.trim()).filter(Boolean);
-
         // Обрезаем заголовок до 255 символов
         const trimmedTitle = title.value.substring(0, 255);
-
         // Запрос к Supabase
         const { error: dbError } = await supabase.from('linote').insert([{
           title: trimmedTitle,
@@ -392,7 +380,6 @@ export default {
         }]);
 
         if (dbError) throw dbError;
-
         // Добавляем эмит события
         alert("Заметка сохранена!");
         clearAll();
@@ -405,8 +392,10 @@ export default {
       }
     };
 
-    onMounted(() => window.addEventListener('keydown', handleKeyDown));
-    onUnmounted(() => window.removeEventListener('keydown', handleKeyDown));
+    onMounted(() =>
+        window.addEventListener('keydown', handleKeyDown));
+    onUnmounted(() =>
+        window.removeEventListener('keydown', handleKeyDown));
 
     return {
       editableArea,
