@@ -60,22 +60,26 @@ export default {
     userId: String,
     selectedId: String,
     disabled: Boolean,
-/*
     refreshTrigger: Boolean
-*/
   },
+  // watch: {
+  //   refreshTrigger() {
+  //     this.fetchNotes();
+  //   }
+  // },
+
   setup(props, { emit }) {
     const notes = ref([]);
     const loading = ref(false);
     const error = ref(null);
     const showDeleted = ref(false);
-    const subscription = ref(null);
+    const channel = ref(null); // Изменяем название переменной для ясности
+
 
     // let subscription = null;
 
     const refreshNotes = async () => {
       await fetchNotes();
-      // Принудительно обновляем selectedId, если заметка была удалена
       if (props.selectedId && !notes.value.some(note => note.id === props.selectedId)) {
         emit('select', null);
       }
@@ -104,7 +108,7 @@ export default {
 
         if (supabaseError) throw supabaseError;
 
-        notes.value = data || [];
+        notes.value = [...data];
       } catch (err) {
         console.error('Ошибка загрузки заметок:', err);
         error.value = err.message;
@@ -173,101 +177,65 @@ export default {
     };
 
     const setupRealtimeSubscription = () => {
-      // Отписываемся от предыдущей подписки, если она существует
-      // unsubscribeFromRealtimeChanges();
+      // Отписываемся от предыдущей подписки
+      if (channel.value) {
+        supabase.removeChannel(channel.value);
+      }
 
       console.log('Setting up realtime subscription for notes...');
 
-      try {
-        subscription.value = supabase
-            .channel('linote_changes')
-            .on(
-                'postgres_changes',
-                {
-                  event: '*',
-                  schema: 'public',
-                  table: 'linote',
-                  filter: `user_id=eq.${props.userId}` // Добавляем фильтр по пользователю
-                },
-                (payload) => {
-                  console.log('Realtime change received:', payload);
-
-                  // Обрабатываем разные типы событий
-                  switch (payload.eventType) {
-                    case 'INSERT':
-                      // Добавляем новую заметку
-                      if (!notes.value.some(note => note.id === payload.new.id)) {
-                        notes.value = [payload.new, ...notes.value];
-                      }
-                      break;
-
-                    case 'UPDATE':
-                      // Обновляем существующую заметку
-                      notes.value = notes.value.map(note =>
-                          note.id === payload.new.id ? { ...note, ...payload.new } : note
-                      );
-                      break;
-
-                    case 'DELETE':
-                      // Удаляем заметку
-                      notes.value = notes.value.filter(note => note.id !== payload.old.id);
-                      if (props.selectedId === payload.old.id) {
-                        emit('select', null); // Сбрасываем выбор, если удалена выбранная заметка
-                      }
-                      break;
+      channel.value = supabase
+          .channel('linote_changes')
+          .on(
+              'postgres_changes',
+              {
+                event: '*',
+                schema: 'public',
+                table: 'linote',
+                filter: `user_id=eq.${props.userId}`
+              },
+              (payload) => {
+                console.log('Realtime change received:', payload);
+                // Добавляем принудительное обновление списка
+                fetchNotes().then(() => {
+                  // После обновления списка проверяем, нужно ли выделить новую заметку
+                  if (payload.eventType === 'INSERT') {
+                    const newNote = payload.new;
+                    if (newNote && !newNote.is_deleted && !showDeleted.value) {
+                      emit('select', newNote);
+                    }
                   }
-                }
-            )
-/*            .subscribe((status, err) => {
-              if (status === 'SUBSCRIBED') {
-                console.log('Realtime notes subscription active.');
+                });
               }
-              if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                console.error('Realtime subscription error:', status, err);
-                error.value = 'Ошибка подключения к реальным обновлениям';
-              }
-              if (status === 'CLOSED') {
-                console.log('Realtime subscription closed.');
-              }*/
+          )
+          .subscribe();
 
-            // });
-            .subscribe();
-            console.log('Realtime subscription active.');
-
-        return subscription
-
-      } catch (error) {
-        console.error("Ошибка при создании realtime подписки:", error);
-        error.value = "Не удалось подключиться к реальным обновлениям";
-      }
+      return channel.value;
     };
 
 // Функция для отписки
-    const unsubscribeFromRealtimeChanges = () => {
-      if (subscription.value) {
-        supabase.removeChannel(subscription.value);
-        console.log('Unsubscribed from previous realtime changes');
-        subscription.value = null;
-      }
-    };
+//     const unsubscribeFromRealtimeChanges = () => {
+//       if (subscription.value) {
+//         supabase.removeChannel(subscription.value);
+//         console.log('Unsubscribed from previous realtime changes');
+//         subscription.value = null;
+//       }
+//     };
 
     onMounted(async () => {
       await fetchNotes();
       setupRealtimeSubscription();
-
     });
 
     onUnmounted(() => {
-      if (subscription) {
-        supabase.removeChannel(subscription);
-        console.log("Sidebar Unmounted.");
-        unsubscribeFromRealtimeChanges(); // Отписываемся при размонтировании
+      if (channel.value) {
+        supabase.removeChannel(channel.value);
       }
     });
-    watch(() => props.userId, async () => {
-      await fetchNotes();
-      setupRealtimeSubscription();
+    watch(() => props.refreshTrigger, () => {
+      fetchNotes();
     });
+
 
     return {
       refreshNotes,

@@ -370,7 +370,9 @@ export default {
         // Обрезаем заголовок до 255 символов
         const trimmedTitle = title.value.substring(0, 255);
         // Запрос к Supabase
-        const { error: dbError } = await supabase.from('linote').insert([{
+        const { error: dbError } = await supabase
+            .from('linote')
+            .insert([{
           title: trimmedTitle,
           content: cleanHtml,
           image_url: imageUrls.join(','),

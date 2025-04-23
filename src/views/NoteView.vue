@@ -7,7 +7,7 @@
         :style="{ width: sidebarWidth + 'px' }"
         :disabled="isEditing"
         :refresh-trigger="refreshTrigger"
-
+        ref="sidebar"
     />
 
     <div
@@ -34,14 +34,15 @@
 <script>
 import Sidebar from "@/components/LiNote/Sidebar.vue";
 import Note from "@/components/LiNote/Note.vue";
+import NewNote from '@/components/LiNote/NewNote.vue';
 import { supabase } from '@/clients/supabase.js';
 import { computed, onMounted, ref, onUnmounted, watch } from 'vue';
 import { useStore } from 'vuex';
 
 export default {
   name: "NoteView",
-  components: { Sidebar, Note },
-  props: ['buttonColor'], // Добавляем пропсы, если они используются
+  components: { Sidebar, Note, NewNote },
+  props: ['refreshTrigger','buttonColor'], // Добавляем пропсы, если они используются
   setup() {
     const store = useStore();
     const userId = computed(() => store.state.userId);
@@ -54,7 +55,7 @@ export default {
     const refreshTrigger = ref(false); // Добавить реактивный триггер
 
     const handleNoteCreated = () => {
-      refreshNotes();
+      refreshNotes(); // Явный вызов обновления
     };
     const refreshNotes = async () => {
       if (sidebar.value) {
@@ -160,9 +161,9 @@ export default {
       }
     }
 
-    watch(refreshTrigger, () => {
-      if (sidebar.value) {
-        sidebar.value.refreshNotes();
+    watch(() => refreshTrigger, (newVal) => {
+      if (newVal) {
+        refreshNotes();
       }
     });
 

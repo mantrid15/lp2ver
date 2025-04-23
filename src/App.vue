@@ -45,6 +45,7 @@
           <v-fade-transition>
             <component
                 :is="Component"
+                :refresh-trigger="refreshNotes"
                 v-bind="{
                   ...($route.meta.requiresAuth ? { buttonColor } : {}),
                   ...($route.meta.requiresAuth ? { onChangeButtonColor: changeButtonColorHandler } : {})
