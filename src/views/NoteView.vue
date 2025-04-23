@@ -4,7 +4,8 @@
         :user-id="userId"
         :selected-id="selectedNoteId"
         @select="handleNoteSelect"
-        :style="{ width: sidebarWidth + 'px' }"
+        @update-width="handleWidthUpdate"
+        :style="{ width: isSidebarCollapsed ? '40px' : sidebarWidth + 'px' }"
         :disabled="isEditing"
         :refresh-trigger="refreshTrigger"
         ref="sidebar"
@@ -54,6 +55,7 @@ export default {
   props: ['refreshTrigger','buttonColor'], // Добавляем пропсы, если они используются
   setup(props, { emit }) {
     const notes = ref([]);
+    const isSidebarCollapsed = ref(false);
 
     const store = useStore();
     const userId = computed(() => store.state.userId);
@@ -64,7 +66,14 @@ export default {
     const sidebar = ref(null);
 
     const refreshTrigger = ref(false); // Добавить реактивный триггер
-
+    const handleWidthUpdate = (newWidth) => {
+      if (newWidth === 40) {
+        isSidebarCollapsed.value = true;
+      } else {
+        isSidebarCollapsed.value = false;
+        sidebarWidth.value = newWidth;
+      }
+    };
     const handleNoteCreated = () => {
       refreshNotes(); // Явный вызов обновления
     };
@@ -218,6 +227,8 @@ export default {
 
 
     return {
+      isSidebarCollapsed,
+      handleWidthUpdate,
       notes,
       refreshTrigger,
       refreshNotes,

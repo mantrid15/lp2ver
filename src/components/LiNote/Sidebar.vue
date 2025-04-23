@@ -1,51 +1,63 @@
 <template>
-  <div class="sidebar">
+  <div class="sidebar" :class="{ collapsed: isCollapsed }" :style="{ width: isCollapsed ? '40px' : 'auto' }">
     <div class="management-module">
       <div class="management-buttons">
         <button
-          class="delete-btn"
-          @click="handleDeleteClick"
-          :disabled="!selectedId"
-          :title="showDeleted && selectedNote?.is_deleted ? 'Удалить навсегда' : 'Удалить'"
+          class="collapse-btn"
+          @click="toggleCollapse"
+          :title="isCollapsed ? 'Развернуть' : 'Свернуть'"
         >
-          <i class="fas fa-trash-alt"></i>
+          <i :class="isCollapsed ? 'fas fa-caret-right' : 'fas fa-caret-left'"></i>
         </button>
-        <button
-          class="restore-btn"
-          @click="toggleDeleteStatus(false)"
-          :disabled="!selectedId || !showDeleted || !selectedNote?.is_deleted"
-          title="Восстановить"
-        >
-          <i class="fas fa-undo-alt"></i>
-        </button>
-        <label class="show-deleted">
-          <input type="checkbox" v-model="showDeleted" @change="fetchNotes" />
-          <span>Удаленные</span>
-        </label>
+
+        <template v-if="!isCollapsed">
+          <button
+            class="delete-btn"
+            @click="handleDeleteClick"
+            :disabled="!selectedId"
+            :title="showDeleted && selectedNote?.is_deleted ? 'Удалить навсегда' : 'Удалить'"
+          >
+            <i class="fas fa-trash-alt"></i>
+          </button>
+          <button
+            class="restore-btn"
+            @click="toggleDeleteStatus(false)"
+            :disabled="!selectedId || !showDeleted || !selectedNote?.is_deleted"
+            title="Восстановить"
+          >
+            <i class="fas fa-undo-alt"></i>
+          </button>
+          <label class="show-deleted">
+            <input type="checkbox" v-model="showDeleted" @change="fetchNotes" />
+            <span>Удаленные</span>
+          </label>
+        </template>
       </div>
     </div>
 
-    <div v-if="loading" class="loading-message">Загрузка заметок...</div>
-    <div v-else-if="error" class="error-message">Ошибка загрузки: {{ error }}</div>
-    <div v-else-if="!filteredNotes.length" class="empty-message">
-      {{ showDeleted ? 'Нет удаленных заметок' : 'Нет заметок' }}
+    <div v-if="!isCollapsed">
+      <div v-if="loading" class="loading-message">Загрузка заметок...</div>
+      <div v-else-if="error" class="error-message">Ошибка загрузки: {{ error }}</div>
+      <div v-else-if="!filteredNotes.length" class="empty-message">
+        {{ showDeleted ? 'Нет удаленных заметок' : 'Нет заметок' }}
+      </div>
+      <ul v-else>
+        <li
+            v-for="note in filteredNotes"
+            :key="note.id"
+            @click="!disabled && selectNote(note)"
+            :class="{
+              active: note.id === selectedId,
+              disabled: disabled,
+              deleted: note.is_deleted
+            }"
+            class="note-item"
+            :title="note.title"
+        >
+          <span class="note-title">{{ note.title || 'Без названия' }}</span>
+        </li>
+      </ul>
     </div>
-    <ul v-else>
-      <li
-          v-for="note in filteredNotes"
-          :key="note.id"
-          @click="!disabled && selectNote(note)"
-          :class="{
-            active: note.id === selectedId,
-            disabled: disabled,
-            deleted: note.is_deleted
-          }"
-          class="note-item"
-          :title="note.title"
-      >
-        <span class="note-title">{{ note.title || 'Без названия' }}</span>
-      </li>
-    </ul>
   </div>
 </template>
 
@@ -69,10 +81,23 @@ export default {
     const error = ref(null);
     const showDeleted = ref(false);
     const channel = ref(null); // Изменяем название переменной для ясности
+    const isCollapsed = ref(false);
+    const lastWidth = ref(null);
 
-
-    // let subscription = null;
-
+    const toggleCollapse = () => {
+      if (isCollapsed.value) {
+        // При разворачивании восстанавливаем последнюю ширину
+        isCollapsed.value = false;
+        if (lastWidth.value) {
+          emit('update-width', lastWidth.value);
+        }
+      } else {
+        // При сворачивании сохраняем текущую ширину
+        lastWidth.value = props.width;
+        isCollapsed.value = true;
+        emit('update-width', 40);
+      }
+    };
     const refreshNotes = async () => {
       await fetchNotes();
       if (props.selectedId && !notes.value.some(note => note.id === props.selectedId)) {
@@ -211,15 +236,6 @@ export default {
       return channel.value;
     };
 
-// Функция для отписки
-//     const unsubscribeFromRealtimeChanges = () => {
-//       if (subscription.value) {
-//         supabase.removeChannel(subscription.value);
-//         console.log('Unsubscribed from previous realtime changes');
-//         subscription.value = null;
-//       }
-//     };
-
     onMounted(async () => {
       await fetchNotes();
       setupRealtimeSubscription();
@@ -236,6 +252,8 @@ export default {
 
 
     return {
+      isCollapsed,
+      toggleCollapse,
       refreshNotes,
       notes,
       loading,
@@ -255,12 +273,20 @@ export default {
 
 <style scoped>
 .sidebar {
-  width: 25%;
   background: rgba(141, 178, 9, 0.9);
   overflow-y: auto;
   padding: 10px;
   border-right: 3px solid blue;
   min-height: 100%;
+  transition: width 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Стили для свернутого состояния */
+.sidebar.collapsed {
+  width: 40px;
+  padding: 10px 5px;
 }
 
 .management-module {
@@ -274,6 +300,36 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* Стили для кнопки сворачивания */
+.collapse-btn {
+  padding: 5px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #333;
+  transition: all 0.2s;
+  margin-right: auto;
+}
+
+.collapse-btn:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+/* В свернутом состоянии кнопка занимает все пространство */
+.sidebar.collapsed .management-buttons {
+  justify-content: center;
+}
+
+.sidebar.collapsed .collapse-btn {
+  margin-right: 0;
 }
 
 .management-buttons button {
@@ -377,5 +433,11 @@ export default {
 .note-item.deleted.active {
   background-color: #d32f2f;
   color: white;
+}
+
+/* Скрываем элементы в свернутом состоянии */
+.sidebar.collapsed .management-module > :not(.collapse-btn),
+.sidebar.collapsed > :not(.management-module) {
+  display: none;
 }
 </style>
