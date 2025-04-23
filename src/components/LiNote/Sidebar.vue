@@ -232,6 +232,7 @@ export default {
 
             // });
             .subscribe();
+            console.log('Realtime subscription active.');
 
         return subscription
 
