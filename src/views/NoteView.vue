@@ -36,14 +36,25 @@ import Sidebar from "@/components/LiNote/Sidebar.vue";
 import Note from "@/components/LiNote/Note.vue";
 import NewNote from '@/components/LiNote/NewNote.vue';
 import { supabase } from '@/clients/supabase.js';
-import { computed, onMounted, ref, onUnmounted, watch } from 'vue';
+import { computed, onMounted, ref, onUnmounted, watch, defineProps } from 'vue';
 import { useStore } from 'vuex';
+
+const props = defineProps({
+  refreshTrigger: {
+    type: Boolean,
+    required: true
+  }
+});
+
+
 
 export default {
   name: "NoteView",
   components: { Sidebar, Note, NewNote },
   props: ['refreshTrigger','buttonColor'], // Добавляем пропсы, если они используются
-  setup() {
+  setup(props, { emit }) {
+    const notes = ref([]);
+
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const account = ref(null);
@@ -58,9 +69,13 @@ export default {
       refreshNotes(); // Явный вызов обновления
     };
     const refreshNotes = async () => {
+      console.log("Обновление заметок в NoteView...");
       if (sidebar.value) {
         await sidebar.value.fetchNotes();
       }
+/*
+      await fetchNotes();
+*/
     };
 
     const getInitialWidth = () => {
@@ -161,11 +176,6 @@ export default {
       }
     }
 
-    watch(() => refreshTrigger, (newVal) => {
-      if (newVal) {
-        refreshNotes();
-      }
-    });
 
     onUnmounted(() => {
       if (authSubscription) {
@@ -199,7 +209,16 @@ export default {
       window.addEventListener('resize', windowResizeHandler);
     });
 
+    watch(() => props.refreshTrigger, (newVal) => {
+      console.log("refreshTrigger изменился в NoteView:", newVal);
+      if (newVal) {
+        refreshNotes(); // Обновляем заметки
+      }
+    });
+
+
     return {
+      notes,
       refreshTrigger,
       refreshNotes,
       handleNoteCreated,

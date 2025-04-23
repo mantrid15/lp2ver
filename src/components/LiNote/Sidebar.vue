@@ -62,11 +62,6 @@ export default {
     disabled: Boolean,
     refreshTrigger: Boolean
   },
-  // watch: {
-  //   refreshTrigger() {
-  //     this.fetchNotes();
-  //   }
-  // },
 
   setup(props, { emit }) {
     const notes = ref([]);
@@ -96,6 +91,7 @@ export default {
     });
 
     const fetchNotes = async () => {
+      console.log("Получение заметок из Sidebar...");
       try {
         loading.value = true;
         error.value = null;
@@ -109,6 +105,7 @@ export default {
         if (supabaseError) throw supabaseError;
 
         notes.value = [...data];
+        console.log("Заметки успешно загружены:", notes.value);
       } catch (err) {
         console.error('Ошибка загрузки заметок:', err);
         error.value = err.message;
@@ -195,7 +192,7 @@ export default {
                 filter: `user_id=eq.${props.userId}`
               },
               (payload) => {
-                console.log('Realtime change received:', payload);
+                // console.log('Realtime change received:', payload);
                 // Добавляем принудительное обновление списка
                 fetchNotes().then(() => {
                   // После обновления списка проверяем, нужно ли выделить новую заметку
@@ -209,6 +206,7 @@ export default {
               }
           )
           .subscribe();
+      // console.log('Realtime subscription set up:', channel.value);
 
       return channel.value;
     };

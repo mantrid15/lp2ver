@@ -45,7 +45,9 @@
           <v-fade-transition>
             <component
                 :is="Component"
+                :key="refreshNotes"
                 :refresh-trigger="refreshNotes"
+                @note-created="triggerNotesRefresh"
                 v-bind="{
                   ...($route.meta.requiresAuth ? { buttonColor } : {}),
                   ...($route.meta.requiresAuth ? { onChangeButtonColor: changeButtonColorHandler } : {})
@@ -83,8 +85,10 @@ const isLoggedIn = ref(false);
 const tasks = ref([]);
 const refreshNotes = ref(false);
 const refreshTrigger = ref(0); // Добавить реактивный триггер
+
 const triggerNotesRefresh = () => {
-  refreshNotes.value = !refreshNotes.value;
+  refreshNotes.value = Date.now(); // Используем timestamp вместо переключения
+  console.log("Событие 'note-created' обработано в App, refreshNotes:", refreshNotes.value);
 };
 
 supabase.auth.onAuthStateChange((event, session) => {

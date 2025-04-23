@@ -382,11 +382,11 @@ export default {
         }]);
 
         if (dbError) throw dbError;
-        // Добавляем эмит события
         alert("Заметка сохранена!");
+        emit('note-created'); // Эмитим событие после успешного сохранения
+        console.log("Заметка успешно сохранена!");
         clearAll();
-        emit('note-created');
-        // Успешное сохранение
+
         isPreviewVisible.value = false;
       } catch (error) {
         console.error("Ошибка сохранения:", error);
