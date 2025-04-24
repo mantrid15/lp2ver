@@ -126,7 +126,7 @@ export default {
 
       const containerRect = container.getBoundingClientRect();
       const newWidth = e.clientX - containerRect.left;
-      const minWidth = window.innerWidth * 0.1;
+      const minWidth = window.innerWidth * 0.08;
       const maxWidth = window.innerWidth * 0.3;
 
       sidebarWidth.value = Math.min(maxWidth, Math.max(minWidth, newWidth));
@@ -191,7 +191,7 @@ export default {
       authSubscription = subscription;
 
       windowResizeHandler = () => {
-        const minWidth = window.innerWidth * 0.1;
+        const minWidth = window.innerWidth * 0.08;
         const maxWidth = window.innerWidth * 0.3;
         sidebarWidth.value = Math.min(maxWidth, Math.max(minWidth, sidebarWidth.value));
       };

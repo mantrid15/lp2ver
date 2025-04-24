@@ -20,8 +20,15 @@
         </button>
         <label class="show-deleted">
           <input type="checkbox" v-model="showDeleted" @change="fetchNotes" />
-          <span>Удаленные</span>
+          <span>full</span>
         </label>
+        <button
+            class="collapse-btn"
+            @click="toggleCollapse"
+            :title="isCollapsed ? 'Развернуть' : 'Свернуть'"
+        >
+          <i :class="isCollapsed ? 'fas fa-caret-right' : 'fas fa-caret-left'"></i>
+        </button>
       </div>
     </div>
 
@@ -60,18 +67,37 @@ export default {
     userId: String,
     selectedId: String,
     disabled: Boolean,
-/*
-    refreshTrigger: Boolean
-*/
+    width: String
+    /*
+        refreshTrigger: Boolean
+    */
   },
   setup(props, { emit }) {
+    const isCollapsed = ref(false);
     const notes = ref([]);
     const loading = ref(false);
     const error = ref(null);
     const showDeleted = ref(false);
     const subscription = ref(null);
+    const lastWidth = ref(null);
+    const isHovered = ref(false);
+    const sidebarWidth = ref('250px'); // Дефолтная ширина сайдбара
 
-    // let subscription = null;
+    const toggleCollapse = () => {
+      if (isCollapsed.value) {
+        isCollapsed.value = false;
+        if (lastWidth.value) {
+          emit('update-width', lastWidth.value);
+          sidebarWidth.value = lastWidth.value;
+        }
+      } else {
+        lastWidth.value = props.width || sidebarWidth.value;
+        isCollapsed.value = true;
+        emit('update-width', '40px');
+        sidebarWidth.value = '40px';
+      }
+      isHovered.value = false;
+    };
 
     const refreshNotes = async () => {
       await fetchNotes();
@@ -241,7 +267,6 @@ export default {
         error.value = "Не удалось подключиться к реальным обновлениям";
       }
     };
-
 // Функция для отписки
     const unsubscribeFromRealtimeChanges = () => {
       if (subscription.value) {
@@ -254,7 +279,6 @@ export default {
     onMounted(async () => {
       await fetchNotes();
       setupRealtimeSubscription();
-
     });
 
     onUnmounted(() => {
@@ -264,12 +288,17 @@ export default {
         unsubscribeFromRealtimeChanges(); // Отписываемся при размонтировании
       }
     });
+
     watch(() => props.userId, async () => {
       await fetchNotes();
       setupRealtimeSubscription();
     });
 
     return {
+      isCollapsed,
+      isHovered,
+      sidebarWidth,
+      toggleCollapse,
       refreshNotes,
       notes,
       loading,
@@ -293,8 +322,8 @@ export default {
   background: rgba(141, 178, 9, 0.9);
   overflow-y: auto;
   padding: 10px;
-  border-right: 3px solid blue;
   min-height: 100%;
+  overflow-x: hidden; /* Отключаем горизонтальную прокрутку */
 }
 
 .management-module {
@@ -346,7 +375,7 @@ export default {
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-left: auto;
+  margin-right: auto;
   cursor: pointer;
 }
 
