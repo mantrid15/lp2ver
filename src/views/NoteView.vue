@@ -1,26 +1,24 @@
 <template>
   <div v-if="account?.data?.session && userId" class="container">
     <Sidebar
-        :user-id="userId"
-        :selected-id="selectedNoteId"
-        @select="handleNoteSelect"
-        @update-width="handleWidthUpdate"
-        :style="{ width: isSidebarCollapsed ? '40px' : sidebarWidth + 'px' }"
-        :disabled="isEditing"
-        :refresh-trigger="refreshTrigger"
-        ref="sidebar"
+      :user-id="userId"
+      :selected-id="selectedNoteId"
+      @select="handleNoteSelect"
+      :style="{ width: sidebarWidth + 'px' }"
+      :disabled="isEditing"
+      :refresh-trigger="refreshTrigger"
     />
 
     <div
-        class="resizer"
-        @mousedown="startResize"
-        :style="{ left: sidebarWidth + 'px' }"
+      class="resizer"
+      @mousedown="startResize"
+      :style="{ left: sidebarWidth + 'px' }"
     ></div>
     <Note
-        :note-id="selectedNoteId"
-        :style="{ marginLeft: sidebarWidth + 5 + 'px' }"
-        @editing-change="handleEditingChange"
-        @note-deleted="handleNoteDeleted"
+      :note-id="selectedNoteId"
+      :style="{ marginLeft: (sidebarWidth + 5) + 'px' }"
+      @editing-change="handleEditingChange"
+      @note-deleted="handleNoteDeleted"
     />
 
     <div v-if="showSnackbar" class="snackbar">
@@ -35,28 +33,15 @@
 <script>
 import Sidebar from "@/components/LiNote/Sidebar.vue";
 import Note from "@/components/LiNote/Note.vue";
-import NewNote from '@/components/LiNote/NewNote.vue';
 import { supabase } from '@/clients/supabase.js';
-import { computed, onMounted, ref, onUnmounted, watch, defineProps } from 'vue';
+import { computed, onMounted, ref, onUnmounted, watch } from 'vue';
 import { useStore } from 'vuex';
-
-const props = defineProps({
-  refreshTrigger: {
-    type: Boolean,
-    required: true
-  }
-});
-
-
 
 export default {
   name: "NoteView",
-  components: { Sidebar, Note, NewNote },
-  props: ['refreshTrigger','buttonColor'], // Добавляем пропсы, если они используются
-  setup(props, { emit }) {
-    const notes = ref([]);
-    const isSidebarCollapsed = ref(false);
-
+  components: { Sidebar, Note },
+  props: ['buttonColor'],
+  setup() {
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const account = ref(null);
@@ -65,17 +50,10 @@ export default {
     const showSnackbar = ref(false);
     const sidebar = ref(null);
 
-    const refreshTrigger = ref(false); // Добавить реактивный триггер
-    const handleWidthUpdate = (newWidth) => {
-      if (newWidth === 40) {
-        isSidebarCollapsed.value = true;
-      } else {
-        isSidebarCollapsed.value = false;
-        sidebarWidth.value = newWidth;
-      }
-    };
+    const refreshTrigger = ref(false);
+
     const handleNoteCreated = () => {
-      refreshNotes(); // Явный вызов обновления
+      refreshNotes();
     };
     const refreshNotes = async () => {
       console.log("Обновление заметок в NoteView...");
@@ -151,7 +129,7 @@ export default {
 
       const containerRect = container.getBoundingClientRect();
       const newWidth = e.clientX - containerRect.left;
-      const minWidth = window.innerWidth * 0.08;
+      const minWidth = window.innerWidth * 0.02; // Минимальная ширина 2%
       const maxWidth = window.innerWidth * 0.3;
 
       sidebarWidth.value = Math.min(maxWidth, Math.max(minWidth, newWidth));
@@ -185,6 +163,11 @@ export default {
       }
     }
 
+    watch(refreshTrigger, () => {
+      if (sidebar.value) {
+        sidebar.value.refreshNotes();
+      }
+    });
 
     onUnmounted(() => {
       if (authSubscription) {
@@ -211,25 +194,14 @@ export default {
       authSubscription = subscription;
 
       windowResizeHandler = () => {
-        const minWidth = window.innerWidth * 0.08;
+        const minWidth = window.innerWidth * 0.02; // Минимальная ширина 2%
         const maxWidth = window.innerWidth * 0.3;
         sidebarWidth.value = Math.min(maxWidth, Math.max(minWidth, sidebarWidth.value));
       };
       window.addEventListener('resize', windowResizeHandler);
     });
 
-    watch(() => props.refreshTrigger, (newVal) => {
-      console.log("refreshTrigger изменился в NoteView:", newVal);
-      if (newVal) {
-        refreshNotes(); // Обновляем заметки
-      }
-    });
-
-
     return {
-      isSidebarCollapsed,
-      handleWidthUpdate,
-      notes,
       refreshTrigger,
       refreshNotes,
       handleNoteCreated,
@@ -264,7 +236,9 @@ export default {
   display: flex;
   position: relative;
   height: calc(100vh - 107px);
+  /*
   border-left: 2px solid blue;
+  */
   overflow: hidden;
   margin-top: 45px;
 }

@@ -1,58 +1,67 @@
 <template>
-  <div class="sidebar">
-    <div class="management-module">
-      <div class="management-buttons">
-        <button
-          class="delete-btn"
-          @click="handleDeleteClick"
-          :disabled="!selectedId"
-          :title="showDeleted && selectedNote?.is_deleted ? 'Удалить навсегда' : 'Удалить'"
-        >
-          <i class="fas fa-trash-alt"></i>
-        </button>
-        <button
-          class="restore-btn"
-          @click="toggleDeleteStatus(false)"
-          :disabled="!selectedId || !showDeleted || !selectedNote?.is_deleted"
-          title="Восстановить"
-        >
-          <i class="fas fa-undo-alt"></i>
-        </button>
-        <label class="show-deleted">
-          <input type="checkbox" v-model="showDeleted" @change="fetchNotes" />
-          <span>full</span>
-        </label>
-        <button
-            class="collapse-btn"
-            @click="toggleCollapse"
-            :title="isCollapsed ? 'Развернуть' : 'Свернуть'"
-        >
-          <i :class="isCollapsed ? 'fas fa-caret-right' : 'fas fa-caret-left'"></i>
-        </button>
-      </div>
+  <div :class="['sidebar', { 'collapsed': isCollapsed }]" :style="{ width: sidebarWidth + 'px' }">
+    <div class="button-container">
+      <button
+          class="collapse-btn"
+          @click="toggleCollapse"
+          :title="isCollapsed ? 'Развернуть' : 'Свернуть'"
+          style="width: 40px; height: 40px;"
+      >
+        <i :class="isCollapsed ? 'fas fa-caret-right' : 'fas fa-caret-left'"></i>
+      </button>
     </div>
 
-    <div v-if="loading" class="loading-message">Загрузка заметок...</div>
-    <div v-else-if="error" class="error-message">Ошибка загрузки: {{ error }}</div>
-    <div v-else-if="!filteredNotes.length" class="empty-message">
-      {{ showDeleted ? 'Нет удаленных заметок' : 'Нет заметок' }}
+    <div v-if="!isCollapsed" class="sidebar-content">
+      <div class="management-module">
+        <div class="management-buttons">
+          <template v-if="!isCollapsed">
+            <button
+                class="delete-btn"
+                @click="handleDeleteClick"
+                :disabled="!selectedId"
+                :title="showDeleted && selectedNote?.is_deleted ? 'Удалить навсегда' : 'Удалить'"
+            >
+              <i class="fas fa-trash-alt"></i>
+            </button>
+            <button
+                class="restore-btn"
+                @click="toggleDeleteStatus(false)"
+                :disabled="!selectedId || !showDeleted || !selectedNote?.is_deleted"
+                title="Восстановить"
+            >
+              <i class="fas fa-undo-alt"></i>
+            </button>
+            <label class="show-deleted">
+              <input type="checkbox" v-model="showDeleted" @change="fetchNotes" />
+              <span>full</span>
+            </label>
+          </template>
+        </div>
+      </div>
+      <div v-if="!isCollapsed">
+        <div v-if="loading" class="loading-message">Загрузка заметок...</div>
+        <div v-else-if="error" class="error-message">Ошибка загрузки: {{ error }}</div>
+        <div v-else-if="!filteredNotes.length" class="empty-message">
+          {{ showDeleted ? 'Нет удаленных заметок' : 'Нет заметок' }}
+        </div>
+        <ul v-else>
+          <li
+              v-for="note in filteredNotes"
+              :key="note.id"
+              @click="!disabled && selectNote(note)"
+              :class="{
+                active: note.id === selectedId,
+                disabled: disabled,
+                deleted: note.is_deleted
+              }"
+              class="note-item"
+              :title="note.title"
+          >
+            <span class="note-title">{{ note.title || 'Без названия' }}</span>
+          </li>
+        </ul>
+      </div>
     </div>
-    <ul v-else>
-      <li
-          v-for="note in filteredNotes"
-          :key="note.id"
-          @click="!disabled && selectNote(note)"
-          :class="{
-            active: note.id === selectedId,
-            disabled: disabled,
-            deleted: note.is_deleted
-          }"
-          class="note-item"
-          :title="note.title"
-      >
-        <span class="note-title">{{ note.title || 'Без названия' }}</span>
-      </li>
-    </ul>
   </div>
 </template>
 
@@ -67,41 +76,43 @@ export default {
     userId: String,
     selectedId: String,
     disabled: Boolean,
-    width: String
-    /*
-        refreshTrigger: Boolean
-    */
+    refreshTrigger: Boolean
   },
-  setup(props, { emit }) {
-    const isCollapsed = ref(false);
+
+  setup(props, {emit}) {
     const notes = ref([]);
     const loading = ref(false);
     const error = ref(null);
     const showDeleted = ref(false);
-    const subscription = ref(null);
+    const channel = ref(null); // Изменяем название переменной для ясности
+    const isCollapsed = ref(false);
     const lastWidth = ref(null);
-    const isHovered = ref(false);
-    const sidebarWidth = ref('250px'); // Дефолтная ширина сайдбара
+
+    const sidebarWidth = computed(() => (isCollapsed.value ? window.innerWidth * 0.02 : 300)); // минимальная ширина 2%
 
     const toggleCollapse = () => {
       if (isCollapsed.value) {
+        // При разворачивании восстанавливаем последнюю ширину
         isCollapsed.value = false;
         if (lastWidth.value) {
           emit('update-width', lastWidth.value);
-          sidebarWidth.value = lastWidth.value;
         }
       } else {
-        lastWidth.value = props.width || sidebarWidth.value;
+        // При сворачивании сохраняем текущую ширину
+        lastWidth.value = props.width;
         isCollapsed.value = true;
-        emit('update-width', '40px');
-        sidebarWidth.value = '40px';
+        emit('update-width', 40);
       }
-      isHovered.value = false;
     };
+
+/*
+    const toggleCollapse = () => {
+      isCollapsed.value = !isCollapsed.value;
+    };
+*/
 
     const refreshNotes = async () => {
       await fetchNotes();
-      // Принудительно обновляем selectedId, если заметка была удалена
       if (props.selectedId && !notes.value.some(note => note.id === props.selectedId)) {
         emit('select', null);
       }
@@ -118,19 +129,21 @@ export default {
     });
 
     const fetchNotes = async () => {
+      console.log("Получение заметок из Sidebar...");
       try {
         loading.value = true;
         error.value = null;
 
-        const { data, error: supabaseError } = await supabase
+        const {data, error: supabaseError} = await supabase
             .from('linote')
             .select('id, title, created_at, is_deleted')
             .eq('user_id', props.userId)
-            .order('created_at', { ascending: false });
+            .order('created_at', {ascending: false});
 
         if (supabaseError) throw supabaseError;
 
-        notes.value = data || [];
+        notes.value = [...data];
+        console.log("Заметки успешно загружены:", notes.value);
       } catch (err) {
         console.error('Ошибка загрузки заметок:', err);
         error.value = err.message;
@@ -148,9 +161,9 @@ export default {
 
       try {
         loading.value = true;
-        const { error: supabaseError } = await supabase
+        const {error: supabaseError} = await supabase
             .from('linote')
-            .update({ is_deleted: isDeleted })
+            .update({is_deleted: isDeleted})
             .eq('id', props.selectedId);
 
         if (supabaseError) throw supabaseError;
@@ -169,7 +182,7 @@ export default {
 
       try {
         loading.value = true;
-        const { error: supabaseError } = await supabase
+        const {error: supabaseError} = await supabase
             .from('linote')
             .delete()
             .eq('id', props.selectedId);
@@ -199,81 +212,41 @@ export default {
     };
 
     const setupRealtimeSubscription = () => {
-      // Отписываемся от предыдущей подписки, если она существует
-      // unsubscribeFromRealtimeChanges();
+      // Отписываемся от предыдущей подписки
+      if (channel.value) {
+        supabase.removeChannel(channel.value);
+      }
 
       console.log('Setting up realtime subscription for notes...');
 
-      try {
-        subscription.value = supabase
-            .channel('linote_changes')
-            .on(
-                'postgres_changes',
-                {
-                  event: '*',
-                  schema: 'public',
-                  table: 'linote',
-                  filter: `user_id=eq.${props.userId}` // Добавляем фильтр по пользователю
-                },
-                (payload) => {
-                  console.log('Realtime change received:', payload);
-
-                  // Обрабатываем разные типы событий
-                  switch (payload.eventType) {
-                    case 'INSERT':
-                      // Добавляем новую заметку
-                      if (!notes.value.some(note => note.id === payload.new.id)) {
-                        notes.value = [payload.new, ...notes.value];
-                      }
-                      break;
-
-                    case 'UPDATE':
-                      // Обновляем существующую заметку
-                      notes.value = notes.value.map(note =>
-                          note.id === payload.new.id ? { ...note, ...payload.new } : note
-                      );
-                      break;
-
-                    case 'DELETE':
-                      // Удаляем заметку
-                      notes.value = notes.value.filter(note => note.id !== payload.old.id);
-                      if (props.selectedId === payload.old.id) {
-                        emit('select', null); // Сбрасываем выбор, если удалена выбранная заметка
-                      }
-                      break;
+      channel.value = supabase
+          .channel('linote_changes')
+          .on(
+              'postgres_changes',
+              {
+                event: '*',
+                schema: 'public',
+                table: 'linote',
+                filter: `user_id=eq.${props.userId}`
+              },
+              (payload) => {
+                // console.log('Realtime change received:', payload);
+                // Добавляем принудительное обновление списка
+                fetchNotes().then(() => {
+                  // После обновления списка проверяем, нужно ли выделить новую заметку
+                  if (payload.eventType === 'INSERT') {
+                    const newNote = payload.new;
+                    if (newNote && !newNote.is_deleted && !showDeleted.value) {
+                      emit('select', newNote);
+                    }
                   }
-                }
-            )
-/*            .subscribe((status, err) => {
-              if (status === 'SUBSCRIBED') {
-                console.log('Realtime notes subscription active.');
+                });
               }
-              if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                console.error('Realtime subscription error:', status, err);
-                error.value = 'Ошибка подключения к реальным обновлениям';
-              }
-              if (status === 'CLOSED') {
-                console.log('Realtime subscription closed.');
-              }*/
+          )
+          .subscribe();
+      // console.log('Realtime subscription set up:', channel.value);
 
-            // });
-            .subscribe();
-            console.log('Realtime subscription active.');
-
-        return subscription
-
-      } catch (error) {
-        console.error("Ошибка при создании realtime подписки:", error);
-        error.value = "Не удалось подключиться к реальным обновлениям";
-      }
-    };
-// Функция для отписки
-    const unsubscribeFromRealtimeChanges = () => {
-      if (subscription.value) {
-        supabase.removeChannel(subscription.value);
-        console.log('Unsubscribed from previous realtime changes');
-        subscription.value = null;
-      }
+      return channel.value;
     };
 
     onMounted(async () => {
@@ -282,22 +255,19 @@ export default {
     });
 
     onUnmounted(() => {
-      if (subscription) {
-        supabase.removeChannel(subscription);
-        console.log("Sidebar Unmounted.");
-        unsubscribeFromRealtimeChanges(); // Отписываемся при размонтировании
+      if (channel.value) {
+        supabase.removeChannel(channel.value);
       }
     });
-
-    watch(() => props.userId, async () => {
-      await fetchNotes();
-      setupRealtimeSubscription();
+    watch(() => props.refreshTrigger, () => {
+      fetchNotes();
     });
 
+
     return {
-      isCollapsed,
-      isHovered,
+      lastWidth,
       sidebarWidth,
+      isCollapsed,
       toggleCollapse,
       refreshNotes,
       notes,
@@ -317,13 +287,33 @@ export default {
 </script>
 
 <style scoped>
-.sidebar {
-  width: 25%;
+/*.sidebar {
   background: rgba(141, 178, 9, 0.9);
+  !*
   overflow-y: auto;
+  *!
+  overflow: hidden;
+  position: relative;
   padding: 10px;
+  !*
+  border-right: 3px solid blue;
+  *!
   min-height: 100%;
-  overflow-x: hidden; /* Отключаем горизонтальную прокрутку */
+  transition: width 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}*/
+.sidebar {
+  background: rgba(141, 178, 9, 0.9);
+
+  transition: width 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+/* Стили для свернутого состояния */
+.sidebar.collapsed {
+  width: 40px;
+  padding: 10px 5px;
 }
 
 .management-module {
@@ -339,6 +329,50 @@ export default {
   gap: 10px;
 }
 
+.button-container {
+  margin-top: 10px;
+  display: flex;
+  justify-content: center; /* Горизонтальное выравнивание по центру */
+  align-items: center; /* Вертикальное выравнивание по центру */
+  height: 30px; /* Высота контейнера для вертикального центрирования */
+}
+
+.collapse-btn {
+  background: #2196f3; /* Голубой цвет */
+  width: 40px;
+  height: 40px;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: background-color 0.2s;
+}
+.collapse-btn:hover {
+  background-color: rgba(238, 8, 8, 0.4);
+}
+
+/* В свернутом состоянии кнопка занимает все пространство */
+.sidebar.collapsed .management-buttons {
+  justify-content: center;
+}
+
+/*.sidebar.collapsed .collapse-btn {
+  left: 0; !* Положение кнопки, когда боковой элемент свернут *!
+  width: 30px; !* Ширина кнопки *!
+  height: 100%; !* Высота кнопки *!
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: blue; !* Цвет фона для выделения кнопки *!
+  border-radius: 0 4px 4px 0; !* Закругленные углы *!
+}*/
+.sidebar.collapsed .collapse-btn {
+  background: #2196f3;
+  margin: 0 auto; /* Центрирование */
+}
 .management-buttons button {
   padding: 5px 10px;
   border: none;
@@ -371,11 +405,15 @@ export default {
   cursor: not-allowed;
 }
 
+.sidebar-content {
+  padding: 10px;
+}
+
 .show-deleted {
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-right: auto;
+  margin-left: auto;
   cursor: pointer;
 }
 
@@ -440,5 +478,20 @@ export default {
 .note-item.deleted.active {
   background-color: #d32f2f;
   color: white;
+}
+
+/* Скрываем элементы в свернутом состоянии */
+/*.sidebar.collapsed .management-module > :not(.collapse-btn),
+.sidebar.collapsed > :not(.management-module) {
+  display: none;
+}*/
+.sidebar.collapsed > *:not(.button-container) {
+  display: none;
+}
+
+.sidebar.collapsed .button-container {
+  display: flex;
+  height: 100%;
+  align-items: center;
 }
 </style>
