@@ -1,44 +1,43 @@
 <template>
   <div :class="['sidebar', { 'collapsed': isCollapsed }]" :style="{ width: sidebarWidth + 'px' }">
-    <div class="button-container">
-      <button
-          class="collapse-btn"
-          @click="toggleCollapse"
-          :title="isCollapsed ? 'Развернуть' : 'Свернуть'"
-          style="width: 40px; height: 40px;"
-      >
-        <i :class="isCollapsed ? 'fas fa-caret-right' : 'fas fa-caret-left'"></i>
-      </button>
+    <div class="sidebar-header">
+      <div class="button-container">
+        <button
+            class="collapse-btn"
+            @click="toggleCollapse"
+            :title="isCollapsed ? 'Развернуть' : 'Свернуть'"
+        >
+          <i :class="isCollapsed ? 'fas fa-caret-right' : 'fas fa-caret-left'"></i>
+        </button>
+      </div>
     </div>
 
     <div v-if="!isCollapsed" class="sidebar-content">
       <div class="management-module">
         <div class="management-buttons">
-          <template v-if="!isCollapsed">
-            <button
-                class="delete-btn"
-                @click="handleDeleteClick"
-                :disabled="!selectedId"
-                :title="showDeleted && selectedNote?.is_deleted ? 'Удалить навсегда' : 'Удалить'"
-            >
-              <i class="fas fa-trash-alt"></i>
-            </button>
-            <button
-                class="restore-btn"
-                @click="toggleDeleteStatus(false)"
-                :disabled="!selectedId || !showDeleted || !selectedNote?.is_deleted"
-                title="Восстановить"
-            >
-              <i class="fas fa-undo-alt"></i>
-            </button>
-            <label class="show-deleted">
-              <input type="checkbox" v-model="showDeleted" @change="fetchNotes" />
-              <span>full</span>
-            </label>
-          </template>
+          <button
+              class="delete-btn"
+              @click="handleDeleteClick"
+              :disabled="!selectedId"
+              :title="showDeleted && selectedNote?.is_deleted ? 'Удалить навсегда' : 'Удалить'"
+          >
+            <i class="fas fa-trash-alt"></i>
+          </button>
+          <button
+              class="restore-btn"
+              @click="toggleDeleteStatus(false)"
+              :disabled="!selectedId || !showDeleted || !selectedNote?.is_deleted"
+              title="Восстановить"
+          >
+            <i class="fas fa-undo-alt"></i>
+          </button>
+          <label class="show-deleted">
+            <input type="checkbox" v-model="showDeleted" @change="fetchNotes" />
+            <span>full</span>
+          </label>
         </div>
       </div>
-      <div v-if="!isCollapsed">
+      <div>
         <div v-if="loading" class="loading-message">Загрузка заметок...</div>
         <div v-else-if="error" class="error-message">Ошибка загрузки: {{ error }}</div>
         <div v-else-if="!filteredNotes.length" class="empty-message">
@@ -88,7 +87,7 @@ export default {
     const isCollapsed = ref(false);
     const lastWidth = ref(null);
 
-    const sidebarWidth = computed(() => (isCollapsed.value ? window.innerWidth * 0.02 : 300)); // минимальная ширина 2%
+    const sidebarWidth = computed(() => (isCollapsed.value ? 60 : 300));
 
     const toggleCollapse = () => {
       if (isCollapsed.value) {
@@ -101,15 +100,9 @@ export default {
         // При сворачивании сохраняем текущую ширину
         lastWidth.value = props.width;
         isCollapsed.value = true;
-        emit('update-width', 40);
+        emit('update-width', 60);
       }
     };
-
-/*
-    const toggleCollapse = () => {
-      isCollapsed.value = !isCollapsed.value;
-    };
-*/
 
     const refreshNotes = async () => {
       await fetchNotes();
@@ -287,33 +280,62 @@ export default {
 </script>
 
 <style scoped>
-/*.sidebar {
-  background: rgba(141, 178, 9, 0.9);
-  !*
-  overflow-y: auto;
-  *!
-  overflow: hidden;
-  position: relative;
-  padding: 10px;
-  !*
-  border-right: 3px solid blue;
-  *!
-  min-height: 100%;
-  transition: width 0.3s ease;
-  display: flex;
-  flex-direction: column;
-}*/
 .sidebar {
   background: rgba(141, 178, 9, 0.9);
-
   transition: width 0.3s ease;
   overflow: hidden;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
-/* Стили для свернутого состояния */
-.sidebar.collapsed {
+
+.sidebar-header {
+  padding: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.button-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.collapse-btn {
+  background: #2196f3;
   width: 40px;
-  padding: 10px 5px;
+  height: 40px;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: background-color 0.2s;
+}
+
+.collapse-btn:hover {
+  background-color: rgba(238, 8, 8, 0.4);
+}
+
+.sidebar-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.sidebar.collapsed {
+  width: 60px;
+}
+
+.sidebar.collapsed .sidebar-content {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-header {
+  justify-content: center;
 }
 
 .management-module {
@@ -329,50 +351,6 @@ export default {
   gap: 10px;
 }
 
-.button-container {
-  margin-top: 10px;
-  display: flex;
-  justify-content: center; /* Горизонтальное выравнивание по центру */
-  align-items: center; /* Вертикальное выравнивание по центру */
-  height: 30px; /* Высота контейнера для вертикального центрирования */
-}
-
-.collapse-btn {
-  background: #2196f3; /* Голубой цвет */
-  width: 40px;
-  height: 40px;
-  border: none;
-  cursor: pointer;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  transition: background-color 0.2s;
-}
-.collapse-btn:hover {
-  background-color: rgba(238, 8, 8, 0.4);
-}
-
-/* В свернутом состоянии кнопка занимает все пространство */
-.sidebar.collapsed .management-buttons {
-  justify-content: center;
-}
-
-/*.sidebar.collapsed .collapse-btn {
-  left: 0; !* Положение кнопки, когда боковой элемент свернут *!
-  width: 30px; !* Ширина кнопки *!
-  height: 100%; !* Высота кнопки *!
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: blue; !* Цвет фона для выделения кнопки *!
-  border-radius: 0 4px 4px 0; !* Закругленные углы *!
-}*/
-.sidebar.collapsed .collapse-btn {
-  background: #2196f3;
-  margin: 0 auto; /* Центрирование */
-}
 .management-buttons button {
   padding: 5px 10px;
   border: none;
@@ -403,10 +381,6 @@ export default {
 .restore-btn:disabled {
   background-color: #90caf9;
   cursor: not-allowed;
-}
-
-.sidebar-content {
-  padding: 10px;
 }
 
 .show-deleted {
@@ -478,20 +452,5 @@ export default {
 .note-item.deleted.active {
   background-color: #d32f2f;
   color: white;
-}
-
-/* Скрываем элементы в свернутом состоянии */
-/*.sidebar.collapsed .management-module > :not(.collapse-btn),
-.sidebar.collapsed > :not(.management-module) {
-  display: none;
-}*/
-.sidebar.collapsed > *:not(.button-container) {
-  display: none;
-}
-
-.sidebar.collapsed .button-container {
-  display: flex;
-  height: 100%;
-  align-items: center;
 }
 </style>
