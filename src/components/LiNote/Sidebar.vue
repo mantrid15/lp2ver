@@ -87,9 +87,12 @@ export default {
     const isCollapsed = ref(false);
     const lastWidth = ref(null);
 
-    const sidebarWidth = computed(() => (isCollapsed.value ? 60 : 300));
+    const sidebarWidth = computed(() => (isCollapsed.value ? 40 : 300));
 
     const toggleCollapse = () => {
+      isCollapsed.value = !isCollapsed.value;
+      // Эмитим событие с новой шириной
+      emit('collapse', isCollapsed.value);
       if (isCollapsed.value) {
         // При разворачивании восстанавливаем последнюю ширину
         isCollapsed.value = false;
@@ -288,6 +291,7 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-width: 40px; /* Минимальная ширина в свернутом состоянии */
 }
 
 .sidebar-header {

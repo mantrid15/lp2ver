@@ -4,6 +4,7 @@
       :user-id="userId"
       :selected-id="selectedNoteId"
       @select="handleNoteSelect"
+      @collapse="handleSidebarCollapse"
       :style="{ width: sidebarWidth + 'px' }"
       :disabled="isEditing"
       :refresh-trigger="refreshTrigger"
@@ -50,11 +51,21 @@ export default {
     const showSnackbar = ref(false);
     const sidebar = ref(null);
 
+    const handleSidebarCollapse = (isCollapsed) => {
+      if (isCollapsed) {
+        sidebarWidth.value = 40; // Минимальная ширина для свернутого состояния
+      } else {
+        // Восстанавливаем сохраненную ширину или используем значение по умолчанию
+        sidebarWidth.value = getInitialWidth();
+      }
+    };
+
     const refreshTrigger = ref(false);
 
     const handleNoteCreated = () => {
       refreshNotes();
     };
+
     const refreshNotes = async () => {
       console.log("Обновление заметок в NoteView...");
       if (sidebar.value) {
@@ -202,6 +213,7 @@ export default {
     });
 
     return {
+      handleSidebarCollapse,
       refreshTrigger,
       refreshNotes,
       handleNoteCreated,
