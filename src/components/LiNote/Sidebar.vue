@@ -244,6 +244,15 @@ export default {
     onMounted(async () => {
       await fetchNotes();
       setupRealtimeSubscription();
+
+      // Проверяем сохраненное состояние свернутости при загрузке
+      if (props.userId) {
+        const savedCollapsed = localStorage.getItem(`sidebarCollapsed_${props.userId}`) === 'true';
+        if (savedCollapsed) {
+          isCollapsed.value = true;
+          emit('collapse', { isCollapsed: true, width: 40 });
+        }
+      }
     });
 
     onUnmounted(() => {
@@ -251,6 +260,7 @@ export default {
         supabase.removeChannel(channel.value);
       }
     });
+
     watch(() => props.refreshTrigger, () => {
       fetchNotes();
     });

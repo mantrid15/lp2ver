@@ -55,11 +55,9 @@ export default {
 // Добавим обработчик события collapse
     const handleSidebarCollapse = ({ isCollapsed, width }) => {
       sidebarWidth.value = width;
-      if (!isCollapsed) {
-        // Сохраняем новую ширину в localStorage только при разворачивании
-        if (userId.value) {
-          localStorage.setItem(`sidebarWidth_${userId.value}`, width.toString());
-        }
+      if (userId.value) {
+        localStorage.setItem(`sidebarWidth_${userId.value}`, width.toString());
+        localStorage.setItem(`sidebarCollapsed_${userId.value}`, isCollapsed.toString());
       }
     };
 
@@ -83,6 +81,12 @@ export default {
       if (!userId.value) return Math.min(300, Math.max(100, window.innerWidth * 0.25));
 
       const savedWidth = localStorage.getItem(`sidebarWidth_${userId.value}`);
+      const savedCollapsed = localStorage.getItem(`sidebarCollapsed_${userId.value}`) === 'true';
+
+      if (savedCollapsed) {
+        return 40; // Возвращаем ширину свернутого состояния
+      }
+
       return savedWidth
           ? parseInt(savedWidth, 10)
           : Math.min(300, Math.max(100, window.innerWidth * 0.25));
@@ -199,7 +203,11 @@ export default {
 
       if (userId.value) {
         const savedWidth = localStorage.getItem(`sidebarWidth_${userId.value}`);
-        if (savedWidth) {
+        const savedCollapsed = localStorage.getItem(`sidebarCollapsed_${userId.value}`) === 'true';
+
+        if (savedCollapsed) {
+          sidebarWidth.value = 40;
+        } else if (savedWidth) {
           sidebarWidth.value = parseInt(savedWidth, 10);
         }
       }
@@ -261,9 +269,6 @@ export default {
   display: flex;
   position: relative;
   height: calc(100vh - 107px);
-  /*
-  border-left: 2px solid blue;
-  */
   overflow: hidden;
   margin-top: 45px;
 }
@@ -277,7 +282,6 @@ export default {
   cursor: col-resize;
   z-index: 10;
   transition: left 0.3s ease;
-
 }
 
 .resizer:hover {
