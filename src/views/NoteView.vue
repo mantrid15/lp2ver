@@ -5,6 +5,7 @@
       :selected-id="selectedNoteId"
       @select="handleNoteSelect"
       @collapse="handleSidebarCollapse"
+      :width="sidebarWidth"
       :style="{ width: sidebarWidth + 'px' }"
       :disabled="isEditing"
       :refresh-trigger="refreshTrigger"
@@ -52,12 +53,13 @@ export default {
     const sidebar = ref(null);
 
 // Добавим обработчик события collapse
-    const handleSidebarCollapse = (isCollapsed) => {
-      if (isCollapsed) {
-        sidebarWidth.value = 40; // Минимальная ширина для свернутого состояния
-      } else {
-        // Восстанавливаем сохраненную ширину или используем значение по умолчанию
-        sidebarWidth.value = getInitialWidth();
+    const handleSidebarCollapse = ({ isCollapsed, width }) => {
+      sidebarWidth.value = width;
+      if (!isCollapsed) {
+        // Сохраняем новую ширину в localStorage только при разворачивании
+        if (userId.value) {
+          localStorage.setItem(`sidebarWidth_${userId.value}`, width.toString());
+        }
       }
     };
 
@@ -274,6 +276,8 @@ export default {
   background-color: blue;
   cursor: col-resize;
   z-index: 10;
+  transition: left 0.3s ease;
+
 }
 
 .resizer:hover {

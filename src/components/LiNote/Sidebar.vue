@@ -75,7 +75,8 @@ export default {
     userId: String,
     selectedId: String,
     disabled: Boolean,
-    refreshTrigger: Boolean
+    refreshTrigger: Boolean,
+    width: Number
   },
 
   setup(props, {emit}) {
@@ -85,14 +86,21 @@ export default {
     const showDeleted = ref(false);
     const channel = ref(null); // Изменяем название переменной для ясности
     const isCollapsed = ref(false);
-    const lastWidth = ref(null);
+    const lastWidth = ref(300); // Храним последнюю ширину
 
     const sidebarWidth = computed(() => (isCollapsed.value ? 40 : 300));
 
     const toggleCollapse = () => {
-      isCollapsed.value = !isCollapsed.value;
-      // Эмитим событие с новой шириной
-      emit('collapse', isCollapsed.value);
+      if (isCollapsed.value) {
+        // При разворачивании восстанавливаем последнюю ширину
+        isCollapsed.value = false;
+        emit('collapse', { isCollapsed: false, width: lastWidth.value });
+      } else {
+        // При сворачивании сохраняем текущую ширину
+        lastWidth.value = props.width || 300;
+        isCollapsed.value = true;
+        emit('collapse', { isCollapsed: true, width: 40 });
+      }
     };
 
     const refreshNotes = async () => {
@@ -280,7 +288,6 @@ export default {
   flex-direction: column;
   height: 100%;
   width: auto; /* Убираем фиксированную ширину */
-
   min-width: 40px; /* Минимальная ширина в свернутом состоянии */
 }
 
