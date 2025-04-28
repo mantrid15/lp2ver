@@ -51,12 +51,16 @@ export default {
     const isEditing = ref(false);
     const showSnackbar = ref(false);
     const sidebar = ref(null);
+    const lastWidthBeforeCollapse = ref(300);
 
 // Добавим обработчик события collapse
     const handleSidebarCollapse = ({ isCollapsed, width }) => {
+      if (isCollapsed) {
+        lastWidthBeforeCollapse.value = sidebarWidth.value;
+      }
       sidebarWidth.value = width;
       if (userId.value) {
-        localStorage.setItem(`sidebarWidth_${userId.value}`, width.toString());
+        localStorage.setItem(`sidebarWidth_${userId.value}`, sidebarWidth.value.toString());
         localStorage.setItem(`sidebarCollapsed_${userId.value}`, isCollapsed.toString());
       }
     };
@@ -72,21 +76,12 @@ export default {
       if (sidebar.value) {
         await sidebar.value.fetchNotes();
       }
-/*
-      await fetchNotes();
-*/
     };
 
     const getInitialWidth = () => {
       if (!userId.value) return Math.min(300, Math.max(100, window.innerWidth * 0.25));
 
       const savedWidth = localStorage.getItem(`sidebarWidth_${userId.value}`);
-      const savedCollapsed = localStorage.getItem(`sidebarCollapsed_${userId.value}`) === 'true';
-
-      if (savedCollapsed) {
-        return 40; // Возвращаем ширину свернутого состояния
-      }
-
       return savedWidth
           ? parseInt(savedWidth, 10)
           : Math.min(300, Math.max(100, window.innerWidth * 0.25));
@@ -205,10 +200,12 @@ export default {
         const savedWidth = localStorage.getItem(`sidebarWidth_${userId.value}`);
         const savedCollapsed = localStorage.getItem(`sidebarCollapsed_${userId.value}`) === 'true';
 
+        if (savedWidth) {
+          sidebarWidth.value = parseInt(savedWidth, 10);
+          lastWidthBeforeCollapse.value = sidebarWidth.value;
+        }
         if (savedCollapsed) {
           sidebarWidth.value = 40;
-        } else if (savedWidth) {
-          sidebarWidth.value = parseInt(savedWidth, 10);
         }
       }
 
@@ -225,6 +222,7 @@ export default {
 
     return {
       handleSidebarCollapse,
+      lastWidthBeforeCollapse,
       refreshTrigger,
       refreshNotes,
       handleNoteCreated,

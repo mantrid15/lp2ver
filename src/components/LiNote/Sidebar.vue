@@ -86,18 +86,17 @@ export default {
     const showDeleted = ref(false);
     const channel = ref(null); // Изменяем название переменной для ясности
     const isCollapsed = ref(false);
-    const lastWidth = ref(300); // Храним последнюю ширину
+    const lastWidthBeforeCollapse = ref(300);
 
-    const sidebarWidth = computed(() => (isCollapsed.value ? 40 : 300));
+    const sidebarWidth = computed(() => (isCollapsed.value ? 40 : props.width || 300));
 
     const toggleCollapse = () => {
       if (isCollapsed.value) {
         // При разворачивании восстанавливаем последнюю ширину
         isCollapsed.value = false;
-        emit('collapse', { isCollapsed: false, width: lastWidth.value });
+        emit('collapse', { isCollapsed: false, width: lastWidthBeforeCollapse.value });
       } else {
-        // При сворачивании сохраняем текущую ширину
-        lastWidth.value = props.width || 300;
+        lastWidthBeforeCollapse.value = props.width || 300;
         isCollapsed.value = true;
         emit('collapse', { isCollapsed: true, width: 40 });
       }
@@ -267,7 +266,7 @@ export default {
 
 
     return {
-      lastWidth,
+      lastWidthBeforeCollapse,
       sidebarWidth,
       isCollapsed,
       toggleCollapse,
