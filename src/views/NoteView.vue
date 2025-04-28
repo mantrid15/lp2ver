@@ -51,6 +51,7 @@ export default {
     const showSnackbar = ref(false);
     const sidebar = ref(null);
 
+// Добавим обработчик события collapse
     const handleSidebarCollapse = (isCollapsed) => {
       if (isCollapsed) {
         sidebarWidth.value = 40; // Минимальная ширина для свернутого состояния
@@ -234,6 +235,16 @@ export default {
 </script>
 
 <style scoped>
+.note-content {
+  margin-left: 45px !important; /* 40px + 5px отступа */
+  transition: margin-left 0.3s ease;
+}
+
+/* Когда сайдбар развернут */
+.container:not(.collapsed) .note-content {
+  margin-left: 305px !important; /* 300px + 5px отступа */
+}
+
 .auth-message {
   display: flex;
   justify-content: center;

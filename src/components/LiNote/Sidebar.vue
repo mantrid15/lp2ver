@@ -93,18 +93,6 @@ export default {
       isCollapsed.value = !isCollapsed.value;
       // Эмитим событие с новой шириной
       emit('collapse', isCollapsed.value);
-      if (isCollapsed.value) {
-        // При разворачивании восстанавливаем последнюю ширину
-        isCollapsed.value = false;
-        if (lastWidth.value) {
-          emit('update-width', lastWidth.value);
-        }
-      } else {
-        // При сворачивании сохраняем текущую ширину
-        lastWidth.value = props.width;
-        isCollapsed.value = true;
-        emit('update-width', 60);
-      }
     };
 
     const refreshNotes = async () => {
@@ -291,6 +279,8 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: auto; /* Убираем фиксированную ширину */
+
   min-width: 40px; /* Минимальная ширина в свернутом состоянии */
 }
 
@@ -331,7 +321,7 @@ export default {
 }
 
 .sidebar.collapsed {
-  width: 60px;
+  width: 40px !important; /* Важно для переопределения инлайн-стиля */
 }
 
 .sidebar.collapsed .sidebar-content {
