@@ -9,24 +9,28 @@
       :width="sidebarWidth"
       :style="{
         width: sidebarWidth + 'px',
-        transition: 'width 0.3s ease'
+        transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }"
       :disabled="isEditing"
       :refresh-trigger="refreshTrigger"
     />
 
     <div
-      v-if="!isCollapsed"
       class="resizer"
       @mousedown="startResize"
       :style="{
-        left: sidebarWidth + 'px',
-        transition: 'left 0.3s ease'
-      }"
+    left: resizerLeft + 'px', // Используем состояние для resizer
+    transition: 'left 0.3s ease', // Плавный переход
+    opacity: isCollapsed ? 0.5 : 1 // Уменьшаем непрозрачность при коллапсе
+  }"
     ></div>
+
     <Note
       :note-id="selectedNoteId"
-      :style="{ marginLeft: (sidebarWidth + 5) + 'px' }"
+      :style="{
+        marginLeft: (sidebarWidth + 5) + 'px',
+        transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+      }"
       @editing-change="handleEditingChange"
       @note-deleted="handleNoteDeleted"
     />
@@ -61,6 +65,7 @@ export default {
     const sidebar = ref(null);
     const lastWidthBeforeCollapse = ref(300);
     const isCollapsed = ref(false);
+    const isResizing = ref(false);
 
     const getInitialWidth = () => {
       if (!userId.value) return Math.min(300, Math.max(100, window.innerWidth * 0.25));
@@ -71,22 +76,24 @@ export default {
     };
 
     const sidebarWidth = ref(getInitialWidth());
-    const isResizing = ref(false);
 
-    // Исправленный обработчик
+    const resizerLeft = ref(sidebarWidth.value);
+
     const handleSidebarCollapse = ({ isCollapsed: collapsed, width }) => {
-      isCollapsed.value = collapsed; // Обновляем состояние
+      sidebarWidth.value = width;
+      isCollapsed.value = collapsed;
+      resizerLeft.value = collapsed ? 40 : lastWidthBeforeCollapse.value;
+
       if (collapsed) {
         lastWidthBeforeCollapse.value = sidebarWidth.value;
       }
-      sidebarWidth.value = width;
+
       if (userId.value) {
-        localStorage.setItem(`sidebarWidth_${userId.value}`, sidebarWidth.value.toString());
+        localStorage.setItem(`sidebarWidth_${userId.value}`, width.toString());
         localStorage.setItem(`sidebarCollapsed_${userId.value}`, collapsed.toString());
       }
     };
 
-    // Остальные методы остаются без изменений
     const refreshTrigger = ref(false);
 
     const handleNoteCreated = () => {
@@ -99,7 +106,6 @@ export default {
         await sidebar.value.fetchNotes();
       }
     };
-
 
     watch([sidebarWidth, userId], ([newWidth, newUserId]) => {
       if (newUserId) {
@@ -140,7 +146,6 @@ export default {
     };
 
     const startResize = (e) => {
-      // Добавляем проверку на свернутость
       if (!e.ctrlKey || isCollapsed.value) return;
       e.preventDefault();
       isResizing.value = true;
@@ -162,6 +167,7 @@ export default {
         window.innerWidth * 0.3,
         Math.max(window.innerWidth * 0.02, newWidth)
       );
+      resizerLeft.value = newWidth;
     };
 
     const stopResize = () => {
@@ -222,6 +228,7 @@ export default {
         }
         if (savedCollapsed) {
           sidebarWidth.value = 40;
+          resizerLeft.value = 40;
         }
       }
 
@@ -237,7 +244,8 @@ export default {
     });
 
     return {
-      isCollapsed, // Добавляем в возвращаемые значения
+      resizerLeft,
+      isCollapsed,
       handleSidebarCollapse,
       lastWidthBeforeCollapse,
       refreshTrigger,
@@ -262,7 +270,7 @@ export default {
 <style scoped>
 .note-content {
   z-index: 0;
-  margin-left: 45px !important; /* 40px + 5px отступа */
+  margin-left: 45px !important;
   transition: margin-left 0.3s ease;
 }
 
@@ -287,17 +295,23 @@ export default {
   height: calc(100vh - 107px);
   overflow: hidden;
   margin-top: 45px;
+  contain: layout;
+}
+
+.sidebar, .resizer, .note-content {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width, left, margin-left;
 }
 
 .resizer {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 5px;
+  width: 3px;
   background-color: blue;
   cursor: col-resize;
   z-index: 2;
-  transition: left 0.3s ease;
+  transition: opacity 0.3s ease, left 0.3s ease;
 }
 
 .resizer:hover {
@@ -316,11 +330,6 @@ export default {
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
   z-index: 1000;
   animation: fadeInOut 3s ease-in-out;
-}
-
-/* Скрываем ресайзер при свернутом состоянии */
-.sidebar.collapsed ~ .resizer {
-  display: none;
 }
 
 @keyframes fadeInOut {

@@ -1,5 +1,9 @@
 <template>
-  <div :class="['sidebar', { 'collapsed': isCollapsed }]" :style="{ width: sidebarWidth + 'px' }">
+  <div :class="['sidebar', { 'collapsed': isCollapsed }]"
+       :style="{
+      width: sidebarWidth + 'px',
+      transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+    }">
     <div class="sidebar-header">
       <div class="button-container">
         <button
@@ -84,7 +88,7 @@ export default {
     const loading = ref(false);
     const error = ref(null);
     const showDeleted = ref(false);
-    const channel = ref(null); // Изменяем название переменной для ясности
+    const channel = ref(null);
     const isCollapsed = ref(false);
     const lastWidthBeforeCollapse = ref(300);
 
@@ -92,7 +96,6 @@ export default {
 
     const toggleCollapse = () => {
       if (isCollapsed.value) {
-        // При разворачивании восстанавливаем последнюю ширину
         isCollapsed.value = false;
         emit('collapse',
             { isCollapsed: false,
@@ -209,7 +212,6 @@ export default {
     };
 
     const setupRealtimeSubscription = () => {
-      // Отписываемся от предыдущей подписки
       if (channel.value) {
         supabase.removeChannel(channel.value);
       }
@@ -227,10 +229,7 @@ export default {
                 filter: `user_id=eq.${props.userId}`
               },
               (payload) => {
-                // console.log('Realtime change received:', payload);
-                // Добавляем принудительное обновление списка
                 fetchNotes().then(() => {
-                  // После обновления списка проверяем, нужно ли выделить новую заметку
                   if (payload.eventType === 'INSERT') {
                     const newNote = payload.new;
                     if (newNote && !newNote.is_deleted && !showDeleted.value) {
@@ -241,7 +240,6 @@ export default {
               }
           )
           .subscribe();
-      // console.log('Realtime subscription set up:', channel.value);
 
       return channel.value;
     };
@@ -250,7 +248,6 @@ export default {
       await fetchNotes();
       setupRealtimeSubscription();
 
-      // Проверяем сохраненное состояние свернутости при загрузке
       if (props.userId) {
         const savedCollapsed = localStorage.getItem(`sidebarCollapsed_${props.userId}`) === 'true';
         if (savedCollapsed) {
@@ -269,7 +266,6 @@ export default {
     watch(() => props.refreshTrigger, () => {
       fetchNotes();
     });
-
 
     return {
       lastWidthBeforeCollapse,
@@ -302,10 +298,10 @@ export default {
   display: flex;
   flex-direction: column;
   height: 100%;
-  width: auto; /* Убираем фиксированную ширину */
-  min-width: 40px; /* Минимальная ширина в свернутом состоянии */
+  width: auto;
+  min-width: 40px;
   z-index: 1;
-
+  margin-right: -5px;
 }
 
 .sidebar-header {
@@ -345,7 +341,7 @@ export default {
 }
 
 .sidebar.collapsed {
-  width: 40px !important; /* Важно для переопределения инлайн-стиля */
+  width: 40px !important;
 }
 
 .sidebar.collapsed .sidebar-content {
