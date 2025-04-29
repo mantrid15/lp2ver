@@ -94,11 +94,17 @@ export default {
       if (isCollapsed.value) {
         // При разворачивании восстанавливаем последнюю ширину
         isCollapsed.value = false;
-        emit('collapse', { isCollapsed: false, width: lastWidthBeforeCollapse.value });
+        emit('collapse',
+            { isCollapsed: false,
+              width: lastWidthBeforeCollapse.value
+            });
       } else {
         lastWidthBeforeCollapse.value = props.width || 300;
         isCollapsed.value = true;
-        emit('collapse', { isCollapsed: true, width: 40 });
+        emit('collapse', {
+          isCollapsed: true,
+          width: 40
+        });
       }
     };
 
@@ -298,6 +304,8 @@ export default {
   height: 100%;
   width: auto; /* Убираем фиксированную ширину */
   min-width: 40px; /* Минимальная ширина в свернутом состоянии */
+  z-index: 1;
+
 }
 
 .sidebar-header {

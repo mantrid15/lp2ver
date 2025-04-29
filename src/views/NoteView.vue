@@ -7,7 +7,10 @@
       @select="handleNoteSelect"
       @collapse="handleSidebarCollapse"
       :width="sidebarWidth"
-      :style="{ width: sidebarWidth + 'px' }"
+      :style="{
+        width: sidebarWidth + 'px',
+        transition: 'width 0.3s ease'
+      }"
       :disabled="isEditing"
       :refresh-trigger="refreshTrigger"
     />
@@ -16,7 +19,10 @@
       v-if="!isCollapsed"
       class="resizer"
       @mousedown="startResize"
-      :style="{ left: sidebarWidth + 'px' }"
+      :style="{
+        left: sidebarWidth + 'px',
+        transition: 'left 0.3s ease'
+      }"
     ></div>
     <Note
       :note-id="selectedNoteId"
@@ -100,6 +106,10 @@ export default {
         localStorage.setItem(`sidebarWidth_${newUserId}`, newWidth.toString());
       }
     });
+
+    watch(isCollapsed, (newVal) => {
+      console.log('Sidebar collapsed state changed to:', newVal)
+    })
 
     const handleEditingChange = (editing) => {
       isEditing.value = editing;
@@ -251,6 +261,7 @@ export default {
 
 <style scoped>
 .note-content {
+  z-index: 0;
   margin-left: 45px !important; /* 40px + 5px отступа */
   transition: margin-left 0.3s ease;
 }
@@ -285,7 +296,7 @@ export default {
   width: 5px;
   background-color: blue;
   cursor: col-resize;
-  z-index: 10;
+  z-index: 2;
   transition: left 0.3s ease;
 }
 
