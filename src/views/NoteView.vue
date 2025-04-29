@@ -1,6 +1,7 @@
 <template>
   <div v-if="account?.data?.session && userId" class="container">
     <Sidebar
+      ref="sidebar"
       :user-id="userId"
       :selected-id="selectedNoteId"
       @select="handleNoteSelect"
@@ -12,6 +13,7 @@
     />
 
     <div
+      v-if="!isCollapsed"
       class="resizer"
       @mousedown="startResize"
       :style="{ left: sidebarWidth + 'px' }"
@@ -52,19 +54,33 @@ export default {
     const showSnackbar = ref(false);
     const sidebar = ref(null);
     const lastWidthBeforeCollapse = ref(300);
+    const isCollapsed = ref(false);
 
-// Добавим обработчик события collapse
-    const handleSidebarCollapse = ({ isCollapsed, width }) => {
-      if (isCollapsed) {
+    const getInitialWidth = () => {
+      if (!userId.value) return Math.min(300, Math.max(100, window.innerWidth * 0.25));
+      const savedWidth = localStorage.getItem(`sidebarWidth_${userId.value}`);
+      return savedWidth
+        ? parseInt(savedWidth, 10)
+        : Math.min(300, Math.max(100, window.innerWidth * 0.25));
+    };
+
+    const sidebarWidth = ref(getInitialWidth());
+    const isResizing = ref(false);
+
+    // Исправленный обработчик
+    const handleSidebarCollapse = ({ isCollapsed: collapsed, width }) => {
+      isCollapsed.value = collapsed; // Обновляем состояние
+      if (collapsed) {
         lastWidthBeforeCollapse.value = sidebarWidth.value;
       }
       sidebarWidth.value = width;
       if (userId.value) {
         localStorage.setItem(`sidebarWidth_${userId.value}`, sidebarWidth.value.toString());
-        localStorage.setItem(`sidebarCollapsed_${userId.value}`, isCollapsed.toString());
+        localStorage.setItem(`sidebarCollapsed_${userId.value}`, collapsed.toString());
       }
     };
 
+    // Остальные методы остаются без изменений
     const refreshTrigger = ref(false);
 
     const handleNoteCreated = () => {
@@ -78,17 +94,6 @@ export default {
       }
     };
 
-    const getInitialWidth = () => {
-      if (!userId.value) return Math.min(300, Math.max(100, window.innerWidth * 0.25));
-
-      const savedWidth = localStorage.getItem(`sidebarWidth_${userId.value}`);
-      return savedWidth
-          ? parseInt(savedWidth, 10)
-          : Math.min(300, Math.max(100, window.innerWidth * 0.25));
-    };
-
-    const sidebarWidth = ref(getInitialWidth());
-    const isResizing = ref(false);
 
     watch([sidebarWidth, userId], ([newWidth, newUserId]) => {
       if (newUserId) {
@@ -105,9 +110,9 @@ export default {
         selectedNoteId.value = null;
         return;
       }
-
       if (isEditing.value) {
-        showSnackbarMessage();
+        showSnackbar.value = true;
+        setTimeout(() => { showSnackbar.value = false; }, 3000);
         return;
       }
       selectedNoteId.value = note.id;
@@ -125,7 +130,8 @@ export default {
     };
 
     const startResize = (e) => {
-      if (!e.ctrlKey) return;
+      // Добавляем проверку на свернутость
+      if (!e.ctrlKey || isCollapsed.value) return;
       e.preventDefault();
       isResizing.value = true;
       document.addEventListener('mousemove', handleResize);
@@ -142,10 +148,10 @@ export default {
 
       const containerRect = container.getBoundingClientRect();
       const newWidth = e.clientX - containerRect.left;
-      const minWidth = window.innerWidth * 0.02; // Минимальная ширина 2%
-      const maxWidth = window.innerWidth * 0.3;
-
-      sidebarWidth.value = Math.min(maxWidth, Math.max(minWidth, newWidth));
+      sidebarWidth.value = Math.min(
+        window.innerWidth * 0.3,
+        Math.max(window.innerWidth * 0.02, newWidth)
+      );
     };
 
     const stopResize = () => {
@@ -221,6 +227,7 @@ export default {
     });
 
     return {
+      isCollapsed, // Добавляем в возвращаемые значения
       handleSidebarCollapse,
       lastWidthBeforeCollapse,
       refreshTrigger,
@@ -298,6 +305,11 @@ export default {
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
   z-index: 1000;
   animation: fadeInOut 3s ease-in-out;
+}
+
+/* Скрываем ресайзер при свернутом состоянии */
+.sidebar.collapsed ~ .resizer {
+  display: none;
 }
 
 @keyframes fadeInOut {
