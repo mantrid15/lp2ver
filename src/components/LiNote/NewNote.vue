@@ -21,14 +21,14 @@
         @input="updateTitleFromContentAndCheckEmpty"
       ></div>
       <div class="button-group">
-        <button @click="clearAll" class="clear-button" :disabled="isEditableAreaEmpty">
-          Очистить
+        <button @click="clearAll" class="clear-button" :disabled="isEditableAreaEmpty" title="Очистить">
+          <i class="fas fa-undo-alt"></i>
         </button>
-        <button @click="showPreview" class="preview-button" :disabled="isEditableAreaEmpty">
-          Просмотр
+        <button @click="showPreview" class="preview-button" :disabled="isEditableAreaEmpty" title="Просмотр">
+          <i class="fas fa-eye"></i>
         </button>
-        <button @click="saveNote" class="save-button" :disabled="isEditableAreaEmpty">
-          Сохранить
+        <button @click="saveNote" class="save-button" :disabled="isEditableAreaEmpty" title="Сохранить">
+          <i class="fas fa-save"></i>
         </button>
       </div>
     </div>
@@ -40,14 +40,15 @@
           <h3>{{ title || 'Без названия' }}</h3>
           <div class="preview-actions">
             <button
-              @click="toggleEditMode"
-              class="edit-button"
-              :class="{ 'active': isEditMode }"
+                @click="toggleEditMode"
+                class="edit-button"
+                :class="{ 'active': isEditMode }"
+                :title="isEditMode ? 'Просмотр' : 'Редактировать'"
             >
-              {{ isEditMode ? 'Просмотр' : 'Редактировать' }}
+              <i :class="isEditMode ? 'fas fa-eye' : 'fas fa-edit'"></i>
             </button>
             <button @click="saveNote" class="save-button">
-              Сохранить
+              <i class="fas fa-save"></i>
             </button>
             <button @click="closePreview" class="close-button-top" title="Закрыть (Esc)">
               &times;
@@ -424,10 +425,6 @@ export default {
 </script>
 
 <style scoped>
-/*
-* Стили для блока с URL источника *!
-*/
-
 .source-url-block {
   width: 100% !important;
   background-color: #ff4444 !important;
@@ -502,9 +499,32 @@ export default {
 }
 
 .button-group {
+  font-size: 16px;
   display: flex;
   gap: 5px;
   height: 40px;
+}
+/* Стили для кнопки предпросмотра в модальном окне */
+.preview-actions .save-button {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Общие стили для кнопок */
+.clear-button,
+.preview-button,
+.save-button {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .clear-button {
@@ -582,7 +602,6 @@ export default {
   outline: none;
   background: white;
 }
-
 /* Стили для изображений */
 .note-editable-area img,
 .preview-html img,
@@ -592,7 +611,6 @@ export default {
   display: block !important;
   margin: 15px auto !important;
 }
-
 /* Стили для видео-блоков */
 .video-placeholder {
   width: 100% !important;
@@ -622,7 +640,6 @@ export default {
   font-size: 1.2em;
   color: white;
 }
-
 /* Отступы между элементами */
 .note-editable-area > *,
 .preview-html > *,
@@ -642,12 +659,15 @@ export default {
   color: white;
   border: none;
   border-radius: 3px;
-  padding: 8px 15px;
+  padding: 8px 11px;
   cursor: pointer;
   font-weight: bold;
   transition: background-color 0.2s;
 }
 
+.edit-button i {
+  font-size: 16px;
+}
 .edit-button:hover {
   background-color: #f57c00;
 }
@@ -660,6 +680,15 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.close-button {
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 30px;
+
 }
 
 .close-button-top {
