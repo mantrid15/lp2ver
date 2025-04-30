@@ -77,12 +77,11 @@ export default {
 
     const sidebarWidth = ref(getInitialWidth());
 
-    const resizerLeft = ref(sidebarWidth.value);
+    const resizerLeft = computed(() => sidebarWidth.value);
 
     const handleSidebarCollapse = ({ isCollapsed: collapsed, width }) => {
       sidebarWidth.value = width;
       isCollapsed.value = collapsed;
-      resizerLeft.value = collapsed ? 40 : lastWidthBeforeCollapse.value;
 
       if (collapsed) {
         lastWidthBeforeCollapse.value = sidebarWidth.value;
@@ -164,11 +163,11 @@ export default {
       const containerRect = container.getBoundingClientRect();
       const newWidth = e.clientX - containerRect.left;
       sidebarWidth.value = Math.min(
-        window.innerWidth * 0.3,
-        Math.max(window.innerWidth * 0.02, newWidth)
+          window.innerWidth * 0.3,
+          Math.max(window.innerWidth * 0.02, newWidth)
       );
-      resizerLeft.value = newWidth;
     };
+
 
     const stopResize = () => {
       isResizing.value = false;
