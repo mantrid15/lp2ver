@@ -217,31 +217,31 @@ watch(
 }
 
 /* Стили для контента */
-.markdown-content >>> p {
+.markdown-content :deep(p) {
   line-height: 1.6;
   margin: 0 0 16px 0;
 }
 
-.markdown-content >>> img {
+.markdown-content :deep(img) {
   max-width: 100%;
   height: auto;
   margin: 10px 0;
   border-radius: 4px;
 }
 
-.markdown-content >>> h1,
-.markdown-content >>> h2,
-.markdown-content >>> h3 {
+.markdown-content :deep(h1),
+.markdown-content :deep(h2),
+.markdown-content :deep(h3) {
   margin: 24px 0 16px 0;
 }
 
-.markdown-content >>> ul,
-.markdown-content >>> ol {
+.markdown-content :deep(ul),
+.markdown-content :deep(ol) {
   padding-left: 24px;
   margin: 8px 0;
 }
 
-.markdown-content >>> pre {
+.markdown-content :deep(pre) {
   background-color: #f5f5f5;
   padding: 12px;
   border-radius: 4px;

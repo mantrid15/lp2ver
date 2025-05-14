@@ -47,7 +47,7 @@
             >
               <i :class="isEditMode ? 'fas fa-eye' : 'fas fa-edit'"></i>
             </button>
-            <button @click="saveNote" class="save-button">
+            <button @click="saveNote" class="save-button" title="Сохранить">
               <i class="fas fa-save"></i>
             </button>
             <button @click="closePreview" class="close-button-top" title="Закрыть (Esc)">
@@ -425,6 +425,22 @@ export default {
 </script>
 
 <style scoped>
+/* Увеличиваем общий размер модального окна */
+
+/* Общие стили для обоих блоков контента */
+.preview-editable-area,
+.preview-html {
+  min-height: 450px; /* Было 300px (300 * 1.5) */
+  padding: 22px; /* Было 15px (15 * 1.5) */
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  outline: none;
+  background: white;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 1.1em; /* Увеличиваем базовый размер шрифта */
+  line-height: 1.6; /* Улучшаем читаемость */
+}
 .source-url-block {
   width: 100% !important;
   background-color: #ff4444 !important;
@@ -522,6 +538,7 @@ export default {
   align-items: center;
   justify-content: center;
   border-radius: 4px;
+  margin-bottom: 10px;
   border: none;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -568,12 +585,13 @@ export default {
 }
 
 .preview-content {
+  position: relative; /* Добавляем относительное позиционирование */
   background: white;
   padding: 20px;
   border-radius: 8px;
-  width: 80%;
-  max-width: 800px;
-  max-height: 80vh;
+  width: 90%; /* Было 80% */
+  max-width: 1200px; /* Было 800px */
+  max-height: 90vh; /* Было 80vh */
   display: flex;
   color: black;
   flex-direction: column;
@@ -585,22 +603,25 @@ export default {
 }
 
 .preview-scroll-container {
-  overflow-y: auto;
+  overflow-wrap: break-word;
   flex-grow: 1;
-  padding-right: 10px;
-}
-
-.preview-html {
-  padding: 10px;
-}
-
-.preview-editable-area {
-  min-height: 300px;
   padding: 15px;
+}
+
+/* Одинаковые стили для обоих режимов */
+.preview-editable-area,
+.preview-html {
+  min-height: 450px;
+  padding: 22px;
   border: 1px solid #ddd;
   border-radius: 4px;
   outline: none;
   background: white;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 1.1em;
+  line-height: 1.6;
+  overflow-wrap: break-word;
 }
 /* Стили для изображений */
 .note-editable-area img,
@@ -660,6 +681,7 @@ export default {
   border: none;
   border-radius: 3px;
   padding: 8px 11px;
+  margin-bottom: 10px;
   cursor: pointer;
   font-weight: bold;
   transition: background-color 0.2s;
@@ -668,6 +690,7 @@ export default {
 .edit-button i {
   font-size: 16px;
 }
+
 .edit-button:hover {
   background-color: #f57c00;
 }
@@ -688,13 +711,12 @@ export default {
     border: none;
     border-radius: 50%;
     width: 30px;
-
 }
 
 .close-button-top {
   position: absolute;
-  top: -10px;
-  right: -10px;
+  top: 5px; /* 10px вниз от верхнего края */
+  right: 5px; /* 10px влево от правого края */
   width: 30px;
   height: 30px;
   background-color: #ff4444;
@@ -709,5 +731,6 @@ export default {
   justify-content: center;
   box-shadow: 0 2px 5px rgba(0,0,0,0.2);
   transition: all 0.2s ease;
+  z-index: 10; /* Убедимся, что кнопка выше других элементов */
 }
 </style>
