@@ -113,6 +113,9 @@ export default {
       keywords: '',
       date: '',
     });
+
+    // FIX: Добавлен флаг для отслеживания обработки URL
+    const isProcessingUrl = ref(false);
     // определение совокупности ключевых слов, которые нужно заменить на null
     const keywordsToNull = {
       "RUTUBE, видео, клипы, сериалы, кино, трейлеры, фильмы, мультфильмы, онлайн, рутьюб, рутуб": true,
@@ -218,7 +221,6 @@ export default {
         img.src = url;
       });
     }
-
     // Функция для загрузки изображения в Supabase Storage
     const uploadFaviconToSupabase = async (faviconUrl, faviconName, faviconHash) => {
       try {
@@ -283,6 +285,7 @@ export default {
       }
       tableData.value = getTableData(linkData);
     };
+
     const getTableData = (lnkDt) => {
       return {
         title: lnkDt.title || '',
@@ -558,48 +561,53 @@ export default {
     };
 
     const handleButtonClick = async () => {
-      // Проверяем URL через fetchPageInfo
-      await fetchPageInfo();
-
-      // Проверяем, является ли URL валидным
-      if (!isValidURL(url.value)) {
-        showSnackbar('Ссылка не ссылка!!!');
-        return;
-      }
-      if (url.value) {
-        const urlCheckResult = await checkUrlExistence(url.value);
-        if (urlCheckResult.exists) {
-          return; // Прекращаем выполнение, если URL уже существует
-        }
-      }
-
-      // Если URL валиден, продолжаем выполнение основной логики
-      await getInfo();
-      parseLinkInfo();
-
-      if (!linkInfoParsed.value || !linkInfoParsed.value.url) {
-        showSnackbar('Не удалось получить информацию о странице');
+      // FIX: Добавлена проверка на уже обрабатываемый URL
+      if (isProcessingUrl.value) {
+        showSnackbar('Подождите, идёт обработка предыдущего URL');
         return;
       }
 
-      const userIdValue = userId.value;
-      if (!userIdValue) {
-        showSnackbar('Незарегистрированный пользователь. Демо-режим.');
-        return;
-      }
-
+      isProcessingUrl.value = true;
       try {
+        await fetchPageInfo();
+
+        if (!isValidURL(url.value)) {
+          showSnackbar('Ссылка не ссылка!!!');
+          return;
+        }
+
+        if (url.value) {
+          const urlCheckResult = await checkUrlExistence(url.value);
+          if (urlCheckResult.exists) {
+            return;
+          }
+        }
+
+        await getInfo();
+        parseLinkInfo();
+
+        if (!linkInfoParsed.value || !linkInfoParsed.value.url) {
+          showSnackbar('Не удалось получить информацию о странице');
+          return;
+        }
+
+        const userIdValue = userId.value;
+        if (!userIdValue) {
+          showSnackbar('Незарегистрированный пользователь. Демо-режим.');
+          return;
+        }
+
         showSnackbar('Отправка URL в Supabase...');
-        // console.log("Данные отправляемые на ДОПОДГОТОВКУ",linkInfoParsed.value)
         await processLinkData(linkInfoParsed.value);
       } catch (error) {
         console.error('Произошла ошибка:', error);
         showSnackbar('Произошла ошибка. Попробуйте снова.');
+      } finally {
+        isProcessingUrl.value = false;
+        await delay(2000);
+        await clearFields();
       }
-      await delay(2000);
-      await clearFields();
 
-      // Возвращаем фокус на поле ввода
       await nextTick();
       if (urlInput.value) {
         urlInput.value.focus();
@@ -725,9 +733,9 @@ export default {
       const description = data.description ? data.description.trim() : null;
       let lang = (data.lang ?? "").toLowerCase();
       if (lang.includes("ru")) {
-        lang = "ru"; // Если строка содержит "ru", устанавливаем "ru"
+        lang = "ru";
       } else if (lang.includes("en")) {
-        lang = "en"; // Если строка содержит "en", устанавливаем "en"
+        lang = "en";
       }
       let descriptTranslate;
       if (lang === 'en') {
@@ -753,14 +761,11 @@ export default {
         try {
           aiTag = await generateTagsNlp(title, description);
         } catch (error) {
-          // Логируем ошибку или обрабатываем её по своему усмотрению
           console.error('Ошибка при вызове generateTags с await:', error);
-          // Вызываем функцию без await
           aiTag = generateTags(title, description);
         }
       }
 
-      // const aiTag = (title === '' || title === null) && (description === '' || description === null) ? null : await generateTags(title, description);
       const aiKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0)) ? aiTag : keywords;
       const finalKeywords = mergeUniqueLists(aiKeywords, aiTag);
       console.log("KEYWORDS FINAL", finalKeywords);
@@ -772,7 +777,7 @@ export default {
         url_hash: await hashString(data.url),
         description: description,
         keywords: finalKeywords,
-        descript_translate: description !== null ? await descriptTranslate : '',
+        descript_translate: description !== null ? descriptTranslate : '',
         lang: lang,
         rss: data.rss || null,
         favicon_hash: faviconHash,
@@ -786,19 +791,33 @@ export default {
 
       updateTableData(linkData);
 
-      const {error: linkError} = await supabase
+      // ИСПРАВЛЕННЫЙ БЛОК: Правильная обработка ответа от Supabase
+      const { data: insertedData, error: linkError } = await supabase
           .from('links')
-          .insert([linkData]);
+          .insert([linkData])
+          .select();
 
       if (linkError) {
+        if (linkError.code === '23505') { // Код ошибки дублирования в PostgreSQL
+          console.log('URL уже существует:', linkError.message);
+          showSnackbar('Этот URL уже был сохранён ранее');
+          return;
+        }
         console.error('Ошибка при отправке данных в Supabase:', linkError);
         showSnackbar('Не удалось отправить данные. Попробуйте снова.');
-      } else {
-        console.log("Данные отправляемые в SUPABASE LINKS", linkData);
-        console.log('Данные успешно отправлены!');
-        showSnackbar('Данные успешно отправлены!');
+        return;
       }
 
+      // Если ошибок нет и данные вернулись
+      if (insertedData && insertedData.length > 0) {
+        console.log("Данные успешно отправлены в SUPABASE LINKS", insertedData[0]);
+        showSnackbar('Данные успешно отправлены!');
+      } else {
+        console.error('Неожиданный ответ от Supabase:', insertedData);
+        showSnackbar('Данные сохранены, но возникла неожиданная ошибка');
+      }
+
+      // Остальной код обработки favicon остается без изменений
       const {data: existingFavicons, error: checkFaviconError} = await supabase
           .from('favicons')
           .select('favicon_hash')
@@ -809,9 +828,8 @@ export default {
       } else {
         console.log('Результат проверки favicon_hash:', existingFavicons.length > 0 ? 'Не уникален' : 'Уникален');
 
-        // Если favicon не уникален, завершаем выполнение функции
         if (existingFavicons.length > 0) {
-          return; // Выход из функции
+          return;
         }
 
         const storagePath = await uploadFaviconToSupabase(data.favicon, faviconName, faviconHash);
@@ -822,7 +840,7 @@ export default {
             favicon_hash: faviconHash,
             favicon_name: faviconName,
             fav_url: data.favicon,
-            storage_path: storagePath !== null ? storagePath : 'no image', // Установка storage_path в null, если storagePath равен nul
+            storage_path: storagePath !== null ? storagePath : 'no image',
             user_id: userIdValue,
           };
           const {error: insertError} = await supabase
@@ -841,46 +859,102 @@ export default {
       await clearFields();
     }
 
+    // async function checkUrlExistence(url) {
+    //   const urlHash = await hashString(url);
+    //   const {data: existingLinks, error: checkError} = await supabase
+    //       .from('links')
+    //       .select('url_hash')
+    //       .eq('url_hash', urlHash);
+    //
+    //   if (checkError) {
+    //     console.error('Ошибка при проверке url_hash:', checkError);
+    //     return {exists: false, error: checkError};
+    //   }
+    //
+    //   if (existingLinks.length > 0) {
+    //     console.log('URL уже существует в базе данных.');
+    //     showSnackbar('URL уже существует в базе данных.');
+    //     return {exists: true};
+    //   }
+    //
+    //   return {exists: false};
+    // }
+
+
+    // FIX: Улучшенная функция проверки и вставки URL
+    async function checkAndInsertUrl(linkData) {
+      try {
+        const { data, error } = await supabase
+            .from('links')
+            .upsert(linkData, { onConflict: 'url_hash' })
+            .select();
+
+        if (error) {
+          if (error.code === '23505') {
+            console.log('URL уже существует, пропускаем дубликат');
+            showSnackbar('Этот URL уже был сохранён ранее');
+            return { exists: true };
+          }
+          throw error;
+        }
+        return { exists: false, data };
+      } catch (error) {
+        console.error('Ошибка при проверке/вставке URL:', error);
+        showSnackbar('Ошибка при сохранении URL');
+        return { exists: false, error };
+      }
+    }
+
+    // FIX: Улучшенная функция проверки существования URL
     async function checkUrlExistence(url) {
       const urlHash = await hashString(url);
-      const {data: existingLinks, error: checkError} = await supabase
-          .from('links')
-          .select('url_hash')
-          .eq('url_hash', urlHash);
+      try {
+        const { data, error } = await supabase
+            .from('links')
+            .select('url_hash')
+            .eq('url_hash', urlHash)
+            .maybeSingle();
 
-      if (checkError) {
-        console.error('Ошибка при проверке url_hash:', checkError);
-        return {exists: false, error: checkError};
+        if (error) throw error;
+        return { exists: !!data };
+      } catch (error) {
+        console.error('Ошибка при проверке url_hash:', error);
+        return { exists: false, error };
       }
-
-      if (existingLinks.length > 0) {
-        console.log('URL уже существует в базе данных.');
-        showSnackbar('URL уже существует в базе данных.');
-        return {exists: true};
-      }
-
-      return {exists: false};
     }
 
     onMounted(() => {
+      // FIX: Добавлен флаг для обработки WebSocket сообщений
+      let isProcessingWsMessage = false;
       const ws = new WebSocket('ws://localhost:3000');
       ws.onopen = () => {
         console.log('WebSocket соединение установлено');
       };
       ws.onmessage = async (event) => {
-        const data = JSON.parse(event.data);
-        console.log('Data received from WebSocket:', data)
+        if (isProcessingWsMessage) {
+          console.log('Пропускаем сообщение, пока обрабатывается предыдущее');
+          return;
+        }
 
-        if (data.url) {
-          const urlCheckResult = await checkUrlExistence(data.url);
-          if (urlCheckResult.exists) {
-            return; // Прекращаем выполнение, если URL уже существует
+        isProcessingWsMessage = true;
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Data received from WebSocket:', data);
+
+          if (data.url) {
+            const urlCheckResult = await checkUrlExistence(data.url);
+            if (urlCheckResult.exists) {
+              return;
+            }
+            await processLinkData(data);
           }
-          // Вызываем новую функцию для обработки данных
-          // console.log('Data received from WebSocket:', data)
-          await processLinkData(data);
+        } catch (error) {
+          console.error('Ошибка обработки WebSocket сообщения:', error);
+        } finally {
+          isProcessingWsMessage = false;
         }
       };
+
       ws.onclose = () => {
         console.log('WebSocket соединение закрыто');
       };
@@ -893,6 +967,7 @@ export default {
         showSnackbar(message);
       });
       window.addEventListener('changeButtonColor', (event) => changeButtonColor(event.detail));
+
       if (urlInput.value) {
         urlInput.value.focus(); // установка фокуса на поле ввода
       }
