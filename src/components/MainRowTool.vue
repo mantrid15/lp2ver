@@ -127,7 +127,7 @@ export default {
       // Функция для фильтрации общеупотребительных терминов
       const isCommonTerm = (term) => {
         const commonTerms = [
-          'и', ' и','в', 'на', 'с', 'по', 'для', 'это', 'что', 'как', 'к', 'it', 'we', 'to', 'you', 'your', '!',
+          'и', 'про','или','в', 'на', 'с', 'по', 'не', 'о','я', 'для', 'это', 'что', 'как', 'к', 'it', 'we', 'to', 'you', 'your', '!',
           'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'simplify', '',
           'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing',
           'if', 'then', 'else', 'but', 'or', 'because', 'since', 'until',
@@ -675,20 +675,20 @@ export default {
     });
 
     function mergeUniqueLists(list1, list2) {
-      if (list1 === null || list2 === null) {
-        return "";
+      if (!list1 || !list2) return "";
+      if (list1.length === 0 && list2.length === 0) return "";
+
+      // Фильтрация пустых элементов
+      const filteredList1 = list1.filter(item => item && item.trim() !== '');
+      const filteredList2 = list2.filter(item => item && item.trim() !== '');
+
+      if (filteredList1.length === filteredList2.length &&
+          filteredList1.every((item, index) => item.toLowerCase() === filteredList2[index].toLowerCase())) {
+        return filteredList1.join(", ");
       }
-      if (list1.length === 0 && list2.length === 0) {
-        return "";
-      }
-      // Проверка на равенство списков
-      if (list1.length === list2.length && list1.every((item, index) => item.toLowerCase() === list2[index].toLowerCase())) {
-        return list1.join(", "); // Возвращаем первый список, если они одинаковые
-      }
-      const mergedList = [...list1]; // Создаем новый массив и копируем элементы из первого списка
-      // Цикл по второму списку
-      for (const item of list2) {
-        // Проверяем, есть ли его версия в нижнем регистре в первом списке
+
+      const mergedList = [...filteredList1];
+      for (const item of filteredList2) {
         if (!mergedList.some(existingItem => existingItem.toLowerCase() === item.toLowerCase())) {
           mergedList.push(item); // Добавляем, если нет
         }
@@ -706,10 +706,10 @@ export default {
           keywords,
         });
         console.log("Ответ от сервера - список AITAG:", response.data);
-        return response.data.tags;
+        return response.data.tags.filter(tag => tag && tag.trim() !== ''); // Фильтрация пустых тегов
       } catch (error) {
         console.error("Ошибка при вызове сервера:", error.response ? error.response.data : error.message);
-        return "";
+        return [];
       }
     }
 
@@ -743,30 +743,32 @@ export default {
       }
 
       function setKeywords() {
-        let keywords;
         if (keywordsToNull[resultStr]) {
-          keywords = null;
-        } else {
-          keywords = data.keywords;
+          return null;
         }
-        return keywords;
+        // Фильтрация пустых ключевых слов
+        return data.keywords.filter(keyword => keyword && keyword.trim() !== '');
       }
 
       const keywords = setKeywords();
 
-      let aiTag;
-      if (title === '' || title === null || description === '' || description === null) {
-        aiTag = null;
-      } else {
+      let aiTag = [];
+      if (title && title !== '' && description && description !== '') {
         try {
           aiTag = await generateTagsNlp(title, description);
+          // Дополнительная фильтрация пустых тегов
+          aiTag = aiTag.filter(tag => tag && tag.trim() !== '');
         } catch (error) {
-          console.error('Ошибка при вызове generateTags с await:', error);
-          aiTag = generateTags(title, description);
+          console.error('Ошибка при вызове generateTagsNlp:', error);
+          aiTag = await generateTags(title, description);
         }
       }
 
-      const aiKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0)) ? aiTag : keywords;
+      // Фильтрация aiKeywords от null и пустых значений
+      const aiKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0))
+        ? aiTag
+        : keywords.filter(kw => kw && kw.trim() !== '');
+
       const finalKeywords = mergeUniqueLists(aiKeywords, aiTag);
       console.log("KEYWORDS FINAL", finalKeywords);
 
