@@ -270,6 +270,14 @@ export default {
     const selectedFolder = ref(null);
     const selectedFolderHash = ref(null);
 
+    // Добавляем вычисляемое свойство для текущей выбранной папки
+    const currentFolder = computed(() => {
+      if (selectedFolderHash.value) {
+        return folders.value.find(folder => folder.dir_hash === selectedFolderHash.value) || null;
+      }
+      return null;
+    });
+
     const getFolderColor = (folder) => {
       const count = linkCounts.value[folder.dir_hash] || 0;
       if (selectedFolderHash.value === folder.dir_hash) {
@@ -766,6 +774,8 @@ export default {
       successMessage,
       filter,
       filteredFolders,
+
+      currentFolder,
 
       createDirectory,
       checkExistingDirWithParentHash,

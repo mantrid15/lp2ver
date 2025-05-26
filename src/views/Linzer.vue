@@ -1,6 +1,13 @@
 <template>
   <div v-if="account?.data?.session" class="container">
-    <Left :width="leftColumnWidth" />
+    <Left
+      :width="leftColumnWidth"
+      :selected-folder-hash="selectedFolderHash"
+      :dragged-link="draggedLink"
+      :right-folder="$refs.rightComponent?.currentFolder"
+      @folder-selected="handleFolderSelected"
+      @update-dragged-link="updateDraggedLink"
+    />
     <div class="resizer" @mousedown="(e) => startResize(e, 1)"></div>
     <Gate
         :width="middleColumnWidth"
@@ -16,6 +23,7 @@
     />
     <div class="resizer" @mousedown="(e) => startResize(e, 2)"></div>
     <Right
+        ref="rightComponent"
         :width="rightColumnWidth"
         :draggedLink="draggedLink"
         :links="links"
@@ -28,6 +36,7 @@
     Пожалуйста, войдите в систему
   </div>
 </template>
+
 <script>
 import {ref, computed, onMounted, onUnmounted} from 'vue';
 import { supabase } from '@/clients/supabase.js';
@@ -49,6 +58,7 @@ export default {
     const store = useStore();
     const userId = computed(() => store.state.userId); // Получите userId из Vuex
     const account = ref(null);
+    const rightComponent = ref(null); // Ref для доступа к Right компоненту
 
     const selectedFolderHash = ref(null); // Состояние для хранения dir_hash выбранной папки
     const handleFolderSelected = (dirHash) => {
@@ -67,6 +77,7 @@ export default {
 
     const sortKey = ref('date');
     const sortOrder = ref('asc');
+
     async function getSession() {
       try {
         account.value = await supabase.auth.getSession();
@@ -302,6 +313,7 @@ export default {
     });
 
     return {
+      rightComponent,
       selectedFolderHash,
       handleFolderSelected,
       handleResetFolderSelection,
@@ -323,6 +335,7 @@ export default {
   }
 };
 </script>
+
 <style scoped>
 .container {
   display: flex;
