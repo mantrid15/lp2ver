@@ -280,6 +280,7 @@ export default {
         return 'linear-gradient(to bottom, #f0e68c, #d2b48c)';
       }
     };
+
     const handleFolderClick = (folder) => {
       if (selectedFolderHash.value === folder.dir_hash) {
         selectedFolderHash.value = null;
@@ -288,6 +289,7 @@ export default {
       }
       emit('folder-selected', folder.dir_hash);
     };
+
     const onDrop = async (dirHash) => {
       if (props.draggedLink) {
         const linkToUpdate = props.draggedLink;
@@ -308,9 +310,11 @@ export default {
         }
       }
     };
+
     const resetRadio = () => {
       selectedFolderId.value = null;
     };
+
     const handleKeydown = (event) => {
       if (event.key === 'Escape') {
         folderListDialog.value = false;
@@ -320,6 +324,7 @@ export default {
         filter.value = '';
       }
     };
+
     const columnSize = computed(() => {
       const widthValue = parseFloat(props.width);
       if (widthValue > 22) {
@@ -330,6 +335,7 @@ export default {
         return 12;
       }
     });
+
     const maskedEmail = computed(() => {
       const email = account.value?.data?.session?.user?.email;
       if (!email) return '';
@@ -339,17 +345,21 @@ export default {
       const lastTwoCharsOfDomain = domainPart.slice(-2);
       return `${firstTwoChars}***${lastCharBeforeAt}@***${lastTwoCharsOfDomain}`;
     });
+
     const hasFilter = computed(() => {
       return filter.value.trim() !== '';
     });
+
     const currentSortIcon = computed(() => {
       return sortOrderIcons[currentSortOrder.value];
     });
+
     watch(folders, (newFolders) => {
       newFolders.forEach(folder => {
         getLinkCount(folder.dir_hash);
       });
     }, { immediate: true });
+
     const hashString = async (inputString) => {
       try {
         const encoder = new TextEncoder();
@@ -363,6 +373,7 @@ export default {
         throw error;
       }
     };
+
     const fetchFolders = async () => {
       try {
         const { data, error } = await supabase
@@ -376,24 +387,27 @@ export default {
         console.error('Ошибка при получении директорий:', error);
       }
     };
-    const checkHashUniqueness = async (dirHash) => {
-      try {
-        const { data, error } = await supabase
-            .from('dir')
-            .select('*')
-            .eq('dir_hash', dirHash)
-            .eq('user_id', userId.value);
-        if (error) throw error;
-        console.log('Результат проверки уникальности:', data);
-        return data.length === 0;
-      } catch (error) {
-        console.error('Ошибка при проверке уникальности хеша:', error);
-        return false;
-      }
-    };
+
+    // const checkHashUniqueness = async (dirHash) => {
+    //   try {
+    //     const { data, error } = await supabase
+    //         .from('dir')
+    //         .select('*')
+    //         .eq('dir_hash', dirHash)
+    //         .eq('user_id', userId.value);
+    //     if (error) throw error;
+    //     console.log('Результат проверки уникальности:', data);
+    //     return data.length === 0;
+    //   } catch (error) {
+    //     console.error('Ошибка при проверке уникальности хеша:', error);
+    //     return false;
+    //   }
+    // };
+
     const filteredFolders = computed(() => {
       let result = folders.value.filter(folder =>
-          folder.dir_name.toLowerCase().includes(filter.value.toLowerCase())
+          // folder.dir_name.toLowerCase().includes(filter.value.toLowerCase())
+      folder.dir_name.toLowerCase().includes(filter.value.toLowerCase()) && folder.parent_hash === null
       );
       result.sort((a, b) => a.range - b.range);
       if (sortOrderValues[currentSortOrder.value] === 'asc') {
@@ -403,55 +417,82 @@ export default {
       }
       return result;
     });
+
     const cycleSort = () => {
       currentSortOrder.value = (currentSortOrder.value + 1) % sortOrderIcons.length;
     };
+
     const createDirectory = async () => {
       try {
         if (newFolderName.value.trim()) {
           const upperCaseFolderName = newFolderName.value.toUpperCase();
           const dirHash = await hashString(upperCaseFolderName);
-          const isUnique = await checkHashUniqueness(dirHash);
-          if (!isUnique) {
-            errorMessage.value = 'Директория с таким именем уже существует!';
+
+          // Проверка на наличие записей с parent_hash NULL
+          const parentHashExists = await checkParentHashForDir(dirHash);
+          if (parentHashExists) {
+            errorMessage.value = 'Создание директории невозможно, так как существует запись с parent_hash NULL.';
             setTimeout(() => {
               errorMessage.value = '';
             }, 2000);
             return;
           }
-          const { data: maxRangeData, error: maxRangeError } = await supabase
-              .from('dir')
-              .select('range')
-              .order('range', { ascending: false })
-              .limit(1);
-          if (maxRangeError) {
-            throw maxRangeError;
-          }
-          const newRange = maxRangeData.length > 0 ? maxRangeData[0].range + 1 : 1;
-          const { data, error } = await supabase
-              .from('dir')
-              .insert([
-                {
-                  dir_name: upperCaseFolderName,
-                  dir_hash: dirHash,
-                  user_id: userId.value,
-                  range: newRange
-                }
-              ])
-              .select(); // Добавьте .select() чтобы получить вставленные данные
-          if (error) {
-            errorMessage.value = 'Ошибка при создании директории!';
+
+          // Проверка на существование dir_hash с ненулевым parent_hash
+          const existingDirWithParentHash = await checkExistingDirWithParentHash(dirHash);
+          if (existingDirWithParentHash) {
+            // Если запись существует с ненулевым parent_hash, разрешаем создание
+            const { data, error } = await supabase
+                .from('dir')
+                .insert([
+                  {
+                    dir_name: upperCaseFolderName,
+                    dir_hash: dirHash,
+                    user_id: userId.value,
+                    range: await getNewRange() // Получаем новый range для верхнего уровня
+                  }
+                ])
+                .select();
+            if (error) {
+              errorMessage.value = 'Ошибка при создании директории!';
+              setTimeout(() => {
+                errorMessage.value = '';
+              }, 2000);
+              console.error('Ошибка при создании директории:', error);
+              return;
+            }
+            console.log('Ответ от Supabase:', data);
+            successMessage.value = 'Директория создана!';
             setTimeout(() => {
-              errorMessage.value = '';
-            }, 2000);
-            console.error('Ошибка при создании директории:', error);
-            return;
+              closeDialog();
+            }, 1000);
+          } else {
+            // Если нет существующей записи с ненулевым parent_hash, создаем новую директорию
+            const { data, error } = await supabase
+                .from('dir')
+                .insert([
+                  {
+                    dir_name: upperCaseFolderName,
+                    dir_hash: dirHash,
+                    user_id: userId.value,
+                    range: await getNewRange() // Получаем новый range для верхнего уровня
+                  }
+                ])
+                .select();
+            if (error) {
+              errorMessage.value = 'Ошибка при создании директории!';
+              setTimeout(() => {
+                errorMessage.value = '';
+              }, 2000);
+              console.error('Ошибка при создании директории:', error);
+              return;
+            }
+            console.log('Ответ от Supabase:', data);
+            successMessage.value = 'Директория создана!';
+            setTimeout(() => {
+              closeDialog();
+            }, 1000);
           }
-          console.log('Ответ от Supabase:', data);
-          successMessage.value = 'Директория создана!';
-          setTimeout(() => {
-            closeDialog();
-          }, 1000);
         }
       } catch (error) {
         console.error('Необработанная ошибка при создании директории:', error);
@@ -461,6 +502,56 @@ export default {
         }, 2000);
       }
     };
+
+    const getNewRange = async () => {
+      try {
+        const { data, error } = await supabase
+            .from('dir')
+            .select('range') // Получаем текущие значения range
+            .is('parent_hash', null) // Фильтруем по parent_hash NULL
+            .order('range', { ascending: true }); // Сортируем по возрастанию
+
+        if (error) throw error;
+
+        // Получаем максимальный диапазон и добавляем 1
+        const maxRange = data.length > 0 ? Math.max(...data.map(folder => folder.range)) : 0;
+        return maxRange + 1; // Возвращаем новый диапазон
+      } catch (error) {
+        console.error('Ошибка при получении нового диапазона:', error);
+        return 1; // Возвращаем 1, если произошла ошибка
+      }
+    };
+
+    const checkExistingDirWithParentHash = async (dirHash) => {
+      try {
+        const { data, error } = await supabase
+            .from('dir')
+            .select('*')
+            .eq('dir_hash', dirHash)
+            .neq('parent_hash', null); // Проверяем наличие записи с ненулевым parent_hash
+        if (error) throw error;
+        return data.length > 0; // Если есть записи с ненулевым parent_hash
+      } catch (error) {
+        console.error('Ошибка при проверке существующего dir_hash с ненулевым parent_hash:', error);
+        return false;
+      }
+    };
+
+    const checkParentHashForDir = async (dirHash) => {
+      try {
+        const { data, error } = await supabase
+            .from('dir')
+            .select('*')
+            .eq('parent_hash', null)
+            .eq('dir_hash', dirHash);
+        if (error) throw error;
+        return data.length > 0; // Если есть записи с parent_hash NULL
+      } catch (error) {
+        console.error('Ошибка при проверке parent_hash:', error);
+        return false;
+      }
+    };
+
     const deleteFolderByDirHash = async (dirHash) => {
       try {
         const { error: updateLinksError } = await supabase
@@ -717,7 +808,12 @@ export default {
       successMessage,
       filter,
       filteredFolders,
+
       createDirectory,
+      checkExistingDirWithParentHash,
+      checkParentHashForDir,
+      getNewRange,
+
       closeDialog,
       openFolderListDialog,
       columnSize,
