@@ -388,22 +388,6 @@ export default {
       }
     };
 
-    // const checkHashUniqueness = async (dirHash) => {
-    //   try {
-    //     const { data, error } = await supabase
-    //         .from('dir')
-    //         .select('*')
-    //         .eq('dir_hash', dirHash)
-    //         .eq('user_id', userId.value);
-    //     if (error) throw error;
-    //     console.log('Результат проверки уникальности:', data);
-    //     return data.length === 0;
-    //   } catch (error) {
-    //     console.error('Ошибка при проверке уникальности хеша:', error);
-    //     return false;
-    //   }
-    // };
-
     const filteredFolders = computed(() => {
       let result = folders.value.filter(folder =>
           // folder.dir_name.toLowerCase().includes(filter.value.toLowerCase())
@@ -424,104 +408,58 @@ export default {
 
     const createDirectory = async () => {
       try {
-        if (newFolderName.value.trim()) {
-          const upperCaseFolderName = newFolderName.value.toUpperCase();
-          const dirHash = await hashString(upperCaseFolderName);
+        if (!newFolderName.value.trim()) return;
 
-          // Проверка на наличие записей с parent_hash NULL
-          const parentHashExists = await checkParentHashForDir(dirHash);
-          if (parentHashExists) {
-            errorMessage.value = 'Создание директории невозможно, так как существует запись с parent_hash NULL.';
-            setTimeout(() => {
-              errorMessage.value = '';
-            }, 2000);
-            return;
-          }
+        const upperCaseFolderName = newFolderName.value.toUpperCase();
+        const dirHash = await hashString(upperCaseFolderName);
 
-          // Проверка на существование dir_hash с ненулевым parent_hash
-          const existingDirWithParentHash = await checkExistingDirWithParentHash(dirHash);
-          if (existingDirWithParentHash) {
-            // Если запись существует с ненулевым parent_hash, разрешаем создание
-            const { data, error } = await supabase
-                .from('dir')
-                .insert([
-                  {
-                    dir_name: upperCaseFolderName,
-                    dir_hash: dirHash,
-                    user_id: userId.value,
-                    range: await getNewRange() // Получаем новый range для верхнего уровня
-                  }
-                ])
-                .select();
-            if (error) {
-              errorMessage.value = 'Ошибка при создании директории!';
-              setTimeout(() => {
-                errorMessage.value = '';
-              }, 2000);
-              console.error('Ошибка при создании директории:', error);
-              return;
-            }
-            console.log('Ответ от Supabase:', data);
-            successMessage.value = 'Директория создана!';
-            setTimeout(() => {
-              closeDialog();
-            }, 1000);
-          } else {
-            // Если нет существующей записи с ненулевым parent_hash, создаем новую директорию
-            const { data, error } = await supabase
-                .from('dir')
-                .insert([
-                  {
-                    dir_name: upperCaseFolderName,
-                    dir_hash: dirHash,
-                    user_id: userId.value,
-                    range: await getNewRange() // Получаем новый range для верхнего уровня
-                  }
-                ])
-                .select();
-            if (error) {
-              errorMessage.value = 'Ошибка при создании директории!';
-              setTimeout(() => {
-                errorMessage.value = '';
-              }, 2000);
-              console.error('Ошибка при создании директории:', error);
-              return;
-            }
-            console.log('Ответ от Supabase:', data);
-            successMessage.value = 'Директория создана!';
-            setTimeout(() => {
-              closeDialog();
-            }, 1000);
-          }
+        // Шаг 1: Проверяем, есть ли запись с parent_hash = NULL и таким же dir_hash
+        const hasNullParentHash = await checkParentHashForDir(dirHash);
+        if (hasNullParentHash) {
+          errorMessage.value = 'Нельзя создать: уже есть запись с таким именем и пустым parent_hash.';
+          setTimeout(() => errorMessage.value = '', 3000);
+          return;
         }
-      } catch (error) {
-        console.error('Необработанная ошибка при создании директории:', error);
-        errorMessage.value = 'Произошла неизвестная ошибка при создании директории!';
-        setTimeout(() => {
-          errorMessage.value = '';
-        }, 2000);
-      }
-    };
 
-    const getNewRange = async () => {
-      try {
-        const { data, error } = await supabase
+        // Шаг 2: Проверяем, есть ли вообще запись с таким dir_hash и dir_name
+        const { data: existingRecords, error } = await supabase
             .from('dir')
-            .select('range') // Получаем текущие значения range
-            .is('parent_hash', null) // Фильтруем по parent_hash NULL
-            .order('range', { ascending: true }); // Сортируем по возрастанию
+            .select('*')
+            .eq('dir_hash', dirHash)
+            .eq('dir_name', upperCaseFolderName);
 
         if (error) throw error;
 
-        // Получаем максимальный диапазон и добавляем 1
-        const maxRange = data.length > 0 ? Math.max(...data.map(folder => folder.range)) : 0;
-        return maxRange + 1; // Возвращаем новый диапазон
+        if (existingRecords.length > 0) {
+          errorMessage.value = 'Нельзя создать: запись с таким именем уже существует.';
+          setTimeout(() => errorMessage.value = '', 3000);
+          return;
+        }
+
+        // Шаг 3: Создаём новую запись
+        const { data, error: insertError } = await supabase
+            .from('dir')
+            .insert([
+              {
+                dir_name: upperCaseFolderName,
+                dir_hash: dirHash,
+                user_id: userId.value,
+                range: await getNewRange()
+              }
+            ])
+            .select();
+
+        if (insertError) throw insertError;
+
+        successMessage.value = 'Директория успешно создана!';
+        setTimeout(closeDialog, 1000);
+
       } catch (error) {
-        console.error('Ошибка при получении нового диапазона:', error);
-        return 1; // Возвращаем 1, если произошла ошибка
+        console.error('Ошибка при создании директории:', error);
+        errorMessage.value = 'Произошла ошибка при создании директории.';
+        setTimeout(() => errorMessage.value = '', 3000);
       }
     };
-
     const checkExistingDirWithParentHash = async (dirHash) => {
       try {
         const { data, error } = await supabase
@@ -545,10 +483,30 @@ export default {
             .eq('parent_hash', null)
             .eq('dir_hash', dirHash);
         if (error) throw error;
-        return data.length > 0; // Если есть записи с parent_hash NULL
+        return data.length > 0;
       } catch (error) {
         console.error('Ошибка при проверке parent_hash:', error);
         return false;
+      }
+    };
+
+
+    const getNewRange = async () => {
+      try {
+        const { data, error } = await supabase
+            .from('dir')
+            .select('range') // Получаем текущие значения range
+            .is('parent_hash', null) // Фильтруем по parent_hash NULL
+            .order('range', { ascending: true }); // Сортируем по возрастанию
+
+        if (error) throw error;
+
+        // Получаем максимальный диапазон и добавляем 1
+        const maxRange = data.length > 0 ? Math.max(...data.map(folder => folder.range)) : 0;
+        return maxRange + 1; // Возвращаем новый диапазон
+      } catch (error) {
+        console.error('Ошибка при получении нового диапазона:', error);
+        return 1; // Возвращаем 1, если произошла ошибка
       }
     };
 

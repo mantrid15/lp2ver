@@ -1,64 +1,67 @@
 <template>
   <div class="column column-1" :style="{ backgroundColor: 'green', width: width }">
-<!--    <div v-if="userId && account?.data?.session?.user?.email" class="user-info">-->
-<!--      Account: {{ maskedEmail }}-->
-<!--    </div>-->
-<!--    <div>Правила использования:</div>-->
-<!--    <div>Drag&Drop - перетаскивание строки на карточку папки.</div>-->
-<!--    <div>Ctrl + перетягивание границы красного цвета</div>-->
-<!--    <div>Ctrl + перетаскивание папок с правой стороны для изменения порядка</div>-->
-<!--    <div>Клик на желтом поле - возврат в базовую папку - LIMBO </div>-->
+    <v-container>
+      <v-row>
+        <v-col v-for="folder in childFolders" :key="folder.dir_hash" @click="selectFolder(folder)">
+          <v-card>
+            <v-card-title>{{ folder.dir_name }}</v-card-title>
+          </v-card>
+        </v-col>
+      </v-row>
+    </v-container>
   </div>
 </template>
 
 <script>
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from "@/clients/supabase.js";
 
 export default {
   name: 'Left',
-
   props: {
     width: {
       type: String,
       required: true
+    },
+    selectedFolderHash: {
+      type: String,
+      default: null
     }
   },
-
-  setup() {
+  setup(props) {
     const store = useStore();
     const userId = computed(() => store.state.userId);
-    const userEmail = computed(() => store.state.user.email);
-    const account = ref();
+    const folders = ref([]);
 
-    async function getSession() {
-      account.value = await supabase.auth.getSession();
-      // console.log(account.value);
-    }
+    const fetchFolders = async () => {
+      const {data, error} = await supabase
+          .from('dir')
+          .select('*')
+          .eq('user_id', userId.value);
+      if (error) {
+        console.error('Ошибка при получении директорий:', error);
+      } else {
+        folders.value = data || [];
+      }
+    };
 
-    onMounted(() => {
-      getSession(); // Вызываем при монтировании компонента
+    const childFolders = computed(() => {
+      return folders.value.filter(folder => folder.parent_hash === props.selectedFolderHash);
     });
 
-    // Вычисляемое свойство для маскировки email
-    const maskedEmail = computed(() => {
-      const email = account.value?.data?.session?.user?.email;
-      if (!email) return '';
+    const selectFolder = (folder) => {
+      // Здесь можно добавить логику для выбора папки
+      console.log('Выбрана папка:', folder);
+    };
 
-      const [localPart, domainPart] = email.split('@');
-      const firstTwoChars = localPart.slice(0, 2);
-      const lastCharBeforeAt = localPart.slice(-1);
-      const lastTwoCharsOfDomain = domainPart.slice(-2);
-
-      return `${firstTwoChars}***${lastCharBeforeAt}@***${lastTwoCharsOfDomain}`;
+    onMounted(() => {
+      fetchFolders(); // Вызываем при монтировании компонента
     });
 
     return {
-      userId,
-      userEmail,
-      account,
-      maskedEmail, // Возвращаем вычисляемое свойство
+      childFolders,
+      selectFolder
     };
   }
 };

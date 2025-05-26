@@ -4,7 +4,7 @@ import { supabase } from '@/clients/supabase'
 import UnauthorizedView from '../views/UnauthorizedView.vue'
 import LoginView from "@/views/LoginView.vue";
 import Info from '@/views/InfoView.vue';
-import LinzerView from '@/views/LinzerTwo.vue';
+import LinzerView from '@/views/Linzer.vue';
 import NoteView from '@/views/NoteView.vue';
 import ToDo from '@/views/TodoView.vue';
 import { useStore } from 'vuex';
