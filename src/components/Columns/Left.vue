@@ -14,27 +14,27 @@
         </template>
         <template v-else>
           <v-col
-              v-for="folder in childFolders"
-              :key="folder.dir_hash"
-              :cols="columnSize"
-              class="folder-column"
-              @dragover.prevent
-              @drop="onDrop(folder.dir_hash)"
+            v-for="folder in childFolders"
+            :key="folder.dir_hash"
+            :cols="columnSize"
+            class="folder-column"
+            @dragover.prevent
+            @drop="onDrop(folder.dir_hash)"
           >
             <v-card
-                class="folder-card"
-                @click="selectFolder(folder)"
-                draggable="true"
-                @dragstart="handleDragStart($event, folder)"
-                @dragover.prevent="handleDragOver($event, folder)"
-                @drop="handleDrop($event, folder)"
-                @dragleave="handleDragLeave"
+              class="folder-card"
+              @click="selectFolder(folder)"
+              draggable="true"
+              @dragstart="handleDragStart($event, folder)"
+              @dragover.prevent="handleDragOver($event, folder)"
+              @drop="handleDrop($event, folder)"
+              @dragleave="handleDragLeave"
             >
               <v-card-title class="folder-title">
                 <div class="icon-container">
                   <v-icon
-                      class="folder-icon"
-                      :style="{
+                    class="folder-icon"
+                    :style="{
                       background: getFolderColor(folder),
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent'
@@ -46,11 +46,8 @@
                 <span class="folder-name" :style="{ fontSize: getFontSize(folder.dir_name) }">
                   {{ folder.dir_name }}
                 </span>
-                <span class="link-counter">
-                  {{ getChildItemsCount(folder.dir_hash) }}
-                </span>
-                <span class="range-counter">
-                  {{ folder.range }}
+                <span class="items-counter">
+                  {{ getItemsCount(folder.dir_hash) }}
                 </span>
               </v-card-title>
             </v-card>
@@ -90,104 +87,78 @@ export default {
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const folders = ref([]);
-    const linkCounts = ref({});
-    const childCounts = ref({}); // Для хранения количества дочерних элементов
+    const itemsCounts = ref({});
     const draggedFolder = ref(null);
 
+    const columnSize = computed(() => {
+      const widthValue = parseFloat(props.width);
+      if (widthValue > 22) return 4;
+      if (widthValue > 14) return 6;
+      return 12;
+    });
 
-    // Получаем количество дочерних элементов (папок и ссылок)
-    const getChildItemsCount = (dirHash) => {
-      const linksCount = linkCounts.value[dirHash] || 0;
-      const foldersCount = childCounts.value[dirHash] || 0;
-      return linksCount + foldersCount;
+    const getItemsCount = async (dirHash) => {
+      if (!itemsCounts.value[dirHash]) {
+        await updateItemsCount(dirHash);
+      }
+      return itemsCounts.value[dirHash] || 0;
     };
 
-// Функция для получения количества дочерних папок
-    const fetchChildFoldersCount = async (parentHash) => {
+    const updateItemsCount = async (dirHash) => {
       try {
-        const { count, error } = await supabase
-            .from('dir')
-            .select('*', { count: 'exact' })
-            .eq('parent_hash', parentHash);
+        const { count: foldersCount } = await supabase
+          .from('dir')
+          .select('*', { count: 'exact' })
+          .eq('parent_hash', dirHash);
 
-        if (error) throw error;
-        return count || 0;
+        const { count: linksCount } = await supabase
+          .from('links')
+          .select('*', { count: 'exact' })
+          .eq('dir_hash', dirHash);
+
+        itemsCounts.value[dirHash] = (foldersCount || 0) + (linksCount || 0);
       } catch (error) {
-        console.error('Error fetching child folders count:', error);
-        return 0;
+        console.error('Error counting items:', error);
+        itemsCounts.value[dirHash] = 0;
       }
     };
 
-// Обновляем счетчики дочерних элементов
-    const updateChildCounts = async () => {
-      const newCounts = {};
+    const childFolders = computed(() => {
+      const parentHash = props.rightFolder?.dir_hash || props.selectedFolderHash;
+      if (!parentHash) return [];
+      return folders.value.filter(folder => folder.parent_hash === parentHash);
+    });
 
-      // Для всех папок получаем количество дочерних папок
-      for (const folder of folders.value) {
-        if (folder.parent_hash) {
-          if (!newCounts[folder.parent_hash]) {
-            newCounts[folder.parent_hash] = 0;
+    const fetchFolders = async () => {
+      const { data, error } = await supabase
+        .from('dir')
+        .select('*')
+        .eq('user_id', userId.value);
+
+      if (error) {
+        console.error('Ошибка при получении папок:', error);
+      } else {
+        folders.value = data || [];
+
+        if (props.rightFolder?.dir_hash || props.selectedFolderHash) {
+          const parentHash = props.rightFolder?.dir_hash || props.selectedFolderHash;
+          const children = folders.value.filter(f => f.parent_hash === parentHash);
+
+          for (const folder of children) {
+            await updateItemsCount(folder.dir_hash);
           }
-          newCounts[folder.parent_hash]++;
         }
       }
-
-      // Дополнительно запрашиваем точное количество из базы
-      for (const folder of folders.value) {
-        const count = await fetchChildFoldersCount(folder.dir_hash);
-        newCounts[folder.dir_hash] = count;
-      }
-
-      childCounts.value = newCounts;
     };
-    // Определяем childFolders с учетом иерархии
-    const childFolders = computed(() => {
-      let children = [];
 
-      // Если есть rightFolder, показываем его дочерние папки
-      if (props.rightFolder) {
-        children = folders.value.filter(folder =>
-            folder.parent_hash === props.rightFolder.dir_hash
-        );
-      }
-      // Если есть selectedFolderHash, показываем его дочерние папки
-      else if (props.selectedFolderHash) {
-        children = folders.value.filter(folder =>
-            folder.parent_hash === props.selectedFolderHash
-        );
-      }
-      // Иначе показываем папки верхнего уровня
-      else {
-        children = folders.value.filter(folder =>
-            folder.parent_hash === null
-        );
-      }
-
-      // Сортируем по range
-      children.sort((a, b) => a.range - b.range);
-      return children;
-    });
-    // Добавляем вычисляемое свойство для определения состояния по умолчанию
     const isDefaultState = computed(() => {
       // Если rightFolder не передан (null) и selectedFolderHash тоже null
       return !props.rightFolder && !props.selectedFolderHash;
     });
-    // Определяем количество столбцов в зависимости от ширины
-    const columnSize = computed(() => {
-      const widthValue = parseFloat(props.width);
-      if (widthValue > 22) {
-        return 4; // 3 столбца (12/4=3)
-      } else if (widthValue > 14) {
-        return 6; // 2 столбца (12/6=2)
-      } else {
-        return 12; // 1 столбец
-      }
-    });
 
     const shouldShowNoFoldersMessage = computed(() => {
-      // Показываем "Папок нет!!!" только если есть rightFolder или selectedFolderHash,
-      // но при этом нет дочерних папок
-      return (props.rightFolder || props.selectedFolderHash) && childFolders.value.length === 0;
+      return (props.rightFolder || props.selectedFolderHash) &&
+             childFolders.value.length === 0;
     });
     // Остальной код остается без изменений...
     const getFontSize = (folderName) => {
@@ -196,55 +167,16 @@ export default {
       const isLong = folderName.length > 13;
 
       if (hasMultipleWords && isLong) {
-        if (folderName.length > 27) {
-          return '80%';
-        } else {
-          return '90%';
-        }
+        return folderName.length > 27 ? '80%' : '90%';
       }
       return '100%';
     };
 
-    const fetchFolders = async () => {
-      const {data, error} = await supabase
-          .from('dir')
-          .select('*')
-          .eq('user_id', userId.value);
-      if (error) {
-        console.error('Ошибка при получении директорий:', error);
-      } else {
-        folders.value = data || [];
-      }
-    };
-
-    const getLinkCount = async (dirHash) => {
-      try {
-        if (!dirHash) {
-          linkCounts.value[dirHash] = 0;
-          return 0;
-        }
-        const { data, error, count } = await supabase
-            .from('links')
-            .select('*', { count: 'exact' })
-            .eq('dir_hash', dirHash);
-        if (error) {
-          console.error('Ошибка при выполнении запроса:', error);
-          return 0;
-        }
-        const linkCount = count || (data ? data.length : 0);
-        linkCounts.value = { ...linkCounts.value, [dirHash]: linkCount };
-        return linkCount;
-      } catch (error) {
-        console.error('Ошибка при получении количества ссылок:', error);
-        return 0;
-      }
-    };
-
     const getFolderColor = (folder) => {
-      const count = linkCounts.value[folder.dir_hash] || 0;
+      const count = itemsCounts.value[folder.dir_hash] || 0;
       return count > 0
-          ? 'linear-gradient(to bottom, #76c7c0, #4caf50)'
-          : 'linear-gradient(to bottom, #ff7f7f, #ff4c4c)';
+        ? 'linear-gradient(to bottom, #76c7c0, #4caf50)'
+        : 'linear-gradient(to bottom, #ff7f7f, #ff4c4c)';
     };
 
     const selectFolder = (folder) => {
@@ -270,110 +202,53 @@ export default {
     const handleDrop = async (event, targetFolder) => {
       event.preventDefault();
       event.currentTarget.style.opacity = '1';
-      if (!event.ctrlKey) {
-        console.log('Перетаскивание отменено, удерживайте Ctrl для выполнения операции.');
-        return;
-      }
+      if (!event.ctrlKey) return;
+
       if (draggedFolder.value && draggedFolder.value.dir_hash !== targetFolder.dir_hash) {
-        const updatedFolders = [...folders.value];
-        const draggedIndex = updatedFolders.findIndex(f => f.dir_hash === draggedFolder.value.dir_hash);
-        const targetIndex = updatedFolders.findIndex(f => f.dir_hash === targetFolder.dir_hash);
-        if (draggedIndex === -1 || targetIndex === -1) return;
-
-        const draggedFolderRange = updatedFolders[draggedIndex].range;
-        const targetFolderRange = updatedFolders[targetIndex].range;
-        updatedFolders[draggedIndex].range = targetFolderRange;
-        updatedFolders[targetIndex].range = draggedFolderRange;
-
-        await updateFolderRanges([
-          { dir_hash: updatedFolders[draggedIndex].dir_hash, range: updatedFolders[draggedIndex].range },
-          { dir_hash: updatedFolders[targetIndex].dir_hash, range: updatedFolders[targetIndex].range }
+        const [dragged, target] = [draggedFolder.value, targetFolder];
+        await Promise.all([
+          supabase.from('dir').update({ parent_hash: target.parent_hash }).eq('dir_hash', dragged.dir_hash),
+          supabase.from('dir').update({ parent_hash: dragged.parent_hash }).eq('dir_hash', target.dir_hash)
         ]);
-
-        folders.value = updatedFolders;
-      }
-    };
-
-    const updateFolderRanges = async (updates) => {
-      try {
-        for (const update of updates) {
-          const { error } = await supabase
-              .from('dir')
-              .update({ range: update.range })
-              .eq('dir_hash', update.dir_hash);
-          if (error) {
-            console.error('Ошибка при обновлении папки:', update.dir_hash, error);
-          }
-        }
         await fetchFolders();
-      } catch (error) {
-        console.error('Ошибка при обновлении папок:', error);
       }
     };
 
     const onDrop = async (dirHash) => {
       if (props.draggedLink) {
-        const linkToUpdate = props.draggedLink;
-        try {
-          const { error } = await supabase
-              .from('links')
-              .update({ dir_hash: dirHash })
-              .eq('id', linkToUpdate.id);
-          if (error) throw error;
-          await getLinkCount(dirHash);
-          if (linkToUpdate.dir_hash) {
-            await getLinkCount(linkToUpdate.dir_hash);
-          }
-          emit('update-dragged-link', null);
-        } catch (error) {
-          console.error('Ошибка при обновлении ссылки:', error);
-        }
+        await supabase
+          .from('links')
+          .update({ dir_hash: dirHash })
+          .eq('id', props.draggedLink.id);
+        emit('update-dragged-link', null);
+        await fetchFolders();
       }
     };
 
-    onMounted(() => {
-      fetchFolders();
-    });
-
-    watch(folders, (newFolders) => {
-      newFolders.forEach(folder => {
-        getLinkCount(folder.dir_hash);
-      });
-    }, { immediate: true });
-
-    // Следим за изменениями rightFolder и обновляем данные
-    watch(() => props.rightFolder, async (newVal) => {
-      await fetchFolders();
-    });
+    onMounted(fetchFolders);
+    watch(() => props.rightFolder, fetchFolders);
+    watch(() => props.selectedFolderHash, fetchFolders);
 
     return {
-      getChildItemsCount,
-      isDefaultState,
+      columnSize,
       childFolders,
-      selectFolder,
-      getFolderColor,
+      getItemsCount,
+      isDefaultState,
+      shouldShowNoFoldersMessage,
       getFontSize,
-      linkCounts,
+      getFolderColor,
+      selectFolder,
       handleDragStart,
       handleDragLeave,
       handleDragOver,
       handleDrop,
-      onDrop,
-      shouldShowNoFoldersMessage,
-      columnSize
+      onDrop
     };
   }
 };
 </script>
 
 <style scoped>
-.start-working-message {
-  color: white;
-  font-size: 1.5rem;
-  padding: 40px 20px;
-  font-weight: bold;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-}
 .column {
   flex-shrink: 0;
   overflow: hidden;
@@ -450,23 +325,23 @@ export default {
   width: 100%;
 }
 
-.link-counter {
+.items-counter {
   position: absolute;
   top: 5px;
   right: 5px;
   font-size: 16px;
   color: black;
-}
-
-.range-counter {
-  position: absolute;
-  bottom: 5px;
-  left: 5px;
-  font-size: 10px;
-  color: black;
   background-color: rgba(255, 255, 255, 0.7);
   padding: 2px 5px;
   border-radius: 3px;
+}
+
+.start-working-message {
+  color: white;
+  font-size: 1.5rem;
+  padding: 40px 20px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .no-folders-message {
