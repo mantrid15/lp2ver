@@ -766,8 +766,8 @@ export default {
 
       // Фильтрация aiKeywords от null и пустых значений
       const aiKeywords = (keywords === null || (Array.isArray(keywords) && keywords.length === 0))
-        ? aiTag
-        : keywords.filter(kw => kw && kw.trim() !== '');
+          ? aiTag
+          : keywords.filter(kw => kw && kw.trim() !== '');
 
       const finalKeywords = mergeUniqueLists(aiKeywords, aiTag);
       console.log("KEYWORDS FINAL", finalKeywords);
@@ -793,33 +793,19 @@ export default {
 
       updateTableData(linkData);
 
-      // ИСПРАВЛЕННЫЙ БЛОК: Правильная обработка ответа от Supabase
-      const { data: insertedData, error: linkError } = await supabase
+      const {error: linkError} = await supabase
           .from('links')
-          .insert([linkData])
-          .select();
+          .insert([linkData]);
 
       if (linkError) {
-        if (linkError.code === '23505') { // Код ошибки дублирования в PostgreSQL
-          console.log('URL уже существует:', linkError.message);
-          showSnackbar('Этот URL уже был сохранён ранее');
-          return;
-        }
         console.error('Ошибка при отправке данных в Supabase:', linkError);
         showSnackbar('Не удалось отправить данные. Попробуйте снова.');
-        return;
-      }
-
-      // Если ошибок нет и данные вернулись
-      if (insertedData && insertedData.length > 0) {
-        console.log("Данные успешно отправлены в SUPABASE LINKS", insertedData[0]);
-        showSnackbar('Данные успешно отправлены!');
       } else {
-        console.error('Неожиданный ответ от Supabase:', insertedData);
-        showSnackbar('Данные сохранены, но возникла неожиданная ошибка');
+        console.log("Данные отправляемые в SUPABASE LINKS", linkData);
+        console.log('Данные успешно отправлены!');
+        showSnackbar('Данные успешно отправлены!');
       }
 
-      // Остальной код обработки favicon остается без изменений
       const {data: existingFavicons, error: checkFaviconError} = await supabase
           .from('favicons')
           .select('favicon_hash')
@@ -830,8 +816,9 @@ export default {
       } else {
         console.log('Результат проверки favicon_hash:', existingFavicons.length > 0 ? 'Не уникален' : 'Уникален');
 
+        // Если favicon не уникален, завершаем выполнение функции
         if (existingFavicons.length > 0) {
-          return;
+          return; // Выход из функции
         }
 
         const storagePath = await uploadFaviconToSupabase(data.favicon, faviconName, faviconHash);
@@ -860,29 +847,6 @@ export default {
       await delay(2000);
       await clearFields();
     }
-
-    // async function checkUrlExistence(url) {
-    //   const urlHash = await hashString(url);
-    //   const {data: existingLinks, error: checkError} = await supabase
-    //       .from('links')
-    //       .select('url_hash')
-    //       .eq('url_hash', urlHash);
-    //
-    //   if (checkError) {
-    //     console.error('Ошибка при проверке url_hash:', checkError);
-    //     return {exists: false, error: checkError};
-    //   }
-    //
-    //   if (existingLinks.length > 0) {
-    //     console.log('URL уже существует в базе данных.');
-    //     showSnackbar('URL уже существует в базе данных.');
-    //     return {exists: true};
-    //   }
-    //
-    //   return {exists: false};
-    // }
-
-
     // FIX: Улучшенная функция проверки и вставки URL
     async function checkAndInsertUrl(linkData) {
       try {
@@ -910,19 +874,23 @@ export default {
     // FIX: Улучшенная функция проверки существования URL
     async function checkUrlExistence(url) {
       const urlHash = await hashString(url);
-      try {
-        const { data, error } = await supabase
-            .from('links')
-            .select('url_hash')
-            .eq('url_hash', urlHash)
-            .maybeSingle();
+      const {data: existingLinks, error: checkError} = await supabase
+          .from('links')
+          .select('url_hash')
+          .eq('url_hash', urlHash);
 
-        if (error) throw error;
-        return { exists: !!data };
-      } catch (error) {
-        console.error('Ошибка при проверке url_hash:', error);
-        return { exists: false, error };
+      if (checkError) {
+        console.error('Ошибка при проверке url_hash:', checkError);
+        return {exists: false, error: checkError};
       }
+
+      if (existingLinks.length > 0) {
+        console.log('URL уже существует в базе данных.');
+        showSnackbar('URL уже существует в базе данных.');
+        return {exists: true};
+      }
+
+      return {exists: false};
     }
 
     onMounted(() => {
