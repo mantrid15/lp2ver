@@ -124,18 +124,34 @@ export default {
         return;
       }
 
+      // Шаг 1: Получаем все ссылки, где parent_hash равен dir_hash корневой папки
+      const { data: links, error: linksError } = await supabase
+          .from('links')
+          .select('id, dir_hash')
+          .eq('parent_hash', props.selectedFolderHash);
+
+      if (linksError) {
+        console.error('Ошибка при получении ссылок:', linksError);
+        childFoldersWithCounts.value = [];
+        return;
+      }
+
+      // Шаг 2: Получаем дочерние папки, где parent_hash равен selectedFolderHash
       const children = folders.value.filter(f => f.parent_hash === props.selectedFolderHash);
-      const childrenWithCounts = await Promise.all(
-          children.map(async folder => {
-            const itemsCount = await getItemsCount(folder.dir_hash);
-            return {
-              ...folder,
-              itemsCount
-            };
-          })
-      );
+
+      // Шаг 3: Подсчитываем количество элементов для каждой дочерней папки
+      const childrenWithCounts = children.map(folder => {
+        const itemsCount = links.filter(link => link.dir_hash === folder.dir_hash).length;
+        return {
+          ...folder,
+          itemsCount
+        };
+      });
+
       childFoldersWithCounts.value = childrenWithCounts;
-    };      // Загрузка дочерних папок на основе selectedFolderHash
+    };
+
+    // Загрузка дочерних папок на основе selectedFolderHash
     const fetchFolders = async () => {
       console.log('Запрос папок для userId:', userId.value);
       const { data, error } = await supabase
