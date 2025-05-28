@@ -97,52 +97,55 @@ export default {
       return 12;
     });
 
+// Метод для подсчета элементов в таблице links для конкретной дочерней папки
     const getItemsCount = async (dirHash) => {
       try {
-        const { count: foldersCount } = await supabase
-            .from('dir')
-            .select('*', { count: 'exact' })
-            .eq('parent_hash', dirHash);
-
-        const { count: linksCount } = await supabase
+        const { count, error } = await supabase
             .from('links')
             .select('*', { count: 'exact' })
             .eq('dir_hash', dirHash);
 
-        return (foldersCount || 0) + (linksCount || 0);
+        if (error) {
+          console.error('Ошибка при подсчете элементов:', error);
+          return 0;
+        }
+        return count || 0;
       } catch (error) {
-        console.error('Error counting items:', error);
+        console.error('Неожиданная ошибка в getItemsCount:', error);
         return 0;
       }
     };
 
+
+    // Обновление списка дочерних папок с подсчетом элементов
     const updateChildFoldersWithCounts = async () => {
-      const parentHash = props.rightFolder?.dir_hash || props.selectedFolderHash;
-      if (!parentHash) {
+      if (!props.selectedFolderHash) {
         childFoldersWithCounts.value = [];
         return;
       }
 
-      const children = folders.value.filter(f => f.parent_hash === parentHash);
+      const children = folders.value.filter(f => f.parent_hash === props.selectedFolderHash);
       const childrenWithCounts = await Promise.all(
-          children.map(async folder => ({
-            ...folder,
-            itemsCount: await getItemsCount(folder.dir_hash)
-          }))
+          children.map(async folder => {
+            const itemsCount = await getItemsCount(folder.dir_hash);
+            return {
+              ...folder,
+              itemsCount
+            };
+          })
       );
-
       childFoldersWithCounts.value = childrenWithCounts;
-    };
-
+    };      // Загрузка дочерних папок на основе selectedFolderHash
     const fetchFolders = async () => {
+      console.log('Запрос папок для userId:', userId.value);
       const { data, error } = await supabase
           .from('dir')
           .select('*')
           .eq('user_id', userId.value);
-
       if (error) {
-        console.error('Ошибка при получении папок:', error);
+        console.error('Ошибка при запросе папок:', error);
       } else {
+        console.log('Полученные папки:', data);
         folders.value = data || [];
         await updateChildFoldersWithCounts();
       }
@@ -223,6 +226,9 @@ export default {
     onMounted(fetchFolders);
     watch(() => props.rightFolder, fetchFolders);
     watch(() => props.selectedFolderHash, fetchFolders);
+    // /Следим за изменениями selectedFolderHash и обновляем список
+    watch(() => props.selectedFolderHash, updateChildFoldersWithCounts, { immediate: true });
+
 
     return {
       columnSize,

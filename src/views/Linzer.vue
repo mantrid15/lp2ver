@@ -62,6 +62,7 @@ export default {
 
     const selectedFolderHash = ref(null); // Состояние для хранения dir_hash выбранной папки
     const handleFolderSelected = (dirHash) => {
+      console.log('Выбрана папка с dirHash:', dirHash);
       selectedFolderHash.value = dirHash;
 
     };
