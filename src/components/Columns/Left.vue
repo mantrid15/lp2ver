@@ -46,7 +46,7 @@
                 <span class="folder-name" :style="{ fontSize: getFontSize(folder.dir_name) }">
                   {{ folder.dir_name }}
                 </span>
-                <span class="items-counter">
+                <span class="link-counter">
                   {{ folder.itemsCount }}
                 </span>
               </v-card-title>
@@ -265,5 +265,18 @@ export default {
 </script>
 
 <style scoped>
+.link-counter {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 16px;
+  color: black;
+}
+
+.column {
+  flex-shrink: 0;
+  overflow: hidden;
+  height: 100%;
+}
 /* Все стили остаются без изменений */
 </style>
