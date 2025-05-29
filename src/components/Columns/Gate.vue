@@ -381,6 +381,7 @@ export default {
 
     const onDragEnd = () => {
       draggedLink.value = null; // Сбрасываем перетаскиваемую ссылку
+      emit('update-dragged-link', null);
     };
 
     const rowCount = computed(() => filteredLinks.value.length); // Обновлено для использования filteredLinks
