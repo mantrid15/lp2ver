@@ -14,7 +14,7 @@
         </template>
         <template v-else>
           <v-col
-              v-for="folder in childFoldersWithCounts"
+              v-for="folder in displayedFolders"
               :key="folder.dir_hash"
               :cols="columnSize"
               class="folder-column"
@@ -100,11 +100,39 @@ export default {
 
     // Отображаемые папки - либо дочерние, либо корневые
     const displayedFolders = computed(() => {
-      if (!currentParentHash.value) {
+      // Если выбрана корневая папка из Right
+      if (props.rightFolder) {
+        // Показываем дочерние папки корневой папки
+        return folders.value.filter(f => f.parent_hash === props.rightFolder.dir_hash);
+      }
+
+      // Если нет выбранной папки, показываем только корневые папки
+      if (!props.selectedFolderHash) {
         return folders.value.filter(f => f.parent_hash === null);
       }
-      return childFoldersWithCounts.value;
+
+      // Возвращаем все папки, чтобы они не исчезали
+      return folders.value;
     });
+
+    const getFolderColor = (folder) => {
+      // Если выбрана корневая папка из Right
+      if (props.rightFolder && props.selectedFolderHash === props.rightFolder.dir_hash) {
+        // Зеленый цвет для дочерних папок корневой папки
+        if (folder.parent_hash === props.rightFolder.dir_hash) {
+          return 'linear-gradient(to bottom, #76c7c0, #4caf50)';
+        }
+      }
+
+      // Зеленый цвет для выбранной папки
+      if (props.selectedFolderHash === folder.dir_hash) {
+        return 'linear-gradient(to bottom, #76c7c0, #4caf50)';
+      }
+
+      // Стандартный цвет для остальных папок
+      return 'linear-gradient(to bottom, #f0e68c, #d2b48c)';
+    };
+
 
     const getItemsCount = async (dirHash) => {
       try {
@@ -135,7 +163,6 @@ export default {
         return;
       }
 
-      // Шаг 1: Получаем все ссылки, где parent_hash равен dir_hash корневой папки
       const { data: links, error: linksError } = await supabase
           .from('links')
           .select('id, dir_hash')
@@ -147,9 +174,11 @@ export default {
         return;
       }
 
-      const children = folders.value.filter(f => f.parent_hash === parentHash);
+      const children = folders.value.filter(f =>
+          f.parent_hash === parentHash ||
+          (parentHash && f.dir_hash === parentHash)
+      );
 
-      // Шаг 3: Подсчитываем количество элементов для каждой дочерней папки
       const childrenWithCounts = children.map(folder => {
         const itemsCount = links.filter(link => link.dir_hash === folder.dir_hash).length;
         return {
@@ -157,7 +186,6 @@ export default {
           itemsCount
         };
       });
-
       childFoldersWithCounts.value = childrenWithCounts;
     };
 
@@ -196,16 +224,6 @@ export default {
       return '100%';
     };
 
-    const getFolderColor = (folder) => {
-      // Используем props.selectedFolderHash для определения выделенной папки
-      if (props.selectedFolderHash === folder.dir_hash) {
-        return folder.itemsCount > 0
-            ? 'linear-gradient(to bottom, #76c7c0, #4caf50)'
-            : 'linear-gradient(to bottom, #ff7f7f, #ff4c4c)';
-      } else {
-        return 'linear-gradient(to bottom, #f0e68c, #d2b48c)';
-      }
-    };
 
     const selectFolder = (folder) => {
       emit('folder-selected', folder.dir_hash);
@@ -260,6 +278,7 @@ export default {
 
     return {
       columnSize,
+      displayedFolders,
       childFoldersWithCounts,
       isDefaultState,
       shouldShowNoFoldersMessage,

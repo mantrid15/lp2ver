@@ -5,7 +5,6 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import vuetify from 'vite-plugin-vuetify'
 import path from 'path'
 import { viteStaticCopy } from 'vite-plugin-static-copy' // Для копирования статики
-
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -29,6 +28,8 @@ export default defineConfig({
     },
   },
   server: {
+    host: '127.0.0.1', // Явное указание на использование IPv4
+    port: 5173, // Порт, на котором будет запущен Vite
     proxy: {
       '/api': {
         target: 'http://localhost:3000', // URL вашего Node.js сервера
