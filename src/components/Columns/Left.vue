@@ -112,24 +112,28 @@ export default {
       }
 
       // Возвращаем все папки, чтобы они не исчезали
-      return folders.value;
+      return [];
     });
 
     const getFolderColor = (folder) => {
       // Если выбрана корневая папка из Right
-      if (props.rightFolder && props.selectedFolderHash === props.rightFolder.dir_hash) {
-        // Зеленый цвет для дочерних папок корневой папки
-        if (folder.parent_hash === props.rightFolder.dir_hash) {
+      if (props.rightFolder) {
+        // Зеленый цвет только для выбранной дочерней папки
+        if (props.selectedFolderHash === folder.dir_hash) {
           return 'linear-gradient(to bottom, #76c7c0, #4caf50)';
+        }
+        // Желтый цвет для остальных дочерних папок корневой папки
+        if (folder.parent_hash === props.rightFolder.dir_hash) {
+          return 'linear-gradient(to bottom, #f0e68c, #d2b48c)';
         }
       }
 
-      // Зеленый цвет для выбранной папки
+      // Зеленый цвет для выбранной папки (если не в режиме Right)
       if (props.selectedFolderHash === folder.dir_hash) {
         return 'linear-gradient(to bottom, #76c7c0, #4caf50)';
       }
 
-      // Стандартный цвет для остальных папок
+      // Стандартный желтый цвет для остальных папок
       return 'linear-gradient(to bottom, #f0e68c, #d2b48c)';
     };
 

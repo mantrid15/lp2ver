@@ -468,6 +468,7 @@ export default {
         setTimeout(() => errorMessage.value = '', 3000);
       }
     };
+
     const checkExistingDirWithParentHash = async (dirHash) => {
       try {
         const { data, error } = await supabase
@@ -497,7 +498,6 @@ export default {
         return false;
       }
     };
-
 
     const getNewRange = async () => {
       try {
