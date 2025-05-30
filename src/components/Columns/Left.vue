@@ -165,7 +165,7 @@ export default {
     const updateChildFoldersWithCounts = async () => {
       // Используем props.selectedFolderHash вместо локального состояния
       const parentHash = props.selectedFolderHash || props.rightFolder?.dir_hash;
-
+    };
     const onDrop = async (dirHash) => {
       if (props.draggedLink) {
         const link = props.draggedLink;
