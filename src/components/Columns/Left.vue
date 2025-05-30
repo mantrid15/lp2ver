@@ -101,6 +101,7 @@ export default {
     const childFoldersWithCounts = ref([]);
     const draggedFolder = ref(null);
     const selectedFolderHash = ref(null);
+
     const snackbar = ref({
       show: false,
       message: '',
@@ -113,6 +114,7 @@ export default {
         snackbar.value.show = false;
       }, 3000);
     };
+
     const columnSize = computed(() => {
       const widthValue = parseFloat(props.width);
       if (widthValue > 22) return 4;
@@ -164,37 +166,35 @@ export default {
       // Используем props.selectedFolderHash вместо локального состояния
       const parentHash = props.selectedFolderHash || props.rightFolder?.dir_hash;
 
-      if (!parentHash) {
-        childFoldersWithCounts.value = [];
-        return;
+    const onDrop = async (dirHash) => {
+      if (props.draggedLink) {
+        const link = props.draggedLink;
+
+        if (link.parent_hash === props.rightFolder?.dir_hash &&
+            link.dir_hash === dirHash) {
+          showSnackbar("Ссылка уже лежит где надо! Тысяча чертей!!!");
+          return;
+        }
+
+        try {
+          const { error } = await supabase
+            .from('links')
+            .update({
+              parent_hash: props.rightFolder?.dir_hash || null,
+              dir_hash: dirHash
+            })
+            .eq('id', link.id);
+
+          if (error) throw error;
+
+          emit('update-dragged-link', null);
+        } catch (error) {
+          console.error('Ошибка при обновлении ссылки:', error);
+          showSnackbar("Ошибка при перемещении ссылки");
+        }
       }
-
-      const { data: links, error: linksError } = await supabase
-          .from('links')
-          .select('id, dir_hash')
-          .eq('parent_hash', parentHash);
-
-      if (linksError) {
-        console.error('Ошибка при получении ссылок:', linksError);
-        childFoldersWithCounts.value = [];
-        return;
-      }
-
-      const children = folders.value.filter(f =>
-          f.parent_hash === parentHash ||
-          (parentHash && f.dir_hash === parentHash)
-      );
-
-      const childrenWithCounts = children.map(folder => {
-        const itemsCount = links.filter(link => link.dir_hash === folder.dir_hash).length;
-        return {
-          ...folder,
-          itemsCount
-        };
-      });
-      childFoldersWithCounts.value = childrenWithCounts;
     };
-    // Загрузка дочерних папок на основе selectedFolderHash
+
     const fetchFolders = async () => {
       console.log('Запрос папок для userId:', userId.value);
       const { data, error } = await supabase
@@ -215,7 +215,7 @@ export default {
 
     const shouldShowNoFoldersMessage = computed(() => {
       return (props.rightFolder || props.selectedFolderHash) &&
-          childFoldersWithCounts.value.length === 0;
+        displayedFolders.value.length === 0;
     });
 
     const getFontSize = (folderName) => {
@@ -264,46 +264,13 @@ export default {
       }
     };
 
-    const onDrop = async (dirHash) => {
-      if (props.draggedLink) {
-        const link = props.draggedLink;
-
-        // Проверяем, совпадают ли текущие значения с новыми
-        if (link.parent_hash === props.rightFolder?.dir_hash &&
-            link.dir_hash === dirHash) {
-          showSnackbar("Ссылка уже лежит где надо! Тысяча чертей!!!");
-          return;
-        }
-
-        try {
-          const { error } = await supabase
-              .from('links')
-              .update({
-                parent_hash: props.rightFolder?.dir_hash || null,
-                dir_hash: dirHash
-              })
-              .eq('id', link.id);
-
-          if (error) throw error;
-
-          emit('update-dragged-link', null);
-        } catch (error) {
-          console.error('Ошибка при обновлении ссылки:', error);
-          showSnackbar("Ошибка при перемещении ссылки");
-        }
-      }
-    };
     onMounted(fetchFolders);
     watch(() => props.rightFolder, fetchFolders);
     watch(() => props.selectedFolderHash, fetchFolders);
-    watch([() => props.selectedFolderHash, () => props.rightFolder], updateChildFoldersWithCounts, { immediate: true });
 
     return {
-      snackbar,
-      showSnackbar,
       columnSize,
       displayedFolders,
-      childFoldersWithCounts,
       isDefaultState,
       shouldShowNoFoldersMessage,
       getFontSize,
@@ -313,7 +280,8 @@ export default {
       handleDragLeave,
       handleDragOver,
       handleDrop,
-      onDrop
+      onDrop,
+      snackbar
     };
   }
 };
