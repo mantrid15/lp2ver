@@ -5,6 +5,7 @@
       :selected-folder-hash="selectedFolderHash"
       :dragged-link="draggedLink"
       :right-folder="$refs.rightComponent?.currentFolder"
+      :link-counts="$refs.rightComponent?.linkCounts"
       @folder-selected="handleFolderSelected"
       @update-dragged-link="updateDraggedLink"
     />

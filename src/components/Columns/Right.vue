@@ -289,11 +289,17 @@ export default {
       }
     };
 
-    const handleFolderClick = (folder) => {
+    const handleFolderClick = async (folder) =>  {
       if (selectedFolderHash.value === folder.dir_hash) {
         selectedFolderHash.value = null;
+        emit('reset-folder-selection');
       } else {
         selectedFolderHash.value = folder.dir_hash;
+        // Получаем количество элементов для дочерних папок
+        const childFolders = folders.value.filter(f => f.parent_hash === folder.dir_hash);
+        for (const child of childFolders) {
+          await getLinkCount(child.dir_hash);
+        }
       }
       emit('folder-selected', folder.dir_hash);
     };
@@ -640,22 +646,20 @@ export default {
     };
     const getLinkCount = async (dirHash) => {
       try {
-        if (!dirHash) {
-          console.warn('dirHash не указан');
-          linkCounts.value[dirHash] = 0;
-          return 0;
-        }
-        const { data, error, count } = await supabase
+        if (!dirHash) return 0;
+
+        const { count, error } = await supabase
             .from('links')
             .select('*', { count: 'exact' })
             .eq('dir_hash', dirHash);
-        if (error) {
-          console.error('Ошибка при выполнении запроса:', error);
-          return 0;
-        }
-        const linkCount = count || (data ? data.length : 0);
-        linkCounts.value = { ...linkCounts.value, [dirHash]: linkCount };
-        return linkCount;
+
+        if (error) throw error;
+
+        linkCounts.value = {
+          ...linkCounts.value,
+          [dirHash]: count || 0
+        };
+        return count || 0;
       } catch (error) {
         console.error('Ошибка при получении количества ссылок:', error);
         return 0;
@@ -774,14 +778,11 @@ export default {
       successMessage,
       filter,
       filteredFolders,
-
       currentFolder,
-
       createDirectory,
       checkExistingDirWithParentHash,
       checkParentHashForDir,
       getNewRange,
-
       closeDialog,
       openFolderListDialog,
       columnSize,

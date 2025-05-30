@@ -55,6 +55,13 @@
         </template>
       </v-row>
     </v-container>
+    <v-snackbar
+        v-model="snackbar.show"
+        :color="snackbar.color"
+        timeout="3000"
+    >
+      {{ snackbar.message }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -81,6 +88,10 @@ export default {
     rightFolder: {
       type: Object,
       default: null
+    },
+    linkCounts: {
+      type: Object,
+      default: () => ({})
     }
   },
   setup(props, { emit }) {
@@ -90,28 +101,40 @@ export default {
     const childFoldersWithCounts = ref([]);
     const draggedFolder = ref(null);
     const selectedFolderHash = ref(null);
+    const snackbar = ref({
+      show: false,
+      message: '',
+      color: 'error'
+    });
 
+    const showSnackbar = (message, color = 'error') => {
+      snackbar.value = { show: true, message, color };
+      setTimeout(() => {
+        snackbar.value.show = false;
+      }, 3000);
+    };
     const columnSize = computed(() => {
       const widthValue = parseFloat(props.width);
       if (widthValue > 22) return 4;
       if (widthValue > 14) return 6;
       return 12;
     });
-
     // Отображаемые папки - либо дочерние, либо корневые
     const displayedFolders = computed(() => {
-      // Если выбрана корневая папка из Right
       if (props.rightFolder) {
-        // Показываем дочерние папки корневой папки
-        return folders.value.filter(f => f.parent_hash === props.rightFolder.dir_hash);
+        // Показываем дочерние папки корневой папки с количеством элементов из linkCounts
+        return folders.value
+            .filter(f => f.parent_hash === props.rightFolder.dir_hash)
+            .map(folder => ({
+              ...folder,
+              itemsCount: props.linkCounts[folder.dir_hash] || 0
+            }));
       }
 
-      // Если нет выбранной папки, показываем только корневые папки
       if (!props.selectedFolderHash) {
         return folders.value.filter(f => f.parent_hash === null);
       }
 
-      // Возвращаем все папки, чтобы они не исчезали
       return [];
     });
 
@@ -136,27 +159,6 @@ export default {
       // Стандартный желтый цвет для остальных папок
       return 'linear-gradient(to bottom, #f0e68c, #d2b48c)';
     };
-
-
-    const getItemsCount = async (dirHash) => {
-      try {
-        const { count, error } = await supabase
-            .from('links')
-            .select('*', { count: 'exact' })
-            .eq('dir_hash', dirHash);
-
-        if (error) {
-          console.error('Ошибка при подсчете элементов:', error);
-          return 0;
-        }
-        return count || 0;
-      } catch (error) {
-        console.error('Неожиданная ошибка в getItemsCount:', error);
-        return 0;
-      }
-    };
-
-
     // Обновление списка дочерних папок с подсчетом элементов
     const updateChildFoldersWithCounts = async () => {
       // Используем props.selectedFolderHash вместо локального состояния
@@ -192,7 +194,6 @@ export default {
       });
       childFoldersWithCounts.value = childrenWithCounts;
     };
-
     // Загрузка дочерних папок на основе selectedFolderHash
     const fetchFolders = async () => {
       console.log('Запрос папок для userId:', userId.value);
@@ -227,7 +228,6 @@ export default {
       }
       return '100%';
     };
-
 
     const selectFolder = (folder) => {
       emit('folder-selected', folder.dir_hash);
@@ -266,21 +266,41 @@ export default {
 
     const onDrop = async (dirHash) => {
       if (props.draggedLink) {
-        await supabase
-            .from('links')
-            .update({ dir_hash: dirHash })
-            .eq('id', props.draggedLink.id);
-        emit('update-dragged-link', null);
-        await fetchFolders();
+        const link = props.draggedLink;
+
+        // Проверяем, совпадают ли текущие значения с новыми
+        if (link.parent_hash === props.rightFolder?.dir_hash &&
+            link.dir_hash === dirHash) {
+          showSnackbar("Ссылка уже лежит где надо! Тысяча чертей!!!");
+          return;
+        }
+
+        try {
+          const { error } = await supabase
+              .from('links')
+              .update({
+                parent_hash: props.rightFolder?.dir_hash || null,
+                dir_hash: dirHash
+              })
+              .eq('id', link.id);
+
+          if (error) throw error;
+
+          emit('update-dragged-link', null);
+        } catch (error) {
+          console.error('Ошибка при обновлении ссылки:', error);
+          showSnackbar("Ошибка при перемещении ссылки");
+        }
       }
     };
-
     onMounted(fetchFolders);
     watch(() => props.rightFolder, fetchFolders);
     watch(() => props.selectedFolderHash, fetchFolders);
     watch([() => props.selectedFolderHash, () => props.rightFolder], updateChildFoldersWithCounts, { immediate: true });
 
     return {
+      snackbar,
+      showSnackbar,
       columnSize,
       displayedFolders,
       childFoldersWithCounts,
