@@ -82,6 +82,15 @@
                     mdi-folder
                   </v-icon>
                 </div>
+                <!-- Счетчик 1: Количество подпапок (левый верхний угол) -->
+                <span v-if="subfolderCounts[folder.dir_hash] > 0" class="subfolder-counter gradient-bg">
+    <v-icon small class="gradient-icon">mdi-folder</v-icon>
+    {{ subfolderCounts[folder.dir_hash] }}
+  </span>
+<!--                <span v-if="subfolderCounts[folder.dir_hash] > 0" class="subfolder-counter">-->
+<!--                  <v-icon small color="#d2b48c">mdi-folder</v-icon>-->
+<!--                  {{ subfolderCounts[folder.dir_hash] }}-->
+<!--                </span>-->
                 <span class="folder-name" :style="{ fontSize: getFontSize(folder.dir_name) }">
                   {{ folder.dir_name }}
                 </span>
@@ -159,6 +168,28 @@ export default {
   setup(props, { emit }) {
     let realtimeChannel = null;
     const draggedFolder = ref(null);
+    const subfolderCounts = ref({});
+
+    // Метод для получения количества подпапок
+    const getSubfolderCount = async (dirHash) => {
+      try {
+        const { count, error } = await supabase
+            .from('dir')
+            .select('*', { count: 'exact' })
+            .eq('parent_hash', dirHash);
+
+        if (error) throw error;
+
+        subfolderCounts.value = {
+          ...subfolderCounts.value,
+          [dirHash]: count || 0
+        };
+        return count || 0;
+      } catch (error) {
+        console.error('Ошибка при получении количества подпапок:', error);
+        return 0;
+      }
+    };
 
     const getFontSize = (folderName) => {
       const words = folderName.split(' ');
@@ -371,6 +402,8 @@ export default {
     watch(folders, (newFolders) => {
       newFolders.forEach(folder => {
         getLinkCount(folder.dir_hash);
+        getSubfolderCount(folder.dir_hash);
+
       });
     }, { immediate: true });
 
@@ -702,6 +735,7 @@ export default {
       unsubscribeFromRealtimeChanges();
       window.removeEventListener('keydown', handleKeydown);
     });
+
     watchEffect(() => {
       folders.value.forEach(folder => {
         getLinkCount(folder.dir_hash);
@@ -755,6 +789,8 @@ export default {
     };
 
     return {
+      subfolderCounts,
+      getSubfolderCount,
       getFontSize,
       draggedFolder,
       openDialog,
@@ -810,15 +846,33 @@ export default {
 };
 </script>
 
+
 <style scoped>
+
+.gradient-icon {
+  background: linear-gradient(to bottom, #f0e68c, #d2b48c);
+  -webkit-background-clip: text; /* Для поддержки градиента на тексте */
+  -webkit-text-fill-color: transparent; /* Делаем цвет текста прозрачным */
+}
+.subfolder-counter {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  font-size: 16px;
+  color: black;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
 .icon-container {
   display: flex;
   justify-content: center;
   width: 100%;
   margin-top: -20px; /* Поднимаем иконку еще выше */
+  align-items: flex-start; /* Выравнивание по верхнему краю */
   .icon-container {
     margin-top: 0; /* Уберите отрицательный margin */
-    align-items: flex-start; /* Выравнивание по верхнему краю */
+
   }
 }
 
@@ -985,7 +1039,7 @@ export default {
   flex-grow: 1; /* Позволяет названию занимать доступное пространство */
 }
 .folder-icon {
-  margin-top: 0; /* Уберите лишние отступы */
+  margin-top: 10px; /* Уберите лишние отступы */
 
   font-size: calc(5rem + (100% - 200px) * 5 / 300);
   color: transparent;
