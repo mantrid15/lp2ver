@@ -84,9 +84,13 @@
                 </div>
                 <!-- Счетчик 1: Количество подпапок (левый верхний угол) -->
                 <span v-if="subfolderCounts[folder.dir_hash] > 0" class="subfolder-counter gradient-bg">
-    <v-icon small class="gradient-icon">mdi-folder</v-icon>
-    {{ subfolderCounts[folder.dir_hash] }}
-  </span>
+                  <v-icon small class="gradient-icon">mdi-folder</v-icon>
+                  {{ subfolderCounts[folder.dir_hash] }}
+                </span>
+                <!-- Счетчик 2: Комбинированный счетчик ссылок (правый верхний угол) -->
+                <span class="combined-link-counter">
+                  {{ combinedLinkCounts[folder.dir_hash] > 0 ? combinedLinkCounts[folder.dir_hash] : 0 }}
+                </span>
 <!--                <span v-if="subfolderCounts[folder.dir_hash] > 0" class="subfolder-counter">-->
 <!--                  <v-icon small color="#d2b48c">mdi-folder</v-icon>-->
 <!--                  {{ subfolderCounts[folder.dir_hash] }}-->
@@ -301,6 +305,77 @@ export default {
     const selectedFolder = ref(null);
     const selectedFolderHash = ref(null);
 
+    const combinedLinkCounts = ref({});
+
+// Метод для получения комбинированного количества ссылок
+    const getCombinedLinkCount = async (dirHash) => {
+      console.log(`Начало подсчета для папки ${dirHash}`);
+
+      try {
+        // Получаем имя папки
+        const { data: folderData, error: folderError } = await supabase
+            .from('dir')
+            .select('dir_name')
+            .eq('dir_hash', dirHash)
+            .single();
+
+        if (folderError) throw folderError;
+        const folderName = folderData?.dir_name || 'Неизвестная папка';
+
+        // 1. Ссылки в корне папки
+        const { count: rootLinksCount, error: rootError } = await supabase
+            .from('links')
+            .select('*', { count: 'exact' })
+            .eq('dir_hash', dirHash)
+            .is('parent_hash', null);
+
+        if (rootError) throw rootError;
+
+        // 2. Ссылки в подпапках (получаем имена подпапок)
+        const { data: subfolders, error: subfoldersError } = await supabase
+            .from('dir')
+            .select('dir_hash, dir_name')
+            .eq('parent_hash', dirHash);
+
+        if (subfoldersError) throw subfoldersError;
+
+        const { count: subfolderLinksCount, error: subfolderLinksError } = await supabase
+            .from('links')
+            .select('*', { count: 'exact' })
+            .eq('parent_hash', dirHash);
+
+        if (subfolderLinksError) throw subfolderLinksError;
+
+        const total = (rootLinksCount || 0) + (subfolderLinksCount || 0);
+
+        // Детальное логирование с именами папок
+        console.groupCollapsed(`Детали подсчета для папки "${folderName}" (${dirHash})`);
+
+        console.log('Корневые ссылки:');
+        console.log(`- Условие: dir_hash = ${dirHash} (${folderName}) AND parent_hash IS NULL`);
+        console.log(`- Найдено: ${rootLinksCount || 0} ссылок`);
+
+        console.log('Ссылки в подпапках:');
+        subfolders.forEach(subfolder => {
+          console.log(`- Подпапка: ${subfolder.dir_name} (${subfolder.dir_hash})`);
+        });
+        console.log(`- Всего ссылок во всех подпапках: ${subfolderLinksCount || 0}`);
+
+        console.log(`ОБЩЕЕ КОЛИЧЕСТВО: ${total} ссылок`);
+        console.groupEnd();
+
+        combinedLinkCounts.value = {
+          ...combinedLinkCounts.value,
+          [dirHash]: total
+        };
+
+        return total;
+      } catch (error) {
+        console.error('Ошибка в getCombinedLinkCount:', error);
+        return 0;
+      }
+    };
+
     // Добавляем вычисляемое свойство для текущей выбранной папки
     const currentFolder = computed(() => {
       if (selectedFolderHash.value) {
@@ -403,6 +478,8 @@ export default {
       newFolders.forEach(folder => {
         getLinkCount(folder.dir_hash);
         getSubfolderCount(folder.dir_hash);
+        getCombinedLinkCount(folder.dir_hash);
+
 
       });
     }, { immediate: true });
@@ -684,8 +761,8 @@ export default {
         const { count, error } = await supabase
             .from('links')
             .select('*', { count: 'exact' })
-            .eq('dir_hash', dirHash);
-
+            .eq('dir_hash', dirHash)
+            .is('parent_hash', null); // Добавляем условие parent_hash IS NULL
         if (error) throw error;
 
         linkCounts.value = {
@@ -789,6 +866,8 @@ export default {
     };
 
     return {
+      combinedLinkCounts,
+      getCombinedLinkCount,
       subfolderCounts,
       getSubfolderCount,
       getFontSize,
@@ -849,6 +928,25 @@ export default {
 
 <style scoped>
 
+.combined-link-counter {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 16px;
+  color: black;
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 2px 5px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+}
+
+.combined-link-counter::before {
+  content: "🔗";
+  margin-right: 2px;
+  font-size: 12px;
+}
+
 .gradient-icon {
   background: linear-gradient(to bottom, #f0e68c, #d2b48c);
   -webkit-background-clip: text; /* Для поддержки градиента на тексте */
@@ -875,7 +973,6 @@ export default {
 
   }
 }
-
 .range-counter {
   position: absolute;
   bottom: 5px;
@@ -1050,7 +1147,7 @@ export default {
 }
 .link-counter {
   position: absolute;
-  top: 5px;
+  bottom: 5px;
   right: 5px;
   font-size: 16px;
   color: black;

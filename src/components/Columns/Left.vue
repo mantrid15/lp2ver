@@ -1,5 +1,5 @@
 <template>
-  <div class="column column-1" :style="{ backgroundColor: 'brown', width: width }">
+  <div class="column column-1" :style="{ width: width }">
     <v-container class="folders-container">
       <v-row>
         <template v-if="isDefaultState">
@@ -292,6 +292,7 @@ export default {
   flex-shrink: 0;
   overflow: hidden;
   height: 100%;
+  background: #b8c8f1;
 }
 
 .folders-container {
