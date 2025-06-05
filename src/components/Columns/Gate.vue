@@ -12,10 +12,10 @@
           </th>
           <th style="width: 15ch;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-    <span class="header-label-container" @click="(e) => handleClick(e, 'url')" style="cursor: pointer; text-align: left;">
-      <span class="header-label">{{ URL_LABEL }}</span>
-      <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
-    </span>
+              <span class="header-label-container" @click="(e) => handleClick(e, 'url')" style="cursor: pointer; text-align: left;">
+                <span class="header-label">{{ URL_LABEL }}</span>
+                <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
+              </span>
               <!-- Чекбокс с правым отступом 3 пикселя -->
               <input type="checkbox" v-model="showAllDirs" style="margin-right: 5px;" />
             </div>
@@ -67,16 +67,16 @@
             </div>
           </th>
           <th >
-  <span class="header-label-container" @click="(e) => handleClick(e, 'description')" data-sort-key="description" style="cursor: pointer;">
-    <span class="header-label">{{ DESCRIPTION_LABEL }}</span>
-    <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
-  </span>
+            <span class="header-label-container" @click="(e) => handleClick(e, 'description')" data-sort-key="description" style="cursor: pointer;">
+              <span class="header-label">{{ DESCRIPTION_LABEL }}</span>
+              <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
+            </span>
           </th>
           <th >
-  <span class="header-label-container" @click="(e) => handleClick(e, 'keywords')" data-sort-key="keywords" style="cursor: pointer;">
-    <span class="header-label">{{ KEYWORDS_LABEL }}</span>
-    <span class="sort-icon">{{ getSortIcon('keywords') || SORT_DEFAULT_ICON }}</span>
-  </span>
+            <span class="header-label-container" @click="(e) => handleClick(e, 'keywords')" data-sort-key="keywords" style="cursor: pointer;">
+              <span class="header-label">{{ KEYWORDS_LABEL }}</span>
+              <span class="sort-icon">{{ getSortIcon('keywords') || SORT_DEFAULT_ICON }}</span>
+            </span>
           </th>
           <th>
             <span class="header-label-container" @click="(e) => handleClick(e, 'date')" data-sort-key="date" style="cursor: pointer;">

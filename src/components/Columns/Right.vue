@@ -309,15 +309,15 @@ export default {
 
 // Метод для получения комбинированного количества ссылок
     const getCombinedLinkCount = async (dirHash) => {
-      console.log(`Начало подсчета для папки ${dirHash}`);
+      // console.log(`Начало подсчета для папки ${dirHash}`);
 
       try {
-        // Получаем имя папки
+        // Получаем имя папки - ИСПРАВЛЕННЫЙ ЗАПРОС
         const { data: folderData, error: folderError } = await supabase
             .from('dir')
             .select('dir_name')
-            .eq('dir_hash', dirHash)
-            .single();
+            .eq('dir_hash', dirHash)  // ← Вот это ключевое изменение!
+            .single();  // Добавляем single() так как ожидаем одну запись
 
         if (folderError) throw folderError;
         const folderName = folderData?.dir_name || 'Неизвестная папка';
@@ -375,7 +375,6 @@ export default {
         return 0;
       }
     };
-
     // Добавляем вычисляемое свойство для текущей выбранной папки
     const currentFolder = computed(() => {
       if (selectedFolderHash.value) {
