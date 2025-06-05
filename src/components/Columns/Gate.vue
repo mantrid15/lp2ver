@@ -308,8 +308,14 @@ export default {
       }
       // Иначе фильтруем по folder (dir_hash)
       return props.selectedFolderHash
-          ? allFilteredLinks.filter(link => link.dir_hash === props.selectedFolderHash)
-          : allFilteredLinks.filter(link => !link.dir_hash);
+          ? allFilteredLinks.filter(link =>
+              link.dir_hash === props.selectedFolderHash &&
+              link.parent_hash === null
+          )
+          : allFilteredLinks.filter(link =>
+              !link.dir_hash &&
+              link.parent_hash === null
+          );
     });
     // Функция для разбиения текста на строки по 200 символов
     const splitTextIntoLines = (text) => {
