@@ -394,7 +394,7 @@ export default {
       }
     };
 
-    const handleFolderClick = async (folder) =>  {
+    const handleFolderClick = async (folder) => {
       if (selectedFolderHash.value === folder.dir_hash) {
         selectedFolderHash.value = null;
         emit('reset-folder-selection');

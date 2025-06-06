@@ -17,6 +17,7 @@
         :sort-key="sortKey"
         :sort-order="sortOrder"
         :selected-folder-hash="selectedFolderHash"
+        :right-folder="$refs.rightComponent?.currentFolder"
         @handle-url-click="handleUrlClick"
         @sort="sort"
         :draggedLink="draggedLink"

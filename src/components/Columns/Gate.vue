@@ -210,6 +210,10 @@ export default {
       type: Object,
       default: null,
     },
+    rightFolder: {
+      type: Object,
+      default: null
+    }
   },
   emits: ['handle-url-click', 'sort', 'update-dragged-link'],
   setup(props, { emit }) {
@@ -301,21 +305,33 @@ export default {
         const urlMatch = link.url ? link.url.toLowerCase().includes(searchTerm) : false;
         return titleMatch || descriptionMatch || keywordsMatch || urlMatch;
       };
-      const allFilteredLinks = props.links.filter(matchesSearchTerm);
-      // Если checkbox включён, возвращаем все элементы, без фильтрации по dir_hash
-      if (showAllDirs.value) {
-        return allFilteredLinks;
-      }
-      // Иначе фильтруем по folder (dir_hash)
-      return props.selectedFolderHash
-          ? allFilteredLinks.filter(link =>
+      // Фильтрация по поисковому запросу
+      let result = props.links.filter(matchesSearchTerm);
+
+      // Если выбрана папка в Right
+      if (props.selectedFolderHash) {
+        // Если выбрана подпапка в Left (передается через rightFolder)
+        if (props.rightFolder) {
+          // Показываем ссылки, где dir_hash = выбранной подпапке (Left)
+          // и parent_hash = выбранной папке (Right)
+          result = result.filter(link =>
+              link.dir_hash === props.selectedFolderHash &&
+              link.parent_hash === props.rightFolder.dir_hash
+          );
+        } else {
+          // Показываем ссылки в корне выбранной папки (Right)
+          // где dir_hash = выбранной папке и parent_hash IS NULL
+          result = result.filter(link =>
               link.dir_hash === props.selectedFolderHash &&
               link.parent_hash === null
-          )
-          : allFilteredLinks.filter(link =>
-              !link.dir_hash &&
-              link.parent_hash === null
           );
+        }
+      } else {
+        // Если не выбрана папка в Right, показываем ссылки без папки
+        result = result.filter(link => !link.dir_hash && link.parent_hash === null);
+      }
+
+      return result;
     });
     // Функция для разбиения текста на строки по 200 символов
     const splitTextIntoLines = (text) => {
