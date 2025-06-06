@@ -308,19 +308,23 @@ export default {
       // Фильтрация по поисковому запросу
       let result = props.links.filter(matchesSearchTerm);
 
-      // Если выбрана папка в Right
+      // Если выбрана папка в Right (props.selectedFolderHash)
       if (props.selectedFolderHash) {
-        // Если выбрана подпапка в Left (передается через rightFolder)
+        // Если передана родительская папка из Right (props.rightFolder)
         if (props.rightFolder) {
-          // Показываем ссылки, где dir_hash = выбранной подпапке (Left)
-          // и parent_hash = выбранной папке (Right)
+          // Это случай когда выбрана подпапка в Left
+          // Показываем ссылки где:
+          // parent_hash = dir_hash папки из Right (props.rightFolder.dir_hash)
+          // И dir_hash = dir_hash выбранной подпапки (props.selectedFolderHash)
           result = result.filter(link =>
-              link.dir_hash === props.selectedFolderHash &&
-              link.parent_hash === props.rightFolder.dir_hash
+              link.parent_hash === props.rightFolder.dir_hash &&
+              link.dir_hash === props.selectedFolderHash
           );
         } else {
-          // Показываем ссылки в корне выбранной папки (Right)
-          // где dir_hash = выбранной папке и parent_hash IS NULL
+          // Это случай когда выбрана только папка в Right
+          // Показываем ссылки где:
+          // dir_hash = dir_hash выбранной папки (props.selectedFolderHash)
+          // И parent_hash IS NULL (корневые элементы папки)
           result = result.filter(link =>
               link.dir_hash === props.selectedFolderHash &&
               link.parent_hash === null
