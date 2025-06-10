@@ -306,10 +306,10 @@ export default {
       if (showAllDirs.value) {
         return allFilteredLinks;
       }
-      // Иначе фильтруем по folder (dir_hash)
+      // Иначе фильтруем по folder (dir_hash) и parent_hash IS NULL
       return props.selectedFolderHash
-          ? allFilteredLinks.filter(link => link.dir_hash === props.selectedFolderHash)
-          : allFilteredLinks.filter(link => !link.dir_hash);
+          ? allFilteredLinks.filter(link => link.dir_hash === props.selectedFolderHash && link.parent_hash === null)
+          : allFilteredLinks.filter(link => !link.dir_hash && !link.parent_hash);
     });
     // Функция для разбиения текста на строки по 200 символов
     const splitTextIntoLines = (text) => {
@@ -437,10 +437,12 @@ export default {
         emit('sort', sortKey, currentSortOrder.value);
       }
     };
+
     const formatDate = (dateString) => {
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('ru-RU').format(date);
     };
+
     const getDomain = (url) => {
       try {
         const { hostname } = new URL(url);
@@ -449,6 +451,7 @@ export default {
         return url;
       }
     };
+
     const getSortIcon = (key) => {
       // Если чекбокс включен и ключ — 'date', используем 'dir_name' для проверки
       const sortKey = showAllDirs.value && key === 'date' ? 'dir_name' : key;
@@ -494,6 +497,7 @@ export default {
         deleteIconTimer.value = null; // Сброс таймера
       }, DELETE_ICON_TIMEOUT);
     };
+
     const deleteLink = async (link) => {
       try {
         if (!link.url_hash) {
@@ -514,12 +518,14 @@ export default {
         alert(error.message);
       }
     };
+
     const formatKeywords = (keywords) => {
       if (Array.isArray(keywords)) {
         return keywords.join(', ');
       }
       return ''; // Возвращаем пустую строку, если keywords не массив
     };
+
     const fetchFolders = async () => {
       try {
         const { data, error } = await supabase
