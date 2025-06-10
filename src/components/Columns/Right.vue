@@ -145,6 +145,7 @@ const SORT_ASC_ICON = '↑';
 const SORT_DESC_ICON = '↓';
 const SORT_DEFAULT_ICON = '⇅';
 
+
 export default {
   name: 'Right',
   components: {
