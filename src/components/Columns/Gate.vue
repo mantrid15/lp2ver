@@ -506,7 +506,7 @@ export default {
           return;
         }
         const urlHash = link.url_hash.toString();
-        console.log(urlHash);
+        // console.log(urlHash);
         const { error } = await supabase.rpc('del_link', { link_hash: urlHash });
         if (error) {
           throw new Error(`Ошибка при удалении: ${error.message}`);

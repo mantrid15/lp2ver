@@ -196,7 +196,7 @@ export default {
     };
 
     const fetchFolders = async () => {
-      console.log('Запрос папок для userId:', userId.value);
+      // console.log('Запрос папок для userId:', userId.value);
       const { data, error } = await supabase
           .from('dir')
           .select('*')
@@ -204,7 +204,7 @@ export default {
       if (error) {
         console.error('Ошибка при запросе папок:', error);
       } else {
-        console.log('Полученные папки:', data);
+        // console.log('Полученные папки:', data);
         folders.value = data || [];
         await updateChildFoldersWithCounts();
       }

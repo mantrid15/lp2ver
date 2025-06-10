@@ -83,7 +83,7 @@ export default {
     async function getSession() {
       try {
         account.value = await supabase.auth.getSession();
-        console.log('Current session:', account.value);
+        // console.log('Current session:', account.value);
       } catch (error) {
         console.error('Ошибка при получении сессии:', error);
         account.value = null; // Убедитесь, что account сбрасывается в случае ошибки
@@ -116,7 +116,7 @@ export default {
           console.error("Error fetching links:", error);
         } else {
           links.value = data || []; // Убедитесь, что links всегда инициализируется
-          console.log("Fetched links:", links.value);
+          // console.log("Fetched links:", links.value);
         }
       } catch (err) {
         console.error("Unexpected error in fetchLinks:", err);
@@ -298,7 +298,7 @@ export default {
       // Подписка на изменения авторизации
       supabase.auth.onAuthStateChange((event, session) => {
         account.value = { data: { session } };
-        console.log('Auth state changed:', event, session);
+        // console.log('Auth state changed:', event, session);
       });
 
       await fetchLinks();

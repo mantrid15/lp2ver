@@ -264,15 +264,15 @@ export default {
     const updateFolderRanges = async (updates) => {
       try {
         for (const update of updates) {
-          console.log(`Отправка обновления на Supabase для dir_hash: ${update.dir_hash}, range: ${update.range}`);
+          // console.log(`Отправка обновления на Supabase для dir_hash: ${update.dir_hash}, range: ${update.range}`);
           const { error } = await supabase
               .from('dir')
               .update({ range: update.range })
               .eq('dir_hash', update.dir_hash);
           if (error) {
-            console.error('Ошибка при обновлении папки:', update.dir_hash, error);
+            // console.error('Ошибка при обновлении папки:', update.dir_hash, error);
           } else {
-            console.log('Обновлена папка:', update.dir_hash, 'с новым range:', update.range);
+            // console.log('Обновлена папка:', update.dir_hash, 'с новым range:', update.range);
           }
         }
         await fetchFolders();
@@ -310,7 +310,7 @@ export default {
 
 // Метод для получения комбинированного количества ссылок
     const getCombinedLinkCount = async (dirHash) => {
-      console.log(`Начало подсчета для папки ${dirHash}`);
+      // console.log(`Начало подсчета для папки ${dirHash}`);
 
       try {
         // Получаем имя папки
@@ -350,20 +350,20 @@ export default {
         const total = (rootLinksCount || 0) + (subfolderLinksCount || 0);
 
         // Детальное логирование с именами папок
-        console.groupCollapsed(`Детали подсчета для папки "${folderName}" (${dirHash})`);
+        // console.groupCollapsed(`Детали подсчета для папки "${folderName}" (${dirHash})`);
 
-        console.log('Корневые ссылки:');
-        console.log(`- Условие: dir_hash = ${dirHash} (${folderName}) AND parent_hash IS NULL`);
-        console.log(`- Найдено: ${rootLinksCount || 0} ссылок`);
+        // console.log('Корневые ссылки:');
+        // console.log(`- Условие: dir_hash = ${dirHash} (${folderName}) AND parent_hash IS NULL`);
+        // console.log(`- Найдено: ${rootLinksCount || 0} ссылок`);
 
-        console.log('Ссылки в подпапках:');
-        subfolders.forEach(subfolder => {
-          console.log(`- Подпапка: ${subfolder.dir_name} (${subfolder.dir_hash})`);
-        });
-        console.log(`- Всего ссылок во всех подпапках: ${subfolderLinksCount || 0}`);
+        // console.log('Ссылки в подпапках:');
+        // subfolders.forEach(subfolder => {
+        //   console.log(`- Подпапка: ${subfolder.dir_name} (${subfolder.dir_hash})`);
+        // });
+        // console.log(`- Всего ссылок во всех подпапках: ${subfolderLinksCount || 0}`);
 
-        console.log(`ОБЩЕЕ КОЛИЧЕСТВО: ${total} ссылок`);
-        console.groupEnd();
+        // console.log(`ОБЩЕЕ КОЛИЧЕСТВО: ${total} ссылок`);
+        // console.groupEnd();
 
         combinedLinkCounts.value = {
           ...combinedLinkCounts.value,
@@ -507,7 +507,7 @@ export default {
             .eq('user_id', userId.value);
         if (error) throw error;
         folders.value = data || [];
-        console.log('Полученные директории:', folders.value);
+        // console.log('Полученные директории:', folders.value);
       } catch (error) {
         console.error('Ошибка при получении директорий:', error);
       }
