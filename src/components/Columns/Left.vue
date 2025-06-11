@@ -133,12 +133,21 @@ export default {
             }));
       }
 
-      if (!props.selectedFolderHash) {
-        return folders.value.filter(f => f.parent_hash === null);
-      }
+      // if (!props.selectedFolderHash) {
+      //   return folders.value.filter(f => f.parent_hash === null);
+      // }
 
       return [];
     });
+
+    const selectFolder = (folder) => {
+      // Передаем и dir_hash выбранной папки и parent_hash (который равен dir_hash из Right)
+      emit('folder-selected', {
+        dir_hash: folder.dir_hash,
+        parent_hash: props.rightFolder?.dir_hash
+      });
+    };
+
 
     const getFolderColor = (folder) => {
       // Если выбрана корневая папка из Right
@@ -166,6 +175,7 @@ export default {
       // Используем props.selectedFolderHash вместо локального состояния
       const parentHash = props.selectedFolderHash || props.rightFolder?.dir_hash;
     };
+
     const onDrop = async (dirHash) => {
       if (props.draggedLink) {
         const link = props.draggedLink;
@@ -209,6 +219,7 @@ export default {
         await updateChildFoldersWithCounts();
       }
     };
+
     const isDefaultState = computed(() => {
       return !props.rightFolder && !props.selectedFolderHash;
     });
@@ -227,10 +238,6 @@ export default {
         return folderName.length > 27 ? '80%' : '90%';
       }
       return '100%';
-    };
-
-    const selectFolder = (folder) => {
-      emit('folder-selected', folder.dir_hash);
     };
 
     const handleDragStart = (event, folder) => {

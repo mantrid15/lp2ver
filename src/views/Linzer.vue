@@ -65,7 +65,6 @@ export default {
     const handleFolderSelected = (dirHash) => {
       console.log('Выбрана папка с dirHash:', dirHash);
       selectedFolderHash.value = dirHash;
-
     };
     const handleResetFolderSelection = () => {
       selectedFolderHash.value = null; // Сбрасываем состояние выбранной папки

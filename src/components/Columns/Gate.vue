@@ -306,10 +306,22 @@ export default {
       if (showAllDirs.value) {
         return allFilteredLinks;
       }
-      // Иначе фильтруем по folder (dir_hash) и parent_hash IS NULL
-      return props.selectedFolderHash
-          ? allFilteredLinks.filter(link => link.dir_hash === props.selectedFolderHash && link.parent_hash === null)
-          : allFilteredLinks.filter(link => !link.dir_hash && !link.parent_hash);
+      // Если выбрана папка в Left (дочерняя папка)
+      if (props.selectedFolderHash?.parent_hash) {
+        return allFilteredLinks.filter(link =>
+            link.dir_hash === props.selectedFolderHash.dir_hash &&
+            link.parent_hash === props.selectedFolderHash.parent_hash
+        );
+      }
+      // Если выбрана папка в Right (корневая папка)
+      if (props.selectedFolderHash) {
+        return allFilteredLinks.filter(link =>
+            link.dir_hash === props.selectedFolderHash &&
+            link.parent_hash === null
+        );
+      }
+      // Если ничего не выбрано
+      return allFilteredLinks.filter(link => !link.dir_hash && !link.parent_hash);
     });
     // Функция для разбиения текста на строки по 200 символов
     const splitTextIntoLines = (text) => {
