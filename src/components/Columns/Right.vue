@@ -396,18 +396,16 @@ export default {
       }
     };
 
-    const handleFolderClick = async (folder) =>  {
-      if (selectedFolderHash.value === folder.dir_hash) {
-        selectedFolderHash.value = null;
-        emit('reset-folder-selection');
-      } else {
-        selectedFolderHash.value = folder.dir_hash;
-        // Получаем количество элементов для дочерних папок
-        const childFolders = folders.value.filter(f => f.parent_hash === folder.dir_hash);
-        for (const child of childFolders) {
-          await getLinkCount(child.dir_hash);
-        }
+    const handleFolderClick = async (folder) => {
+      // Всегда устанавливаем выбранную папку, даже если это повторный клик
+      selectedFolderHash.value = folder.dir_hash;
+
+      // Получаем количество элементов для дочерних папок
+      const childFolders = folders.value.filter(f => f.parent_hash === folder.dir_hash);
+      for (const child of childFolders) {
+        await getLinkCount(child.dir_hash);
       }
+
       emit('folder-selected', folder.dir_hash);
     };
 
