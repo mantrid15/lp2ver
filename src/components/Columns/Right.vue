@@ -175,7 +175,55 @@ export default {
     const draggedFolder = ref(null);
     const subfolderCounts = ref({});
 
-    // Метод для получения количества подпапок
+    const logCombinedLinkDetails = async (folder) => {
+      try {
+        console.groupCollapsed(`Детали ссылок для "${folder.dir_name}" (${folder.dir_hash})`);
+
+        let counter = 1; // Счётчик для сквозной нумерации
+
+        // 1. Получаем ссылки из корня папки (parent_hash IS NULL)
+        const { data: rootLinks, error: rootError } = await supabase
+            .from('links')
+            .select('id, title, dir_hash')
+            .eq('dir_hash', folder.dir_hash)
+            .is('parent_hash', null);
+
+        if (rootError) throw rootError;
+
+        console.log('Корневые ссылки:');
+        rootLinks.forEach(link => {
+          console.log(`${counter++}. [ID:${link.id}] "${link.title}" (${folder.dir_name})`);
+        });
+
+        // 2. Получаем подпапки
+        const { data: subfolders, error: subfoldersError } = await supabase
+            .from('dir')
+            .select('dir_hash, dir_name, parent_hash')
+            .eq('parent_hash', folder.dir_hash);
+
+        if (subfoldersError) throw subfoldersError;
+
+        // 3. Для каждой подпапки получаем ссылки
+        for (const subfolder of subfolders) {
+          const { data: subfolderLinks, error: subfolderLinksError } = await supabase
+              .from('links')
+              .select('id, title, dir_hash')
+              .eq('dir_hash', subfolder.dir_hash);
+
+          if (subfolderLinksError) throw subfolderLinksError;
+
+          console.log(`Ссылки в "${folder.dir_name}/${subfolder.dir_name}":`);
+          subfolderLinks.forEach(link => {
+            console.log(`${counter++}. [ID:${link.id}] "${link.title}" (${folder.dir_name}/${subfolder.dir_name})`);
+          });
+        }
+
+        console.log(`Всего элементов: ${counter - 1}`);
+        console.groupEnd();
+      } catch (error) {
+        console.error('Ошибка при получении деталей ссылок:', error);
+      }
+    };    // Метод для получения количества подпапок
     const getSubfolderCount = async (dirHash) => {
       try {
         const { count, error } = await supabase
@@ -405,6 +453,8 @@ export default {
       for (const child of childFolders) {
         await getLinkCount(child.dir_hash);
       }
+      // Логируем детали ссылок
+      await logCombinedLinkDetails(folder);
 
       emit('folder-selected', folder.dir_hash);
     };
@@ -923,7 +973,6 @@ export default {
   }
 };
 </script>
-
 
 <style scoped>
 
