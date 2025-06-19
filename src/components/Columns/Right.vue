@@ -366,7 +366,8 @@ export default {
             .from('dir')
             .select('dir_name')
             .eq('dir_hash', dirHash)
-            .single();
+            .is('parent_hash', null);
+            // .single();
 
         if (folderError) throw folderError;
         const folderName = folderData?.dir_name || 'Неизвестная папка';
