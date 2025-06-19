@@ -311,28 +311,37 @@ export default {
 // Метод для получения комбинированного количества ссылок
     const getCombinedLinkCount = async (dirHash) => {
       try {
-        // Используем один запрос для получения всех нужных данных
-        const { data: linksData, error: linksError } = await supabase
+        // 1. Ссылки в корне папки (dir_hash = dirHash AND parent_hash IS NULL)
+        const { count: rootLinksCount, error: rootError } = await supabase
             .from('links')
-            .select('id, parent_hash')
-            .or(`dir_hash.eq.${dirHash},parent_hash.eq.${dirHash}`);
+            .select('*', { count: 'exact' })
+            .eq('dir_hash', dirHash)
+            .is('parent_hash', null);
 
-        if (linksError) throw linksError;
+        if (rootError) throw rootError;
 
-        const count = linksData.length;
+        // 2. Ссылки с parent_hash = dirHash (непосредственно в этой папке)
+        const { count: directChildLinksCount, error: directChildError } = await supabase
+            .from('links')
+            .select('*', { count: 'exact' })
+            .eq('parent_hash', dirHash);
+
+        if (directChildError) throw directChildError;
+
+        const totalCount = (rootLinksCount || 0) + (directChildLinksCount || 0);
 
         // Обновляем значение в reactive-переменной
         combinedLinkCounts.value = {
           ...combinedLinkCounts.value,
-          [dirHash]: count
+          [dirHash]: totalCount
         };
 
-        return count;
+        return totalCount;
       } catch (error) {
         console.error('Ошибка в getCombinedLinkCount:', error);
         return 0;
       }
-    }; // Добавляем вычисляемое свойство для текущей выбранной папки
+    };  // Добавляем вычисляемое свойство для текущей выбранной папки
 
     const currentFolder = computed(() => {
       if (selectedFolderHash.value) {
