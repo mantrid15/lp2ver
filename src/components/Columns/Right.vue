@@ -311,37 +311,28 @@ export default {
 // Метод для получения комбинированного количества ссылок
     const getCombinedLinkCount = async (dirHash) => {
       try {
-        // 1. Ссылки в корне папки (dir_hash = dirHash AND parent_hash IS NULL)
-        const { count: rootLinksCount, error: rootError } = await supabase
+        // Используем один запрос для получения всех нужных данных
+        const { data: linksData, error: linksError } = await supabase
             .from('links')
-            .select('*', { count: 'exact' })
-            .eq('dir_hash', dirHash)
-            .is('parent_hash', null);
+            .select('id, parent_hash')
+            .or(`dir_hash.eq.${dirHash},parent_hash.eq.${dirHash}`);
 
-        if (rootError) throw rootError;
+        if (linksError) throw linksError;
 
-        // 2. Ссылки с parent_hash = dirHash (непосредственно в этой папке)
-        const { count: directChildLinksCount, error: directChildError } = await supabase
-            .from('links')
-            .select('*', { count: 'exact' })
-            .eq('parent_hash', dirHash);
-
-        if (directChildError) throw directChildError;
-
-        const totalCount = (rootLinksCount || 0) + (directChildLinksCount || 0);
+        const count = linksData.length;
 
         // Обновляем значение в reactive-переменной
         combinedLinkCounts.value = {
           ...combinedLinkCounts.value,
-          [dirHash]: totalCount
+          [dirHash]: count
         };
 
-        return totalCount;
+        return count;
       } catch (error) {
         console.error('Ошибка в getCombinedLinkCount:', error);
         return 0;
       }
-    };  // Добавляем вычисляемое свойство для текущей выбранной папки
+    }; // Добавляем вычисляемое свойство для текущей выбранной папки
 
     const currentFolder = computed(() => {
       if (selectedFolderHash.value) {
@@ -502,13 +493,6 @@ export default {
       return sortOrderIcons[currentSortOrder.value];
     });
 
-    watch(folders, (newFolders) => {
-      newFolders.forEach(folder => {
-        // getLinkCount(folder.dir_hash);
-        getSubfolderCount(folder.dir_hash);
-        getCombinedLinkCount(folder.dir_hash);
-      });
-    }, { immediate: true });
 
     const hashString = async (inputString) => {
       try {
@@ -842,8 +826,18 @@ export default {
     watchEffect(() => {
       folders.value.forEach(folder => {
         getLinkCount(folder.dir_hash);
+        getCombinedLinkCount(folder.dir_hash);
       });
     });
+
+    watch(folders, (newFolders) => {
+      newFolders.forEach(folder => {
+        // getLinkCount(folder.dir_hash);
+        getSubfolderCount(folder.dir_hash);
+        getCombinedLinkCount(folder.dir_hash);
+      });
+    }, { immediate: true });
+
     watch(dialog, (newVal) => {
       console.log('dialog changed:', newVal);
     });
@@ -853,14 +847,24 @@ export default {
           .on(
               'postgres_changes',
               { event: '*', schema: 'public', table: 'links' },
-              (payload) => {
+              async (payload) => {
                 if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                   if (payload.new.dir_hash) {
-                    getLinkCount(payload.new.dir_hash);
+                    await getLinkCount(payload.new.dir_hash);
+                    await getCombinedLinkCount(payload.new.dir_hash); // Добавляем эту строку
+                  }
+                  // Также обновляем родительскую папку, если есть parent_hash
+                  if (payload.new.parent_hash) {
+                    await getCombinedLinkCount(payload.new.parent_hash);
                   }
                 } else if (payload.eventType === 'DELETE') {
                   if (payload.old.dir_hash) {
-                    getLinkCount(payload.old.dir_hash);
+                    await getLinkCount(payload.old.dir_hash);
+                    await getCombinedLinkCount(payload.old.dir_hash); // Добавляем эту строку
+                  }
+                  // Также обновляем родительскую папку, если есть parent_hash
+                  if (payload.old.parent_hash) {
+                    await getCombinedLinkCount(payload.old.parent_hash);
                   }
                 }
               }
@@ -868,10 +872,11 @@ export default {
           .on(
               'postgres_changes',
               { event: '*', schema: 'public', table: 'dir' },
-              (payload) => {
+              async (payload) => {
                 if (payload.eventType === 'INSERT') {
                   if (payload.new.user_id === userId.value) {
                     folders.value.push(payload.new);
+                    await getCombinedLinkCount(payload.new.dir_hash); // Добавляем эту строку
                   }
                 } else if (payload.eventType === 'UPDATE') {
                   const index = folders.value.findIndex(folder => folder.id === payload.new.id);
@@ -884,8 +889,7 @@ export default {
               }
           )
           .subscribe();
-    };
-    const unsubscribeFromRealtimeChanges = () => {
+    };    const unsubscribeFromRealtimeChanges = () => {
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }

@@ -63,7 +63,7 @@ export default {
 
     const selectedFolderHash = ref(null); // Состояние для хранения dir_hash выбранной папки
     const handleFolderSelected = (dirHash) => {
-      console.log('[Linzer] Received dir_hash:', dirHash, 'Type:', typeof dirHash);
+      // console.log('[Linzer] Received dir_hash:', dirHash, 'Type:', typeof dirHash);
       // Сохраняем только строку (dir_hash)
       selectedFolderHash.value = dirHash;
     };

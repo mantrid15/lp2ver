@@ -81,7 +81,7 @@ export default {
       type: [String, Object],
       default: null,
       validator: (value) => {
-        console.log('[Left] Prop validation - selectedFolderHash:', value);
+        // console.log('[Left] Prop validation - selectedFolderHash:', value);
         return value === null || typeof value === 'string' || typeof value === 'object';
       }
     },
@@ -99,11 +99,11 @@ export default {
     }
   },
   setup(props, { emit }) {
-    console.log('[Left] Setup started. Initial props:', {
-      selectedFolderHash: props.selectedFolderHash,
-      rightFolder: props.rightFolder,
-      width: props.width
-    });
+    // console.log('[Left] Setup started. Initial props:', {
+    //   selectedFolderHash: props.selectedFolderHash,
+    //   rightFolder: props.rightFolder,
+    //   width: props.width
+    // });
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const folders = ref([]);
@@ -156,12 +156,12 @@ export default {
     });
 
     const selectFolder = (folder) => {
-      console.log('[Left] Folder selected:', folder);
+      // console.log('[Left] Folder selected:', folder);
       const payload = {
         dir_hash: folder.dir_hash,
         parent_hash: props.rightFolder?.dir_hash
       };
-      console.log('[Left] Emitting folder-selected with:', payload);
+      // console.log('[Left] Emitting folder-selected with:', payload);
       emit('folder-selected', payload);
     };
 
@@ -172,7 +172,7 @@ export default {
               props.selectedFolderHash.dir_hash :
               props.selectedFolderHash;
 
-      console.log('[Left] Computed normalizedSelectedHash:', result);
+      // console.log('[Left] Computed normalizedSelectedHash:', result);
       return result;
     });
 
@@ -299,13 +299,13 @@ export default {
     onMounted(fetchFolders);
     watch(() => props.rightFolder, fetchFolders);
     watch(() => props.selectedFolderHash, fetchFolders);
-    watch(() => props.selectedFolderHash, (newVal, oldVal) => {
-      console.log('[Left] selectedFolderHash prop changed:', {
-        from: oldVal,
-        to: newVal,
-        type: typeof newVal
-      });
-    }, { immediate: true });
+    // watch(() => props.selectedFolderHash, (newVal, oldVal) => {
+    //   console.log('[Left] selectedFolderHash prop changed:', {
+    //     from: oldVal,
+    //     to: newVal,
+    //     type: typeof newVal
+    //   });
+    // }, { immediate: true });
     return {
       columnSize,
       displayedFolders,
