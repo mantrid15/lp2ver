@@ -174,7 +174,39 @@ export default {
     let realtimeChannel = null;
     const draggedFolder = ref(null);
     const subfolderCounts = ref({});
+    const store = useStore();
 
+    const snackbar = ref(false);
+    const snackbarMessage = ref('');
+
+    const showSnackbar = (message) => {
+      snackbarMessage.value = message;
+      snackbar.value = true;
+      setTimeout(() => {
+        snackbar.value = false;
+      }, 3000);
+    };
+
+
+    const sortedLinks = ref([...props.links]);
+    const userId = computed(() => store.state.userId);
+    const userEmail = computed(() => store.state.user.email);
+    const dialog = ref(false);
+    const folderListDialog = ref(false);
+    const newFolderName = ref('');
+    const folders = ref([]);
+    const errorMessage = ref('');
+    const successMessage = ref('');
+    const account = ref();
+    const filter = ref('');
+    const currentSortOrder = ref(0);
+    const sortOrderIcons = [SORT_DEFAULT_ICON, SORT_ASC_ICON, SORT_DESC_ICON];
+    const sortOrderValues = ['default', 'asc', 'desc'];
+    const selectedFolderId = ref(null);
+    const linkCounts = ref({});
+    const selectedFolder = ref(null);
+    const selectedFolderHash = ref(null);
+    const combinedLinkCounts = ref({});
 
     const getSubfolderCount = async (dirHash) => {
       try {
@@ -216,15 +248,18 @@ export default {
       event.dataTransfer.setData('text/plain', folder.dir_hash);
       fetchFolders();
     };
+
     const handleDragLeave = (event) => {
       event.currentTarget.style.opacity = '1';
     };
+
     const handleDragOver = (event, folder) => {
       event.preventDefault();
       if (draggedFolder.value && draggedFolder.value.dir_hash !== folder.dir_hash) {
         event.currentTarget.style.opacity = '0.3';
       }
     };
+
     const handleDrop = async (event, targetFolder) => {
       event.preventDefault();
       event.currentTarget.style.opacity = '1';
@@ -261,6 +296,7 @@ export default {
         await fetchFolders();
       }
     };
+
     const updateFolderRanges = async (updates) => {
       try {
         for (const update of updates) {
@@ -280,34 +316,12 @@ export default {
         console.error('Ошибка при обновлении папок:', error);
       }
     };
+
     const handleYellowBoxClick = () => {
       console.log('Yellow box clicked');
       selectedFolderHash.value = null;
       emit('reset-folder-selection');
     };
-
-    const sortedLinks = ref([...props.links]);
-    const store = useStore();
-    const userId = computed(() => store.state.userId);
-    const userEmail = computed(() => store.state.user.email);
-    const dialog = ref(false);
-    const folderListDialog = ref(false);
-    const newFolderName = ref('');
-    const folders = ref([]);
-    const errorMessage = ref('');
-    const successMessage = ref('');
-    const account = ref();
-    const filter = ref('');
-    const currentSortOrder = ref(0);
-    const sortOrderIcons = [SORT_DEFAULT_ICON, SORT_ASC_ICON, SORT_DESC_ICON];
-    const sortOrderValues = ['default', 'asc', 'desc'];
-    const selectedFolderId = ref(null);
-    const linkCounts = ref({});
-    const selectedFolder = ref(null);
-    const selectedFolderHash = ref(null);
-
-    const combinedLinkCounts = ref({});
-
 // Метод для получения комбинированного количества ссылок
     const getCombinedLinkCount = async (dirHash) => {
       try {
@@ -501,7 +515,6 @@ export default {
     const currentSortIcon = computed(() => {
       return sortOrderIcons[currentSortOrder.value];
     });
-
 
     const hashString = async (inputString) => {
       try {
@@ -702,6 +715,7 @@ export default {
         }, 2000);
       }
     };
+
     const deleteSelectedFolder = async () => {
       if (selectedFolderId.value) {
         const folderToDelete = folders.value.find(folder => folder.id === selectedFolderId.value);
@@ -712,6 +726,7 @@ export default {
         }
       }
     };
+
     const openDialog = () => {
       console.log('Открываем диалоговое окно');
       dialog.value = true;
@@ -719,19 +734,23 @@ export default {
 
       successMessage.value = '';
     };
+
     const closeDialog = () => {
       dialog.value = false;
       newFolderName.value = '';
       errorMessage.value = '';
       successMessage.value = '';
     };
+
     const openFolderListDialog = () => {
       resetRadio();
       folderListDialog.value = true;
     };
+
     const setSelectedFolder = (folderId) => {
       selectedFolderId.value = folderId;
     };
+
     const toggleFolder = (folderId) => {
       if (selectedFolderId.value === folderId) {
         selectedFolderId.value = null;
@@ -739,10 +758,12 @@ export default {
         selectedFolderId.value = folderId;
       }
     };
+
     async function getSession() {
       account.value = await supabase.auth.getSession();
       // console.log(account.value);
     }
+
     const clearDirHash = async () => {
       try {
         if (selectedFolderId.value) {
@@ -773,6 +794,7 @@ export default {
         console.error('Ошибка при очистке dir_hash:', error);
       }
     };
+
     const getLinkCount = async (dirHash) => {
       try {
         if (!dirHash) return 0;
@@ -794,6 +816,7 @@ export default {
         return 0;
       }
     };
+
     const handleDropOnYellowBox = async (event) => {
       if (props.draggedLink) {
         const linkToUpdate = props.draggedLink;
@@ -813,43 +836,12 @@ export default {
         }
       }
     };
+
     const editDirHash = () => {
       // Если требуется дополнительная логика для редактирования, реализуйте здесь
       console.log('editDirHash triggered');
     };
 
-    onMounted(() => {
-      fetchFolders();
-      subscribeToRealtimeChanges();
-      getSession();
-      window.addEventListener('keydown', handleKeydown);
-      folders.value.forEach(folder => {
-        getLinkCount(folder.dir_hash);
-      });
-    });
-    onUnmounted(() => {
-      unsubscribeFromRealtimeChanges();
-      window.removeEventListener('keydown', handleKeydown);
-    });
-
-    watchEffect(() => {
-      folders.value.forEach(folder => {
-        getLinkCount(folder.dir_hash);
-        getCombinedLinkCount(folder.dir_hash);
-      });
-    });
-
-    watch(folders, (newFolders) => {
-      newFolders.forEach(folder => {
-        // getLinkCount(folder.dir_hash);
-        getSubfolderCount(folder.dir_hash);
-        getCombinedLinkCount(folder.dir_hash);
-      });
-    }, { immediate: true });
-
-    watch(dialog, (newVal) => {
-      console.log('dialog changed:', newVal);
-    });
     const subscribeToRealtimeChanges = () => {
       realtimeChannel = supabase
           .channel('realtime-changes')
@@ -898,11 +890,47 @@ export default {
               }
           )
           .subscribe();
-    };    const unsubscribeFromRealtimeChanges = () => {
+    };
+
+    const unsubscribeFromRealtimeChanges = () => {
       if (realtimeChannel) {
         supabase.removeChannel(realtimeChannel);
       }
     };
+
+    onMounted(() => {
+      fetchFolders();
+      subscribeToRealtimeChanges();
+      getSession();
+      window.addEventListener('keydown', handleKeydown);
+      folders.value.forEach(folder => {
+        getLinkCount(folder.dir_hash);
+      });
+    });
+
+    onUnmounted(() => {
+      unsubscribeFromRealtimeChanges();
+      window.removeEventListener('keydown', handleKeydown);
+    });
+
+    watchEffect(() => {
+      folders.value.forEach(folder => {
+        getLinkCount(folder.dir_hash);
+        getCombinedLinkCount(folder.dir_hash);
+      });
+    });
+
+    watch(folders, (newFolders) => {
+      newFolders.forEach(folder => {
+        // getLinkCount(folder.dir_hash);
+        getSubfolderCount(folder.dir_hash);
+        getCombinedLinkCount(folder.dir_hash);
+      });
+    }, { immediate: true });
+
+    watch(dialog, (newVal) => {
+      console.log('dialog changed:', newVal);
+    });
 
     return {
       combinedLinkCounts,
