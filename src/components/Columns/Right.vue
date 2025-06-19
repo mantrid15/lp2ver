@@ -131,6 +131,14 @@
                  @resetRadio="resetRadio"
                  @update:visible="folderListDialog = $event" />
   </v-app>
+  <v-snackbar
+      v-model="snackbar.show"
+      :timeout="3000"
+      :color="snackbar.color"
+      top
+  >
+    {{ snackbar.message }}
+  </v-snackbar>
 </template>
 
 <script>
@@ -170,22 +178,32 @@ export default {
       required: true
     },
   },
+  emits: ['folder-selected', 'reset-folder-selection', 'update-dragged-link'],
   setup(props, { emit }) {
     let realtimeChannel = null;
     const draggedFolder = ref(null);
     const subfolderCounts = ref({});
     const store = useStore();
 
-    const snackbar = ref(false);
-    const snackbarMessage = ref('');
+    // Добавляем состояние для snackbar
+    const snackbar = ref({
+      show: false,
+      message: '',
+      color: 'success' // или 'error' для ошибок
+    });
 
-    const showSnackbar = (message) => {
-      snackbarMessage.value = message;
-      snackbar.value = true;
-      setTimeout(() => {
-        snackbar.value = false;
-      }, 3000);
+    // Функция для показа сообщений
+    const showSnackbar = (message, type = 'success') => {
+      snackbar.value = {
+        show: true,
+        message,
+        color: type === 'success' ? 'success' : 'error'
+      };
     };
+
+    const isAltPressed = ref(false);
+    const dragTargetFolder = ref(null);
+    const dragSourceFolder = ref(null);
 
 
     const sortedLinks = ref([...props.links]);
@@ -207,6 +225,12 @@ export default {
     const selectedFolder = ref(null);
     const selectedFolderHash = ref(null);
     const combinedLinkCounts = ref({});
+     // Новая функция для обработки отпускания Alt
+    const handleKeyUp = (event) => {
+      if (event.key === 'Alt') {
+        isAltPressed.value = false;
+      }
+    };
 
     const getSubfolderCount = async (dirHash) => {
       try {
@@ -244,38 +268,191 @@ export default {
     };
 
     const handleDragStart = (event, folder) => {
-      draggedFolder.value = folder;
-      event.dataTransfer.setData('text/plain', folder.dir_hash);
+      dragSourceFolder.value = folder; // Устанавливаем источник перетаскивания
+      if (isAltPressed.value) {
+        // Для вложенного перетаскивания используем другой тип данных
+        event.dataTransfer.setData('application/x-folder-nesting', folder.dir_hash);
+        console.log(`Начато перетаскивание папки ${folder.dir_name} (${folder.dir_hash}) для вложения`);
+      } else {
+        // Обычное перетаскивание (как было раньше)
+        event.dataTransfer.setData('text/plain', folder.dir_hash);
+        draggedFolder.value = folder;
+        console.log(`Начато обычное перетаскивание папки ${folder.dir_name} (${folder.dir_hash})`);
+      }
       fetchFolders();
+    };
+    // Новая функция для проверки существования папки с таким же именем
+    const checkDuplicateFolderName = async (parentHash, folderName) => {
+      try {
+        const { data, error } = await supabase
+            .from('dir')
+            .select('dir_name')
+            .eq('parent_hash', parentHash)
+            .eq('dir_name', folderName);
+
+        if (error) throw error;
+        return data.length > 0;
+      } catch (error) {
+        console.error('Ошибка при проверке дубликатов папок:', error);
+        return false;
+      }
+    };
+
+    // Новая функция для вложения папки
+    const nestFolder = async (sourceFolder, targetFolder) => {
+      try {
+        console.log(`Попытка вложения папки ${sourceFolder.dir_name} в ${targetFolder.dir_name}`);
+
+        // Проверка на вложение в себя
+        if (sourceFolder.dir_hash === targetFolder.dir_hash) {
+          console.log('Ошибка: нельзя вложить папку в саму себя');
+          showSnackbar('Нельзя вложить папку в саму себя!');
+          return;
+        }
+
+        // Проверка на дубликаты имен
+        const hasDuplicate = await checkDuplicateFolderName(
+            targetFolder.dir_hash,
+            sourceFolder.dir_name
+        );
+
+        if (hasDuplicate) {
+          console.log('Ошибка: папка с таким именем уже существует в целевой папке');
+          showSnackbar('Папка с таким именем уже существует по указанному адресу!');
+          return;
+        }
+
+        // Обновляем parent_hash у исходной папки
+        const { error } = await supabase
+            .from('dir')
+            .update({ parent_hash: targetFolder.dir_hash })
+            .eq('dir_hash', sourceFolder.dir_hash);
+
+        if (error) throw error;
+
+        console.log(`Папка ${sourceFolder.dir_name} успешно вложена в ${targetFolder.dir_name}`);
+        showSnackbar(`Папка "${sourceFolder.dir_name}" вложена в "${targetFolder.dir_name}"`);
+
+        // Обновляем данные
+        await fetchFolders();
+        await getSubfolderCount(targetFolder.dir_hash);
+        await getCombinedLinkCount(targetFolder.dir_hash);
+
+      } catch (error) {
+        console.error('Ошибка при вложении папки:', error);
+        showSnackbar('Произошла ошибка при вложении папки');
+      }
     };
 
     const handleDragLeave = (event) => {
-      event.currentTarget.style.opacity = '1';
+      if (isAltPressed.value) {
+        event.currentTarget.style.border = '2px solid #000000';
+        event.currentTarget.style.backgroundColor = '';
+        event.currentTarget.classList.remove('nesting-target'); // Удаляем класс стиля
+      } else {
+        event.currentTarget.style.opacity = '1';
+      }
     };
 
     const handleDragOver = (event, folder) => {
       event.preventDefault();
-      if (draggedFolder.value && draggedFolder.value.dir_hash !== folder.dir_hash) {
-        event.currentTarget.style.opacity = '0.3';
+      // Сбрасываем стили для всех папок
+      document.querySelectorAll('.folder-card').forEach(el => {
+        el.style.border = '2px solid #000000';
+        el.style.backgroundColor = '';
+        el.classList.remove('nesting-target');
+      });
+
+      if (isAltPressed.value && dragSourceFolder.value) {
+        // Для вложенного перетаскивания
+        if (dragSourceFolder.value.dir_hash !== folder.dir_hash) {
+          event.currentTarget.style.border = '2px dashed blue';
+          event.currentTarget.style.backgroundColor = 'rgba(0, 0, 255, 0.1)';
+          dragTargetFolder.value = folder;
+        }
+      } else if (draggedFolder.value) {
+        // Для обычного перетаскивания (как было раньше)
+        if (draggedFolder.value.dir_hash !== folder.dir_hash) {
+          event.currentTarget.style.opacity = '0.3';
+        }
       }
     };
 
     const handleDrop = async (event, targetFolder) => {
       event.preventDefault();
+      // Сбрасываем стили в любом случае
+      event.currentTarget.style.border = '2px solid #000000';
+      event.currentTarget.style.backgroundColor = '';
+      event.currentTarget.classList.remove('nesting-target');
       event.currentTarget.style.opacity = '1';
+
+      // 1. Обработка вложения папки при нажатом Alt
+      if (isAltPressed.value && dragSourceFolder.value) {
+        console.log('Обработка вложения папки (Alt перетаскивание)');
+
+        // Проверка на попытку вложения в саму себя
+        if (dragSourceFolder.value.dir_hash === targetFolder.dir_hash) {
+          console.log('Попытка вложения папки в саму себя');
+          showSnackbar('Нельзя вложить папку в саму себя!');
+          return;
+        }
+
+        // Проверка на существование папки с таким же именем
+        const hasDuplicate = await checkDuplicateFolderName(
+            targetFolder.dir_hash,
+            dragSourceFolder.value.dir_name
+        );
+
+        if (hasDuplicate) {
+          console.log('Обнаружена папка с таким же именем в целевой директории');
+          showSnackbar('Папка с таким именем уже существует по указанному адресу!');
+          return;
+        }
+
+        // Обновляем parent_hash в базе данных
+        console.log(`Обновление parent_hash для ${dragSourceFolder.value.dir_hash}`);
+        const { error } = await supabase
+            .from('dir')
+            .update({ parent_hash: targetFolder.dir_hash })
+            .eq('dir_hash', dragSourceFolder.value.dir_hash);
+
+        if (error) {
+          console.error('Ошибка при обновлении parent_hash:', error);
+          showSnackbar('Ошибка при вложении папки!');
+          throw error;
+        }
+
+        console.log('Папка успешно вложена');
+        showSnackbar(`Папка "${dragSourceFolder.value.dir_name}" вложена в "${targetFolder.dir_name}"`);
+
+        // Обновляем данные
+        await fetchFolders();
+        await getSubfolderCount(targetFolder.dir_hash);
+        await getCombinedLinkCount(targetFolder.dir_hash);
+
+        // Сбрасываем состояние
+        dragSourceFolder.value = null;
+        return;
+      }
+      // 2. Оригинальный функционал перетаскивания с Ctrl
       if (!event.ctrlKey) {
         console.log('Перетаскивание отменено, удерживайте Ctrl для выполнения операции.');
         return;
       }
+
       if (draggedFolder.value && draggedFolder.value.dir_hash !== targetFolder.dir_hash) {
         const updatedFolders = [...folders.value];
         const draggedIndex = updatedFolders.findIndex(f => f.dir_hash === draggedFolder.value.dir_hash);
         const targetIndex = updatedFolders.findIndex(f => f.dir_hash === targetFolder.dir_hash);
+
         if (draggedIndex === -1 || targetIndex === -1) return;
+
         const draggedFolderRange = updatedFolders[draggedIndex].range;
         const targetFolderRange = updatedFolders[targetIndex].range;
+
         updatedFolders[draggedIndex].range = targetFolderRange;
         updatedFolders[targetIndex].range = draggedFolderRange;
+
         console.log('Обновленные диапазоны перед отправкой в Supabase:', {
           dragged: {
             dir_hash: updatedFolders[draggedIndex].dir_hash,
@@ -286,10 +463,12 @@ export default {
             new_range: updatedFolders[targetIndex].range
           }
         });
+
         await updateFolderRanges([
           { dir_hash: updatedFolders[draggedIndex].dir_hash, range: updatedFolders[draggedIndex].range },
           { dir_hash: updatedFolders[targetIndex].dir_hash, range: updatedFolders[targetIndex].range }
         ]);
+
         folders.value = updatedFolders;
         await getLinkCount(targetFolder.dir_hash);
         selectedFolderHash.value = null;
@@ -477,7 +656,10 @@ export default {
       selectedFolderId.value = null;
     };
 
-    const handleKeydown = (event) => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Alt') {
+        isAltPressed.value = true;
+      }
       if (event.key === 'Escape') {
         folderListDialog.value = false;
         resetRadio();
@@ -899,10 +1081,11 @@ export default {
     };
 
     onMounted(() => {
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
       fetchFolders();
       subscribeToRealtimeChanges();
       getSession();
-      window.addEventListener('keydown', handleKeydown);
       folders.value.forEach(folder => {
         getLinkCount(folder.dir_hash);
       });
@@ -910,7 +1093,8 @@ export default {
 
     onUnmounted(() => {
       unsubscribeFromRealtimeChanges();
-      window.removeEventListener('keydown', handleKeydown);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
     });
 
     watchEffect(() => {
@@ -933,6 +1117,15 @@ export default {
     });
 
     return {
+      snackbar,
+      showSnackbar,
+      isAltPressed,
+      dragTargetFolder,
+      dragSourceFolder,
+      handleKeyDown,
+      handleKeyUp,
+      nestFolder,
+      checkDuplicateFolderName,
       combinedLinkCounts,
       getCombinedLinkCount,
       subfolderCounts,
@@ -993,7 +1186,15 @@ export default {
 </script>
 
 <style scoped>
+.folder-card.nesting-source {
+  background-color: rgba(128, 0, 128, 0.3) !important; /* Фиолетовый для исходной папки */
+  border: 2px dashed purple !important;
+}
 
+.folder-card.nesting-target {
+  background-color: rgba(0, 0, 255, 0.3) !important; /* Синий для целевой папки */
+  border: 2px dashed blue !important;
+}
 .combined-link-counter {
   position: absolute;
   top: 5px;
