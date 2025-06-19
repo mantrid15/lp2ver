@@ -78,8 +78,12 @@ export default {
       required: true
     },
     selectedFolderHash: {
-      type: String,
-      default: null
+      type: [String, Object],
+      default: null,
+      validator: (value) => {
+        console.log('[Left] Prop validation - selectedFolderHash:', value);
+        return value === null || typeof value === 'string' || typeof value === 'object';
+      }
     },
     draggedLink: {
       type: Object,
@@ -95,12 +99,23 @@ export default {
     }
   },
   setup(props, { emit }) {
+    console.log('[Left] Setup started. Initial props:', {
+      selectedFolderHash: props.selectedFolderHash,
+      rightFolder: props.rightFolder,
+      width: props.width
+    });
     const store = useStore();
     const userId = computed(() => store.state.userId);
     const folders = ref([]);
     const childFoldersWithCounts = ref([]);
     const draggedFolder = ref(null);
-    const selectedFolderHash = ref(null);
+
+    const selectedFolderHash = computed(() => {
+      if (props.selectedFolderHash && typeof props.selectedFolderHash === 'object') {
+        return props.selectedFolderHash.dir_hash;
+      }
+      return props.selectedFolderHash;
+    });
 
     const snackbar = ref({
       show: false,
@@ -141,19 +156,31 @@ export default {
     });
 
     const selectFolder = (folder) => {
-      // Передаем и dir_hash выбранной папки и parent_hash (который равен dir_hash из Right)
-      emit('folder-selected', {
+      console.log('[Left] Folder selected:', folder);
+      const payload = {
         dir_hash: folder.dir_hash,
         parent_hash: props.rightFolder?.dir_hash
-      });
+      };
+      console.log('[Left] Emitting folder-selected with:', payload);
+      emit('folder-selected', payload);
     };
 
+// Нормализуем selectedFolderHash для внутреннего использования
+    const normalizedSelectedHash = computed(() => {
+      const result = !props.selectedFolderHash ? null :
+          typeof props.selectedFolderHash === 'object' ?
+              props.selectedFolderHash.dir_hash :
+              props.selectedFolderHash;
+
+      console.log('[Left] Computed normalizedSelectedHash:', result);
+      return result;
+    });
 
     const getFolderColor = (folder) => {
       // Если выбрана корневая папка из Right
       if (props.rightFolder) {
         // Зеленый цвет только для выбранной дочерней папки
-        if (props.selectedFolderHash === folder.dir_hash) {
+        if (normalizedSelectedHash.value === folder.dir_hash) {
           return 'linear-gradient(to bottom, #76c7c0, #4caf50)';
         }
         // Желтый цвет для остальных дочерних папок корневой папки
@@ -161,16 +188,14 @@ export default {
           return 'linear-gradient(to bottom, #f0e68c, #d2b48c)';
         }
       }
-
       // Зеленый цвет для выбранной папки (если не в режиме Right)
-      if (props.selectedFolderHash === folder.dir_hash) {
+      if (normalizedSelectedHash.value === folder.dir_hash) {
         return 'linear-gradient(to bottom, #76c7c0, #4caf50)';
       }
-
       // Стандартный желтый цвет для остальных папок
       return 'linear-gradient(to bottom, #f0e68c, #d2b48c)';
-    };
-    // Обновление списка дочерних папок с подсчетом элементов
+    };   // Обновление списка дочерних папок с подсчетом элементов
+
     const updateChildFoldersWithCounts = async () => {
       // Используем props.selectedFolderHash вместо локального состояния
       const parentHash = props.selectedFolderHash || props.rightFolder?.dir_hash;
@@ -274,7 +299,13 @@ export default {
     onMounted(fetchFolders);
     watch(() => props.rightFolder, fetchFolders);
     watch(() => props.selectedFolderHash, fetchFolders);
-
+    watch(() => props.selectedFolderHash, (newVal, oldVal) => {
+      console.log('[Left] selectedFolderHash prop changed:', {
+        from: oldVal,
+        to: newVal,
+        type: typeof newVal
+      });
+    }, { immediate: true });
     return {
       columnSize,
       displayedFolders,
@@ -288,7 +319,8 @@ export default {
       handleDragOver,
       handleDrop,
       onDrop,
-      snackbar
+      snackbar,
+      selectedFolderHash
     };
   }
 };
