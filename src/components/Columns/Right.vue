@@ -433,6 +433,28 @@ export default {
       }
     };
 
+    const syncFoldersState = async () => {
+      try {
+        const { data, error } = await supabase
+            .from('dir')
+            .select('*')
+            .order('range', { ascending: true });
+
+        if (error) throw error;
+
+        folders.value = data || [];
+
+        // Обновляем счетчики для всех папок
+        for (const folder of folders.value) {
+          await getLinkCount(folder.dir_hash);
+          await getSubfolderCount(folder.dir_hash);
+          await getCombinedLinkCount(folder.dir_hash);
+        }
+      } catch (error) {
+        console.error('Ошибка синхронизации состояния папок:', error);
+      }
+    };
+
     const handleDrop = async (event, targetFolder) => {
       event.preventDefault();
       // Сбрасываем стили в любом случае
@@ -1082,53 +1104,105 @@ export default {
     };
 
     const subscribeToRealtimeChanges = () => {
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
+
       realtimeChannel = supabase
-          .channel('realtime-changes')
+          .channel('realtime-right-folders')
           .on(
               'postgres_changes',
-              { event: '*', schema: 'public', table: 'links' },
+              {
+                event: '*',
+                schema: 'public',
+                table: 'dir',
+                filter: `user_id=eq.${userId.value}`
+              },
               async (payload) => {
+                console.log('Изменение в dir:', payload);
+
+                // Обработка разных типов событий
+                switch (payload.eventType) {
+                  case 'INSERT':
+                    // Добавляем новую папку и обновляем счетчики
+                    folders.value.push(payload.new);
+                    await getCombinedLinkCount(payload.new.dir_hash);
+                    await getSubfolderCount(payload.new.dir_hash);
+                    break;
+
+                  case 'UPDATE':
+                    // Обновляем существующую папку
+                    const updateIndex = folders.value.findIndex(f => f.id === payload.new.id);
+                    if (updateIndex !== -1) {
+                      folders.value[updateIndex] = payload.new;
+
+                      // Если изменился parent_hash, обновляем счетчики для старого и нового родителя
+                      if (payload.old.parent_hash !== payload.new.parent_hash) {
+                        if (payload.old.parent_hash) {
+                          await getSubfolderCount(payload.old.parent_hash);
+                        }
+                        if (payload.new.parent_hash) {
+                          await getSubfolderCount(payload.new.parent_hash);
+                        }
+                      }
+                    }
+                    break;
+
+                  case 'DELETE':
+                    // Удаляем папку и обновляем счетчики родителя
+                    folders.value = folders.value.filter(f => f.id !== payload.old.id);
+                    if (payload.old.parent_hash) {
+                      await getSubfolderCount(payload.old.parent_hash);
+                    }
+                    break;
+                }
+
+                // Сортируем папки по range после изменений
+                folders.value.sort((a, b) => (a.range || 0) - (b.range || 0));
+              }
+          )
+          .on(
+              'postgres_changes',
+              {
+                event: '*',
+                schema: 'public',
+                table: 'links'
+              },
+              async (payload) => {
+                console.log('Изменение в links:', payload);
+
+                // Обновляем счетчики для затронутых папок
                 if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
                   if (payload.new.dir_hash) {
                     await getLinkCount(payload.new.dir_hash);
-                    await getCombinedLinkCount(payload.new.dir_hash); // Добавляем эту строку
+                    await getCombinedLinkCount(payload.new.dir_hash);
                   }
-                  // Также обновляем родительскую папку, если есть parent_hash
                   if (payload.new.parent_hash) {
                     await getCombinedLinkCount(payload.new.parent_hash);
                   }
-                } else if (payload.eventType === 'DELETE') {
+                }
+
+                if (payload.eventType === 'DELETE') {
                   if (payload.old.dir_hash) {
                     await getLinkCount(payload.old.dir_hash);
-                    await getCombinedLinkCount(payload.old.dir_hash); // Добавляем эту строку
+                    await getCombinedLinkCount(payload.old.dir_hash);
                   }
-                  // Также обновляем родительскую папку, если есть parent_hash
                   if (payload.old.parent_hash) {
                     await getCombinedLinkCount(payload.old.parent_hash);
                   }
                 }
               }
           )
-          .on(
-              'postgres_changes',
-              { event: '*', schema: 'public', table: 'dir' },
-              async (payload) => {
-                if (payload.eventType === 'INSERT') {
-                  if (payload.new.user_id === userId.value) {
-                    folders.value.push(payload.new);
-                    await getCombinedLinkCount(payload.new.dir_hash); // Добавляем эту строку
-                  }
-                } else if (payload.eventType === 'UPDATE') {
-                  const index = folders.value.findIndex(folder => folder.id === payload.new.id);
-                  if (index !== -1) {
-                    folders.value[index] = payload.new;
-                  }
-                } else if (payload.eventType === 'DELETE') {
-                  folders.value = folders.value.filter(folder => folder.id !== payload.old.id);
-                }
-              }
-          )
-          .subscribe();
+          .subscribe((status, err) => {
+            if (status === 'SUBSCRIBED') {
+              console.log('Подписка на изменения Right активна');
+            }
+            if (err) {
+              console.error('Ошибка подписки Right:', err);
+            }
+          });
+
+      return realtimeChannel;
     };
 
     const unsubscribeFromRealtimeChanges = () => {
@@ -1136,11 +1210,23 @@ export default {
         supabase.removeChannel(realtimeChannel);
       }
     };
+// Добавим обработку ошибок подписки
+    const setupRealtime = () => {
+      try {
+        subscribeToRealtimeChanges();
+      } catch (error) {
+        console.error('Ошибка инициализации realtime:', error);
+        // Пытаемся переподключиться через 5 секунд
+        setTimeout(setupRealtime, 5000);
+      }
+    };
 
     onMounted(() => {
+      setupRealtime();
       window.addEventListener('keydown', handleKeyDown);
       window.addEventListener('keyup', handleKeyUp);
-      fetchFolders();
+      // fetchFolders();
+      fetchFolders().then(syncFoldersState);
       subscribeToRealtimeChanges();
       getSession();
       folders.value.forEach(folder => {
@@ -1149,6 +1235,9 @@ export default {
     });
 
     onUnmounted(() => {
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
       unsubscribeFromRealtimeChanges();
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
@@ -1173,7 +1262,15 @@ export default {
       console.log('dialog changed:', newVal);
     });
 
+    // Добавим watch для переподписки при изменении userId
+    watch(userId, (newVal) => {
+      if (newVal) {
+        setupRealtime();
+      }
+    });
+
     return {
+      syncFoldersState,
       snackbar,
       showSnackbar,
       isAltPressed,
