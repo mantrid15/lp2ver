@@ -148,9 +148,17 @@
             <span class="text-ellipsis">{{ truncateText(link.keywords, 150).truncated }}</span>
             <div v-if="showTooltip && isCtrlPressed && tooltipContent" class="custom-tooltip" :style="tooltipStyle" v-html="tooltipContent"></div>
           </td>
-          <td class="content-padding">
+          <td class="content-padding" :class="{'has-subfolder': showAllDirs && link.parent_hash}">
             <span v-if="!showAllDirs">{{ formatDate(link.date) }}</span>
-            <span v-else>{{ getFolderNameByHash(link.dir_hash) }}</span>
+            <span v-else>
+              <template v-if="link.parent_hash">
+                {{ getFolderNameByHash(link.parent_hash) }}<span class="folder-separator">/</span>
+                <span class="subfolder">{{ getFolderNameByHash(link.dir_hash) }}</span>
+              </template>
+              <template v-else>
+                {{ getFolderNameByHash(link.dir_hash) }}
+              </template>
+            </span>
           </td>
         </tr>
         </tbody>
@@ -566,6 +574,7 @@ export default {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     });
+
     return {
       dateColumnLabel,
       showAllDirs,
@@ -613,6 +622,23 @@ export default {
 };
 </script>
 <style scoped>
+td.has-subfolder {
+  background: linear-gradient(135deg, #ffc0cb, #ff69b4); /* Розовый градиент */
+  font-weight: bold;
+}
+
+.subfolder {
+  font-size: 0.85em; /* На 2 пункта меньше */
+  font-weight: bold;
+}
+
+.folder-separator {
+  color: rgba(234, 9, 9, 0.9);    /* Голубой цвет */
+  font-weight: bold; /* Жирный */
+  font-size: 1.1em;  /* На 1 пункт больше */
+  padding: 0 2px;   /* Небольшие отступы вокруг слэша */
+}
+
 .highlighted {
   background-color: lightblue; /* Голубой цвет фона */
 }
