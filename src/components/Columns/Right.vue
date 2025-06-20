@@ -184,14 +184,12 @@ export default {
     const draggedFolder = ref(null);
     const subfolderCounts = ref({});
     const store = useStore();
-
     // Добавляем состояние для snackbar
     const snackbar = ref({
       show: false,
       message: '',
       color: 'success' // или 'error' для ошибок
     });
-
     // Функция для показа сообщений
     const showSnackbar = (message, type = 'success') => {
       snackbar.value = {
@@ -322,13 +320,54 @@ export default {
           return;
         }
 
-        // Обновляем parent_hash у исходной папки
+        // Сохраняем исходный range для последующего обновления
+        const originalRange = sourceFolder.range;
+
+        // Обновляем parent_hash у исходной папки и сбрасываем range
         const { error } = await supabase
             .from('dir')
-            .update({ parent_hash: targetFolder.dir_hash })
+            .update({
+              parent_hash: targetFolder.dir_hash,
+              range: null // Сбрасываем range для вложенной папки
+            })
             .eq('dir_hash', sourceFolder.dir_hash);
 
         if (error) throw error;
+
+        // Пересчитываем range для всех папок на исходном уровне (где была перемещенная папка)
+        const { data: siblings, error: siblingsError } = await supabase
+            .from('dir')
+            .select('*')
+            .is('parent_hash', null)
+            .order('range', { ascending: true });
+
+        if (siblingsError) throw siblingsError;
+
+        // Фильтруем папки, которые остались на том же уровне (исключая перемещенную)
+        const remainingSiblings = siblings.filter(f => f.dir_hash !== sourceFolder.dir_hash);
+
+        // Обновляем range для оставшихся папок
+        const updates = [];
+        for (let i = 0; i < remainingSiblings.length; i++) {
+          const newRange = i + 1;
+          if (remainingSiblings[i].range !== newRange) {
+            updates.push({
+              dir_hash: remainingSiblings[i].dir_hash,
+              range: newRange
+            });
+          }
+        }
+
+        // Применяем обновления
+        if (updates.length > 0) {
+          for (const update of updates) {
+            const { error: updateError } = await supabase
+                .from('dir')
+                .update({ range: update.range })
+                .eq('dir_hash', update.dir_hash);
+            if (updateError) throw updateError;
+          }
+        }
 
         console.log(`Папка ${sourceFolder.dir_name} успешно вложена в ${targetFolder.dir_name}`);
         showSnackbar(`Папка "${sourceFolder.dir_name}" вложена в "${targetFolder.dir_name}"`);
@@ -388,52 +427,11 @@ export default {
 
       // 1. Обработка вложения папки при нажатом Alt
       if (isAltPressed.value && dragSourceFolder.value) {
-        console.log('Обработка вложения папки (Alt перетаскивание)');
-
-        // Проверка на попытку вложения в саму себя
-        if (dragSourceFolder.value.dir_hash === targetFolder.dir_hash) {
-          console.log('Попытка вложения папки в саму себя');
-          showSnackbar('Нельзя вложить папку в саму себя!');
-          return;
-        }
-
-        // Проверка на существование папки с таким же именем
-        const hasDuplicate = await checkDuplicateFolderName(
-            targetFolder.dir_hash,
-            dragSourceFolder.value.dir_name
-        );
-
-        if (hasDuplicate) {
-          console.log('Обнаружена папка с таким же именем в целевой директории');
-          showSnackbar('Папка с таким именем уже существует по указанному адресу!');
-          return;
-        }
-
-        // Обновляем parent_hash в базе данных
-        console.log(`Обновление parent_hash для ${dragSourceFolder.value.dir_hash}`);
-        const { error } = await supabase
-            .from('dir')
-            .update({ parent_hash: targetFolder.dir_hash })
-            .eq('dir_hash', dragSourceFolder.value.dir_hash);
-
-        if (error) {
-          console.error('Ошибка при обновлении parent_hash:', error);
-          showSnackbar('Ошибка при вложении папки!');
-          throw error;
-        }
-
-        console.log('Папка успешно вложена');
-        showSnackbar(`Папка "${dragSourceFolder.value.dir_name}" вложена в "${targetFolder.dir_name}"`);
-
-        // Обновляем данные
-        await fetchFolders();
-        await getSubfolderCount(targetFolder.dir_hash);
-        await getCombinedLinkCount(targetFolder.dir_hash);
-
-        // Сбрасываем состояние
+        await nestFolder(dragSourceFolder.value, targetFolder);
         dragSourceFolder.value = null;
         return;
       }
+
       // 2. Оригинальный функционал перетаскивания с Ctrl
       if (!event.ctrlKey) {
         console.log('Перетаскивание отменено, удерживайте Ctrl для выполнения операции.');
@@ -452,17 +450,6 @@ export default {
 
         updatedFolders[draggedIndex].range = targetFolderRange;
         updatedFolders[targetIndex].range = draggedFolderRange;
-
-        console.log('Обновленные диапазоны перед отправкой в Supabase:', {
-          dragged: {
-            dir_hash: updatedFolders[draggedIndex].dir_hash,
-            new_range: updatedFolders[draggedIndex].range
-          },
-          target: {
-            dir_hash: updatedFolders[targetIndex].dir_hash,
-            new_range: updatedFolders[targetIndex].range
-          }
-        });
 
         await updateFolderRanges([
           { dir_hash: updatedFolders[draggedIndex].dir_hash, range: updatedFolders[draggedIndex].range },
