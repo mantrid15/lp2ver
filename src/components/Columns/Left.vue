@@ -147,13 +147,32 @@ export default {
               itemsCount: props.linkCounts[folder.dir_hash] || 0
             }));
       }
-
-      // if (!props.selectedFolderHash) {
-      //   return folders.value.filter(f => f.parent_hash === null);
-      // }
-
       return [];
     });
+
+    const fetchLinkCounts = async () => {
+      if (!props.rightFolder) return {};
+
+      const counts = {};
+
+      // Получаем все дочерние папки текущей корневой папки
+      const childFolders = folders.value.filter(f => f.parent_hash === props.rightFolder.dir_hash);
+
+      // Для каждой дочерней папки делаем запрос на подсчет элементов
+      for (const folder of childFolders) {
+        const { count, error } = await supabase
+            .from('links')
+            .select('*', { count: 'exact' })
+            .eq('parent_hash', props.rightFolder.dir_hash)
+            .eq('dir_hash', folder.dir_hash);
+
+        if (!error) {
+          counts[folder.dir_hash] = count || 0;
+        }
+      }
+
+      return counts;
+    };
 
     const selectFolder = (folder) => {
       // console.log('[Left] Folder selected:', folder);
@@ -231,20 +250,24 @@ export default {
     };
 
     const fetchFolders = async () => {
-      // console.log('Запрос папок для userId:', userId.value);
       const { data, error } = await supabase
           .from('dir')
           .select('*')
           .eq('user_id', userId.value);
+
       if (error) {
         console.error('Ошибка при запросе папок:', error);
       } else {
-        // console.log('Полученные папки:', data);
         folders.value = data || [];
-        await updateChildFoldersWithCounts();
+
+        // Если есть корневая папка, обновляем счетчики
+        if (props.rightFolder) {
+          const linkCounts = await fetchLinkCounts();
+          // Эмитируем событие с обновленными счетчиками
+          emit('update-link-counts', linkCounts);
+        }
       }
     };
-
     const isDefaultState = computed(() => {
       return !props.rightFolder && !props.selectedFolderHash;
     });

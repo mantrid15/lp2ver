@@ -5,7 +5,7 @@
       :selected-folder-hash="selectedFolderHash"
       :dragged-link="draggedLink"
       :right-folder="$refs.rightComponent?.currentFolder"
-      :link-counts="$refs.rightComponent?.linkCounts"
+      :link-counts="linkCounts"
       @folder-selected="handleFolderSelected"
       @update-dragged-link="updateDraggedLink"
     />
@@ -21,6 +21,8 @@
         @sort="sort"
         :draggedLink="draggedLink"
         @update-dragged-link="updateDraggedLink"
+        @update-link-counts="updateLinkCounts"
+
     />
     <div class="resizer" @mousedown="(e) => startResize(e, 2)"></div>
     <Right
@@ -39,7 +41,7 @@
 </template>
 
 <script>
-import {ref, computed, onMounted, onUnmounted} from 'vue';
+import {ref, computed, onMounted, onUnmounted, watch} from 'vue';
 import { supabase } from '@/clients/supabase.js';
 import Left from '@/components/Columns/Left.vue';
 import Right from '@/components/Columns/Right.vue';
@@ -60,16 +62,46 @@ export default {
     const userId = computed(() => store.state.userId); // Получите userId из Vuex
     const account = ref(null);
     const rightComponent = ref(null); // Ref для доступа к Right компоненту
-
     const selectedFolderHash = ref(null); // Состояние для хранения dir_hash выбранной папки
+    const linkCounts = ref({}); // Добавляем реактивное состояние для счетчиков
+
     const handleFolderSelected = (dirHash) => {
       // console.log('[Linzer] Received dir_hash:', dirHash, 'Type:', typeof dirHash);
       // Сохраняем только строку (dir_hash)
       selectedFolderHash.value = dirHash;
     };
+
     const handleResetFolderSelection = () => {
       selectedFolderHash.value = null; // Сбрасываем состояние выбранной папки
+    };
 
+    const updateLinkCounts = async (rightFolder) => {
+      if (!rightFolder) return;
+
+      const counts = {};
+      const { data: folders, error: foldersError } = await supabase
+          .from('dir')
+          .select('dir_hash')
+          .eq('parent_hash', rightFolder.dir_hash);
+
+      if (foldersError) {
+        console.error('Error fetching folders:', foldersError);
+        return;
+      }
+
+      for (const folder of folders) {
+        const { count, error: linksError } = await supabase
+            .from('links')
+            .select('*', { count: 'exact' })
+            .eq('parent_hash', rightFolder.dir_hash)
+            .eq('dir_hash', folder.dir_hash);
+
+        if (!linksError) {
+          counts[folder.dir_hash] = count || 0;
+        }
+      }
+
+      linkCounts.value = counts;
     };
     // Управление сессией
     const draggedLink = ref(null); // Объявляем draggedLink
@@ -89,7 +121,6 @@ export default {
         account.value = null; // Убедитесь, что account сбрасывается в случае ошибки
       }
     }
-
     // Column widths с localStorage
     const leftColumnWidth = ref(localStorage.getItem('leftColumnWidth') || '30%');
     const middleColumnWidth = ref(localStorage.getItem('middleColumnWidth') || '40%');
@@ -291,6 +322,12 @@ export default {
         ctrlPressed = false;
       }
     };
+
+    watch(() => rightComponent.value?.currentFolder, async (newFolder) => {
+      if (newFolder) {
+        await updateLinkCounts(newFolder);
+      }
+    }, { immediate: true });
     // Lifecycle hooks
     onMounted(async () => {
       await getSession();
@@ -333,6 +370,8 @@ export default {
       draggedLink,
       updateDraggedLink,
       getFaviconUrl,
+      linkCounts,
+      updateLinkCounts
     };
   }
 };
