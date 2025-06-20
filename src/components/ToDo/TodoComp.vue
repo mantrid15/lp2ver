@@ -126,6 +126,7 @@
             'completed-task': task.status === completedStatus,
             'status-cancelled-task': task.status === cancelledStatus,
             'status-completed': task.status === completedStatus,
+            'status-in-progress-task': task.status === inProgressStatus,
             'status-in-progress': task.status === inProgressStatus,
             'status-not-started': task.status === notStartedStatus,
             'highlighted-cell': containsFilterText(task)
@@ -1189,6 +1190,7 @@ export default {
 /*
 @import url('@/styles/all.min.css');
 */
+
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css');
 
 @media screen and (max-width: 1200px) {
@@ -1272,6 +1274,21 @@ export default {
     font-size: 0.7em;
   }
 }
+/* Стиль для строк с статусом "Выполняется" */
+.status-in-progress-task td:not(.status-cell):not(.delete-cell):not(.date-cell):not(.privacy-cell):not(.importance-cell) {
+  background-color: rgba(224, 12, 12, 0.9) !important; /* Легкий красный фон */
+  color: #000000 !important; /* Темно-красный текст */
+}
+/* Усиливаем цвет при наведении */
+.status-in-progress-task:hover td:not(.status-cell):not(.delete-cell):not(.date-cell):not(.privacy-cell):not(.importance-cell) {
+  background-color: rgba(255, 0, 0, 0.2) !important;
+}
+
+/* Сохраняем стиль для выделенных ячеек */
+.status-in-progress-task td.highlighted {
+  background-color: #d32f2f !important;
+  color: white !important;
+}
 
 .status-cancelled {
   background-color: #8B4513 !important; /* Коричневый цвет для ячейки статуса */
@@ -1307,11 +1324,7 @@ export default {
   background-color: lightblue !important;
   color: black !important;
 }
-/* Переопределение стилей для completed задач */
-/*.completed-task .highlight {
-  background-color: #2E7D32 !important;
-  text-decoration: line-through;
-}*/
+
 /* Для тёмной темы (если используется) */
 @media (prefers-color-scheme: dark) {
   .highlight {
@@ -1320,10 +1333,7 @@ export default {
   }
 }
 
-/*.highlighted-cell {
-  background-color: #4CAF50; !* Зеленый цвет фона *!
-  color: white; !* Белый цвет текста *!
-}*/
+
 .project-filter-container {
   position: relative;
   margin-left: 30px;
