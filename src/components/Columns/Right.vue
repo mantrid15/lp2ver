@@ -69,6 +69,10 @@
                  class="folder-column"
                  @dragover.prevent @drop="onDrop(folder.dir_hash)">
             <v-card class="folder-card"
+                    :class="{
+              'updating': folder.updating,
+              'added': folder.added,
+              'dragging-to-right': dragTargetFolder?.dir_hash === folder.dir_hash}"
                     @click="handleFolderClick(folder)"
                     draggable="true"
                     @dragstart="handleDragStart($event, folder)"
@@ -793,15 +797,40 @@ export default {
 
     const fetchFolders = async () => {
       try {
+        // Добавляем класс обновления ко всем папкам
+        folders.value.forEach(f => {
+          f.updating = true;
+        });
+
         const { data, error } = await supabase
             .from('dir')
             .select('*')
-            .eq('user_id', userId.value);
+            .eq('user_id', userId.value)
+            .order('range', { ascending: true });
+
         if (error) throw error;
-        folders.value = data || [];
-        // console.log('Полученные директории:', folders.value);
+
+        // Добавляем класс added для новых папок
+        const newFolders = data || [];
+        newFolders.forEach(f => {
+          f.added = !folders.value.some(existing => existing.id === f.id);
+        });
+
+        folders.value = newFolders;
+
+        // Удаляем классы через короткое время
+        setTimeout(() => {
+          folders.value.forEach(f => {
+            f.updating = false;
+            f.added = false;
+          });
+        }, 1000);
+
       } catch (error) {
         console.error('Ошибка при получении директорий:', error);
+        folders.value.forEach(f => {
+          f.updating = false;
+        });
       }
     };
 
@@ -1340,6 +1369,47 @@ export default {
 </script>
 
 <style scoped>
+folder-card.updating {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+.folder-card.added {
+  animation: highlight 2s;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: rgba(76, 175, 80, 0.3);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.folder-card.removed {
+  animation: fadeOut 0.5s;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
 
 .folder-card.dragging-to-right {
   background-color: rgba(0, 128, 0, 0.3) !important;
