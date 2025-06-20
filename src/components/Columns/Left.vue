@@ -289,8 +289,15 @@ export default {
     };
 
     const handleDragStart = (event, folder) => {
-      draggedFolder.value = folder;
-      event.dataTransfer.setData('text/plain', folder.dir_hash);
+      if (event.ctrlKey) {
+        // Для перетаскивания между Left и Right используем другой тип данных
+        event.dataTransfer.setData('application/x-folder-move', JSON.stringify(folder));
+        console.log(`Начато перетаскивание папки ${folder.dir_name} (${folder.dir_hash}) для перемещения в Right`);
+      } else {
+        // Оригинальное перетаскивание (внутри Left)
+        event.dataTransfer.setData('text/plain', folder.dir_hash);
+        draggedFolder.value = folder;
+      }
     };
 
     const handleDragLeave = (event) => {
@@ -307,6 +314,58 @@ export default {
     const handleDrop = async (event, targetFolder) => {
       event.preventDefault();
       event.currentTarget.style.opacity = '1';
+
+      // Обработка перемещения из Left в Right
+      const folderData = event.dataTransfer.getData('application/x-folder-move');
+      if (folderData) {
+        try {
+          const folderToMove = JSON.parse(folderData);
+
+          // 1. Получаем максимальный range из Right
+          const { data: rightFolders, error: rangeError } = await supabase
+              .from('dir')
+              .select('range')
+              .is('parent_hash', null)
+              .order('range', { ascending: false })
+              .limit(1);
+
+          if (rangeError) throw rangeError;
+
+          const newRange = rightFolders.length > 0 ? rightFolders[0].range + 1 : 1;
+
+          // 2. Обновляем папку - убираем parent_hash и устанавливаем новый range
+          const { error: updateError } = await supabase
+              .from('dir')
+              .update({
+                parent_hash: null,
+                range: newRange
+              })
+              .eq('dir_hash', folderToMove.dir_hash);
+
+          if (updateError) throw updateError;
+
+          // 3. Обновляем ссылки, которые были в этой папке
+          const { error: linksError } = await supabase
+              .from('links')
+              .update({
+                parent_hash: null,
+                dir_hash: null
+              })
+              .eq('dir_hash', folderToMove.dir_hash);
+
+          if (linksError) throw linksError;
+
+          showSnackbar(`Папка "${folderToMove.dir_name}" перемещена в Right`);
+          await fetchFolders();
+
+        } catch (error) {
+          console.error('Ошибка при перемещении папки:', error);
+          showSnackbar('Ошибка при перемещении папки', 'error');
+        }
+        return;
+      }
+
+      // Оригинальная обработка для перетаскивания внутри Left
       if (!event.ctrlKey) return;
 
       if (draggedFolder.value && draggedFolder.value.dir_hash !== targetFolder.dir_hash) {
@@ -439,6 +498,16 @@ export default {
   color: white;
   font-size: 1.2rem;
   padding: 20px;
+}
+
+.folder-card.dragging-to-right {
+  background-color: rgba(0, 128, 0, 0.3) !important;
+  border: 2px dashed green !important;
+}
+
+.folder-card.dragging-from-left {
+  background-color: rgba(128, 0, 128, 0.3) !important;
+  border: 2px dashed purple !important;
 }
 
 @media (max-width: 768px) {

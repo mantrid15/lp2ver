@@ -395,6 +395,22 @@ export default {
 
     const handleDragOver = (event, folder) => {
       event.preventDefault();
+
+
+      // Сбрасываем стили для всех папок
+      document.querySelectorAll('.folder-card').forEach(el => {
+        el.style.border = '2px solid #000000';
+        el.style.backgroundColor = '';
+        el.classList.remove('dragging-to-right', 'dragging-from-left');
+      });
+
+      // Для перетаскивания из Left в Right
+      const folderData = event.dataTransfer.types.includes('application/x-folder-move');
+      if (folderData) {
+        event.currentTarget.classList.add('dragging-to-right');
+        dragTargetFolder.value = folder;
+        return;
+      }
       // Сбрасываем стили для всех папок
       document.querySelectorAll('.folder-card').forEach(el => {
         el.style.border = '2px solid #000000';
@@ -419,6 +435,60 @@ export default {
 
     const handleDrop = async (event, targetFolder) => {
       event.preventDefault();
+      // Сбрасываем стили в любом случае
+      event.currentTarget.style.border = '2px solid #000000';
+      event.currentTarget.style.backgroundColor = '';
+      event.currentTarget.classList.remove('dragging-to-right', 'dragging-from-left');
+
+      // Обработка перемещения из Left в Right
+      const folderData = event.dataTransfer.getData('application/x-folder-move');
+      if (folderData) {
+        try {
+          const folderToMove = JSON.parse(folderData);
+
+          // 1. Получаем максимальный range
+          const { data: maxRangeData, error: rangeError } = await supabase
+              .from('dir')
+              .select('range')
+              .is('parent_hash', null)
+              .order('range', { ascending: false })
+              .limit(1);
+
+          if (rangeError) throw rangeError;
+
+          const newRange = maxRangeData.length > 0 ? maxRangeData[0].range + 1 : 1;
+
+          // 2. Обновляем папку - убираем parent_hash и устанавливаем новый range
+          const { error: updateError } = await supabase
+              .from('dir')
+              .update({
+                parent_hash: null,
+                range: newRange
+              })
+              .eq('dir_hash', folderToMove.dir_hash);
+
+          if (updateError) throw updateError;
+
+          // 3. Обновляем ссылки, которые были в этой папке
+          const { error: linksError } = await supabase
+              .from('links')
+              .update({
+                parent_hash: null,
+                dir_hash: null
+              })
+              .eq('dir_hash', folderToMove.dir_hash);
+
+          if (linksError) throw linksError;
+
+          showSnackbar(`Папка "${folderToMove.dir_name}" перемещена в Right`);
+          await fetchFolders();
+
+        } catch (error) {
+          console.error('Ошибка при перемещении папки:', error);
+          showSnackbar('Ошибка при перемещении папки', 'error');
+        }
+        return;
+      }
       // Сбрасываем стили в любом случае
       event.currentTarget.style.border = '2px solid #000000';
       event.currentTarget.style.backgroundColor = '';
@@ -1173,6 +1243,16 @@ export default {
 </script>
 
 <style scoped>
+
+.folder-card.dragging-to-right {
+  background-color: rgba(0, 128, 0, 0.3) !important;
+  border: 2px dashed green !important;
+}
+
+.folder-card.dragging-from-left {
+  background-color: rgba(128, 0, 128, 0.3) !important;
+  border: 2px dashed purple !important;
+}
 .folder-card.nesting-source {
   background-color: rgba(128, 0, 128, 0.3) !important; /* Фиолетовый для исходной папки */
   border: 2px dashed purple !important;
@@ -1423,7 +1503,7 @@ export default {
 .brown-background::-webkit-scrollbar {
   width: 15px;
 }
-.brown-background::-webkit-scrollbar-track {
+.brown-background::-webkit-scrollbar-track az{
   background: rgba(0, 0, 0, 0.1);
 }
 .brown-background::-webkit-scrollbar-thumb {
