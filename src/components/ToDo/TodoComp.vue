@@ -266,10 +266,14 @@
                 class="date-input"
                 v-focus
             />
-            <span v-else>
-              {{ isTaskCompleted(task) ? formatDateForDisplay(task.complete_date) : formatDateForDisplay(task.due_date) }}
-              <i v-if="!isTaskCompleted(task)" class="fas fa-calendar-alt" @click="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')" title="Редактировать дату" style="cursor: pointer; margin-left: 5px;"></i>
-              <span v-if="isTaskCompleted(task) && task.due_date" class="original-due-date-tooltip" :title="'Первоначальная дата выполнения: ' + formatDateForDisplay(task.due_date)">*</span>
+            <span v-else
+                  :title="getDueDateTooltip(task)">
+        {{ getDisplayDate(task) }}
+        <i v-if="!isTaskCompleted(task)"
+           class="fas fa-calendar-alt"
+           @click="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')"
+           title="Редактировать дату"
+           style="cursor: pointer; margin-left: 5px;"></i>
             </span>
           </td>
         <td class="delete-cell">
@@ -886,12 +890,33 @@ export default {
 
         if (error) throw error;
 
-        // Сохраняем текущий статус как originalStatus для будущих сравнений
+        // Обновляем локальные данные
+        if (taskToUpdate.complete_date !== undefined) {
+          task.complete_date = taskToUpdate.complete_date;
+        }
         task.originalStatus = task.status;
       } catch (error) {
         console.error(errorMessages.updateTask, error);
         await fetchAllTasks();
       }
+    };
+    const getDueDateTooltip = (task) => {
+      if (!task.due_date) return '';
+
+      if (isTaskCompleted(task)) {
+        return `Первоначальный срок: ${formatDateForDisplay(task.due_date)}`;
+      }
+
+      return formatDateForDisplay(task.due_date);
+    };
+
+    const getDisplayDate = (task) => {
+      // Для выполненных задач: если есть complete_date - показываем его, иначе due_date
+      if (isTaskCompleted(task)) {
+        return formatDateForDisplay(task.complete_date || task.due_date);
+      }
+      // Для остальных задач показываем due_date
+      return formatDateForDisplay(task.due_date);
     };
     // ИЗМЕНЕНО: Обновление даты
     // Нужна промежуточная функция, чтобы поймать значение из @input
@@ -1146,6 +1171,8 @@ export default {
      });
     // --- Конец хуков ---
     return {
+      getDueDateTooltip,
+      getDisplayDate,
       getDueDateClass,
       handleSelectChange,
       uniqueObjects,
@@ -1299,6 +1326,7 @@ export default {
   margin-left: 3px;
   font-size: 0.8em;
   vertical-align: super;
+  display: inline-block;
 }
 
 /* Стиль для строк с статусом "Выполняется" */
