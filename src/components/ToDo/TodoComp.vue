@@ -253,9 +253,9 @@
           </select>
         </td>
         <td class="date-cell">{{ formatDate(task.created_at) }}</td>
-        <td class="date-cell"
-            :class="getDueDateClass(task)"
-            @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')">
+          <td class="date-cell"
+              :class="getDueDateClass(task)"
+              @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')">
             <input
                 v-if="task.editing && task.editingField === 'due_date'"
                 :value="task.due_date_edit"
@@ -267,9 +267,10 @@
                 v-focus
             />
             <span v-else>
-    {{ formatDateForDisplay(task.due_date) }}
-    <i class="fas fa-calendar-alt" @click="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')" title="Редактировать дату" style="cursor: pointer; margin-left: 5px;"></i>
-  </span>
+              {{ isTaskCompleted(task) ? formatDateForDisplay(task.complete_date) : formatDateForDisplay(task.due_date) }}
+              <i v-if="!isTaskCompleted(task)" class="fas fa-calendar-alt" @click="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')" title="Редактировать дату" style="cursor: pointer; margin-left: 5px;"></i>
+              <span v-if="isTaskCompleted(task) && task.due_date" class="original-due-date-tooltip" :title="'Первоначальная дата выполнения: ' + formatDateForDisplay(task.due_date)">*</span>
+            </span>
           </td>
         <td class="delete-cell">
           <template v-if="task.deleted">
@@ -849,12 +850,14 @@ export default {
       }
     };
 
+// В setup() добавим:
     const updateTask = async (task) => {
       if (task.user_id !== currentUserId.value) {
         console.error(errorMessages.updateUserMismatch, `Task ID: ${task.id}, Task User: ${task.user_id}, Current User: ${currentUserId.value}`);
         await fetchAllTasks();
         return;
       }
+
       try {
         const taskToUpdate = {
           title: task.title,
@@ -863,9 +866,18 @@ export default {
           privacy: task.privacy,
           project: task.project,
           status: task.status,
-          deleted: task.deleted || false, // Убедимся, что значение всегда false, если не задано
+          deleted: task.deleted || false,
           importance_tag: task.importance_tag,
         };
+
+        // Если статус изменился на "выполнено", добавляем текущую дату выполнения
+        if (task.status === completedStatus && task.originalStatus !== completedStatus) {
+          taskToUpdate.complete_date = new Date().toISOString().split('T')[0];
+        }
+        // Если статус изменился с "выполнено" на другой, очищаем complete_date
+        else if (task.originalStatus === completedStatus && task.status !== completedStatus) {
+          taskToUpdate.complete_date = null;
+        }
 
         const { error } = await supabase
             .from('todolist')
@@ -873,11 +885,15 @@ export default {
             .match({ id: task.id, user_id: currentUserId.value });
 
         if (error) throw error;
+
+        // Сохраняем текущий статус как originalStatus для будущих сравнений
+        task.originalStatus = task.status;
       } catch (error) {
         console.error(errorMessages.updateTask, error);
         await fetchAllTasks();
       }
-    };    // ИЗМЕНЕНО: Обновление даты
+    };
+    // ИЗМЕНЕНО: Обновление даты
     // Нужна промежуточная функция, чтобы поймать значение из @input
     const updateDueDateValue = (task, newDateValue_YYYYMMDD) => {
          if (isTaskCompleted(task) || task.deleted) return;
@@ -1022,17 +1038,19 @@ export default {
 
         tasks.value = (data || []).map(task => ({
           ...task,
-          project: task.project || '', // Гарантируем, что project не будет null
-          object: task.object || '', // Гарантируем, что object не будет null
+          project: task.project || '',
+          object: task.object || '',
           due_date_edit: formatDateForInput(task.due_date) || '',
+          complete_date_edit: formatDateForInput(task.complete_date) || '',
           editing: false,
           editingField: null,
           selectEditing: false,
-          originalValue: ''
+          originalValue: '',
+          originalStatus: task.status // Сохраняем исходный статус для сравнения
         }));
 
         applyDefaultSort();
-        fetchUniqueProjects(); // Обновляем списки уникальных значений
+        await fetchUniqueProjects(); // Обновляем списки уникальных значений
 
       } catch (error) {
         console.error(errorMessages.loadTasks, error);
@@ -1274,6 +1292,15 @@ export default {
     font-size: 0.7em;
   }
 }
+
+.original-due-date-tooltip {
+  color: #666;
+  cursor: help;
+  margin-left: 3px;
+  font-size: 0.8em;
+  vertical-align: super;
+}
+
 /* Стиль для строк с статусом "Выполняется" */
 .status-in-progress-task td:not(.status-cell):not(.delete-cell):not(.date-cell):not(.privacy-cell):not(.importance-cell) {
   background-color: rgba(224, 12, 12, 0.9) !important; /* Легкий красный фон */
