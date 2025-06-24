@@ -237,7 +237,7 @@
               <option :value="waitedStatus">{{ waitedText }}</option>
               <option :value="cancelledStatus">{{ cancelledText }}</option>
             </select>
-          </td>
+        </td>
         <td class="importance-cell" :class="importanceClass(task.importance_tag)">
           <select v-model="task.importance_tag" @change="updateTask(task)" :disabled="isTaskCompleted(task) || task.deleted">
             <option :value="highImportance">{{ highImportanceText }}</option>
@@ -255,7 +255,8 @@
         <td class="date-cell">{{ formatDate(task.created_at) }}</td>
           <td class="date-cell"
               :class="getDueDateClass(task)"
-              @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')">
+              @dblclick="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')"
+              :title="getDueDateTooltip(task)">
             <input
                 v-if="task.editing && task.editingField === 'due_date'"
                 :value="task.due_date_edit"
@@ -266,17 +267,16 @@
                 class="date-input"
                 v-focus
             />
-            <span v-else
-                  :title="getDueDateTooltip(task)">
-        {{ getDisplayDate(task) }}
-        <i v-if="!isTaskCompleted(task)"
-           class="fas fa-calendar-alt"
-           @click="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')"
-           title="Редактировать дату"
-           style="cursor: pointer; margin-left: 5px;"></i>
+            <span v-else>
+              {{ getDisplayDate(task) }}
+              <i v-if="!isTaskCompleted(task)"
+                 class="fas fa-calendar-alt"
+                 @click="!isTaskCompleted(task) && !task.deleted && startEditing(task, 'due_date')"
+                 title="Редактировать дату"
+                 style="cursor: pointer; margin-left: 5px;"></i>
             </span>
           </td>
-        <td class="delete-cell">
+          <td class="delete-cell">
           <template v-if="task.deleted">
             <button
                 @click="restoreTask(task.id)"
@@ -387,6 +387,26 @@ export default {
     const currentUserId = ref(null);
     const filterText = ref(''); // Добавляем переменную для фильтрации
 
+    const calculateDateDifference = (task) => {
+      if (task.status !== completedStatus || !task.complete_date || !task.due_date) return null;
+
+      try {
+        const completeDate = new Date(task.complete_date);
+        const dueDate = new Date(task.due_date);
+
+        // Устанавливаем время на 00:00:00 для точного расчета дней
+        completeDate.setHours(0, 0, 0, 0);
+        dueDate.setHours(0, 0, 0, 0);
+
+        const diffTime = completeDate - dueDate;
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+        return diffDays;
+      } catch (e) {
+        console.error("Ошибка при расчете разницы дат:", e);
+        return null;
+      }
+    };
     const isHighlighted = (value) => {
       if (!filterText.value) return false;
       const text = Array.isArray(value) ? value.join(', ') : value?.toString() || '';
@@ -853,7 +873,6 @@ export default {
         task.originalValue = '';
       }
     };
-
 // В setup() добавим:
     const updateTask = async (task) => {
       if (task.user_id !== currentUserId.value) {
@@ -900,14 +919,28 @@ export default {
         await fetchAllTasks();
       }
     };
+
+
+
     const getDueDateTooltip = (task) => {
-      if (!task.due_date) return '';
+      // Показываем подсказку ТОЛЬКО для выполненных задач с complete_date
+      if (task.status === completedStatus && task.complete_date && task.due_date) {
+        const diffDays = calculateDateDifference(task);
+        let tooltip = `Базовый срок: ${formatDateForDisplay(task.due_date)}`;
 
-      if (isTaskCompleted(task)) {
-        return `Первоначальный срок: ${formatDateForDisplay(task.due_date)}`;
+        if (diffDays !== null) {
+          if (diffDays < 0) {
+            tooltip += `\nОпережение: ${Math.abs(diffDays)} дней`;
+          } else if (diffDays > 0) {
+            tooltip += `\nОтставание: ${diffDays} дней`;
+          } else {
+            tooltip += `\nВыполнено в срок`;
+          }
+        }
+        return tooltip;
       }
-
-      return formatDateForDisplay(task.due_date);
+      // Во всех остальных случаях - пустая строка (подсказка не показывается)
+      return '';
     };
 
     const getDisplayDate = (task) => {
@@ -1123,8 +1156,6 @@ export default {
          subscription.value = null;
        }
      };
-    // --- Конец Real-time ---
-
     // --- Хуки жизненного цикла ---
     onMounted(async () => {
       await fetchUniqueProjects();
@@ -1162,15 +1193,16 @@ export default {
         });
      });
 
-     onUnmounted(() => {
-       document.removeEventListener('keyup', removeTooltip);
-       console.log("TodoComp Unmounted.");
-       unsubscribeFromRealtimeChanges(); // Отписываемся при размонтировании
-        // Также отписываемся от onAuthStateChange, если нужно
-        // (но обычно основной слушатель в App.vue достаточен)
-     });
+    onUnmounted(() => {
+     document.removeEventListener('keyup', removeTooltip);
+     console.log("TodoComp Unmounted.");
+     unsubscribeFromRealtimeChanges(); // Отписываемся при размонтировании
+      // Также отписываемся от onAuthStateChange, если нужно
+      // (но обычно основной слушатель в App.vue достаточен)
+    });
     // --- Конец хуков ---
     return {
+      calculateDateDifference,
       getDueDateTooltip,
       getDisplayDate,
       getDueDateClass,
