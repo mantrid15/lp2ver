@@ -331,6 +331,7 @@ export default {
      * @throws {Error} При ошибках валидации или запросов к БД
      * @returns {Promise<void>}
      */
+// В методе nestFolder (внутри setup()) добавим обновление ссылок:
     const nestFolder = async (sourceFolder, targetFolder) => {
       const operationId = `nest_${Date.now()}`;
       console.groupCollapsed(`[${operationId}] nestFolder: ${sourceFolder.dir_name} -> ${targetFolder.dir_name}`);
@@ -364,10 +365,19 @@ export default {
           throw new Error(errorMsg);
         }
 
-        // 3. Подготовка данных
-        logOperation('Подготовка к обновлению БД');
-        const originalRange = sourceFolder.range;
-        console.log('Оригинальный range:', originalRange);
+        // 3. Обновление ссылок в child folder перед вложением
+        logOperation('Обновление ссылок в перемещаемой папке');
+        const { error: updateLinksError } = await supabase
+            .from('links')
+            .update({
+              parent_hash: targetFolder.dir_hash
+            })
+            .eq('dir_hash', sourceFolder.dir_hash);
+
+        if (updateLinksError) {
+          console.error('Ошибка при обновлении ссылок:', updateLinksError);
+          throw updateLinksError;
+        }
 
         // 4. Обновление родительской папки
         logOperation('Обновление parent_hash в БД');
@@ -419,7 +429,8 @@ export default {
         await Promise.all([
           fetchFolders(),
           getSubfolderCount(targetFolder.dir_hash),
-          getCombinedLinkCount(targetFolder.dir_hash)
+          getCombinedLinkCount(targetFolder.dir_hash),
+          getCombinedLinkCount(sourceFolder.dir_hash) // Обновляем счетчики для обеих папок
         ]);
 
         // 8. Визуальный feedback
@@ -430,7 +441,7 @@ export default {
         }
 
         logOperation('Операция успешно завершена');
-        showSnackbar(`"${sourceFolder.dir_name}" → "${targetFolder.dir_name}"`);
+        showSnackbar(`"${sourceFolder.dir_name}" → "${targetFolder.dir_hash}"`);
       } catch (error) {
         console.error(`[${operationId}] Ошибка:`, error);
         showSnackbar('Ошибка при вложении папки', 'error');
@@ -443,7 +454,6 @@ export default {
         console.groupEnd();
       }
     };
-
 // Вспомогательные функции
     /**
      * Логирование операций с возможностью отключения
