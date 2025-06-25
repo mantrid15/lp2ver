@@ -154,6 +154,7 @@
               <template v-if="link.parent_hash">
                 {{ getFolderNameByHash(link.parent_hash) }}<span class="folder-separator">/</span>
                 <span class="subfolder">{{ getFolderNameByHash(link.dir_hash) }}</span>
+                <span class="subfolder">{{ getFolderNameByHash(link.dir_hash) }}</span>
               </template>
               <template v-else>
                 {{ getFolderNameByHash(link.dir_hash) }}
