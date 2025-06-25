@@ -363,7 +363,7 @@ export default {
             if (isDuplicate) {
               console.log('Обнаружена папка с таким же именем, выполняем слияние');
               showSnackbar(
-                  `Папка с именем "${sourceFolder.dir_name}" уже существует в целевой папке. Папки будут объединены.`,
+                  `Папка "${sourceFolder.dir_name}" уже существует. Содержимое будет объединено.`,
                   'warning'
               );
 
@@ -375,11 +375,13 @@ export default {
                   .eq('dir_name', sourceFolder.dir_name);
 
               if (fetchError) throw fetchError;
-              if (!existingFolders || existingFolders.length === 0) throw new Error('Не найдена папка для слияния');
+              if (!existingFolders || existingFolders.length === 0) {
+                throw new Error('Не найдена папка для слияния');
+              }
 
               const existingFolder = existingFolders[0];
 
-              // 3.2. Обновляем ссылки из sourceFolder (переносим их в existingFolder)
+              // 3.2. Переносим ссылки из sourceFolder в existingFolder
               const { error: updateLinksError } = await supabase
                   .from('links')
                   .update({
@@ -390,7 +392,7 @@ export default {
 
               if (updateLinksError) throw updateLinksError;
 
-              // 3.3. Обновляем подпапки sourceFolder (переносим их в existingFolder)
+              // 3.3. Переносим подпапки из sourceFolder в existingFolder
               const { error: updateSubfoldersError } = await supabase
                   .from('dir')
                   .update({
@@ -400,11 +402,12 @@ export default {
 
               if (updateSubfoldersError) throw updateSubfoldersError;
 
-              // 3.4. Удаляем sourceFolder
+              // 3.4. Удаляем только sourceFolder (child folder)
               const { error: deleteError } = await supabase
                   .from('dir')
                   .delete()
-                  .eq('dir_hash', sourceFolder.dir_hash);
+                  .eq('dir_hash', sourceFolder.dir_hash)
+                  .is('parent_hash', null); // Важное условие - удаляем только если parent_hash null
 
               if (deleteError) throw deleteError;
 
@@ -416,11 +419,12 @@ export default {
                 getCombinedLinkCount(existingFolder.dir_hash)
               ]);
 
-              showSnackbar(`Папки "${sourceFolder.dir_name}" объединены`, 'success');
+              showSnackbar(`Содержимое папки "${sourceFolder.dir_name}" объединено`, 'success');
               return;
             }
 
             // 4. Если дубликатов нет - стандартное вложение
+            // ... (остальной код без изменений)
             // 4.1. Обновляем ссылки в child folder
             const { error: updateLinksError } = await supabase
                 .from('links')
@@ -431,7 +435,7 @@ export default {
 
             if (updateLinksError) throw updateLinksError;
 
-            // 4.2. Обновляем саму папку
+            // 4.2. Обновляем саму папку (делаем ее дочерней)
             const { error: updateFolderError } = await supabase
                 .from('dir')
                 .update({
@@ -487,7 +491,6 @@ export default {
             console.groupEnd();
           }
         };
-
 // Вспомогательные функции
     /**
      * Логирование операций с возможностью отключения

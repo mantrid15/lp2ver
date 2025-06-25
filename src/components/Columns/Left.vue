@@ -349,7 +349,7 @@ export default {
               .from('links')
               .update({
                 parent_hash: null,
-                dir_hash: null
+                dir_hash: folderToMove.dir_hash
               })
               .eq('dir_hash', folderToMove.dir_hash);
 
