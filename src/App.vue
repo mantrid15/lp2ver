@@ -13,6 +13,7 @@
               <v-list-item to="/todo" title="ToDo" prepend-icon="mdi-format-list-checks"></v-list-item>
               <!-- Login/Logout -->
               <v-list-item to="/note" title="LiNote" prepend-icon="mdi-format-list-checks"></v-list-item>
+              <v-list-item to="/dgantt" title="DGantt" prepend-icon="mdi-format-list-checks"></v-list-item>
 
               <v-list-item
                 to="/login"

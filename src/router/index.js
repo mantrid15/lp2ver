@@ -7,6 +7,7 @@ import Info from '@/views/InfoView.vue';
 import LinzerView from '@/views/Linzer.vue';
 import NoteView from '@/views/NoteView.vue';
 import ToDo from '@/views/TodoView.vue';
+import DGantt from '@/views/DiaGanZer.vue';
 import { useStore } from 'vuex';
 
 
@@ -36,6 +37,12 @@ const router = createRouter({
 			path: "/todo",
 			name: "ToDo",
 			component: ToDo,
+			meta: { requiresAuth: true }
+		},
+		{
+			path: "/dgantt",
+			name: "DGantt",
+			component: DGantt,
 			meta: { requiresAuth: true }
 		},
 		{
