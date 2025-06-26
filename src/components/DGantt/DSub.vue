@@ -115,7 +115,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue';
 import { useTaskStore } from '../../composables/useTaskStore';
 
@@ -129,7 +129,7 @@ const newSubTask = ref({
   progress: 0
 });
 
-const createSubTask = () => {
+const createSubTask = async () => {
   if (!selectedTask.value) return;
 
   if (newSubTask.value.name && newSubTask.value.startDate && newSubTask.value.endDate) {
@@ -138,24 +138,16 @@ const createSubTask = () => {
       return;
     }
 
-    // Проверяем, что подзадача не выходит за рамки основной задачи
-    const taskStart = new Date(selectedTask.value.startDate);
-    const taskEnd = new Date(selectedTask.value.endDate);
-    const subStart = new Date(newSubTask.value.startDate);
-    const subEnd = new Date(newSubTask.value.endDate);
-
-    if (subStart < taskStart || subEnd > taskEnd) {
-      alert('Подзадача должна быть в рамках основной задачи');
-      return;
+    try {
+      await addSubTask({
+        ...newSubTask.value,
+        taskId: selectedTask.value.id
+      });
+      resetForm();
+      showForm.value = false;
+    } catch (error) {
+      alert('Ошибка при создании подзадачи: ' + error.message);
     }
-
-    addSubTask({
-      ...newSubTask.value,
-      taskId: selectedTask.value.id
-    });
-
-    resetForm();
-    showForm.value = false;
   }
 };
 
@@ -168,11 +160,11 @@ const resetForm = () => {
   };
 };
 
-const formatDate = (dateStr: string) => {
+const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString('ru-RU');
 };
 
-const calculateDuration = (startDate: string, endDate: string) => {
+const calculateDuration = (startDate, endDate) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
   const diffTime = Math.abs(end.getTime() - start.getTime());
@@ -180,7 +172,7 @@ const calculateDuration = (startDate: string, endDate: string) => {
   return diffDays;
 };
 
-const getProgressClass = (progress: number) => {
+const getProgressClass = (progress) => {
   if (progress >= 80) return 'progress-high';
   if (progress >= 50) return 'progress-medium';
   if (progress >= 20) return 'progress-low';

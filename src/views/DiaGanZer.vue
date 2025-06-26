@@ -1,139 +1,177 @@
 <template>
-  <div class="diaganzer-app">
-    <header class="app-header">
-      <h1>DiaGanZer</h1>
-      <p class="app-subtitle">Система управления проектами и диаграмм Ганта</p>
-    </header>
+  <div class="container">
+    <div class="tasks-section" :style="{ width: leftColumnWidth }">
+      <DTask />
+    </div>
+    <div class="resizer" @mousedown="(e) => startResize(e, 1)"></div>
 
-    <main class="app-main">
-      <div class="horizontal-layout">
-        <!-- Компонент задач -->
-        <div class="layout-section tasks-section">
-          <DTask />
-        </div>
+    <div class="subtasks-section" :style="{ width: middleColumnWidth }">
+      <DSub />
+    </div>
+    <div class="resizer" @mousedown="(e) => startResize(e, 2)"></div>
 
-        <!-- Разделитель -->
-        <div class="layout-divider"></div>
-
-        <!-- Компонент подзадач -->
-        <div class="layout-section subtasks-section">
-          <DSub />
-        </div>
-
-        <!-- Разделитель -->
-        <div class="layout-divider"></div>
-
-        <!-- Компонент диаграммы Ганта -->
-        <div class="layout-section gantt-section">
-          <DGantt />
-        </div>
-      </div>
-    </main>
-
-    <footer class="app-footer">
-      <p>&copy; 2024 DiaGanZer - Управление проектами</p>
-    </footer>
+    <div class="gantt-section" :style="{ width: rightColumnWidth }">
+      <DGantt />
+    </div>
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
+import { ref, onMounted, onUnmounted } from 'vue';
 import DTask from '../components/DGantt/DTask.vue';
 import DSub from '../components/DGantt/DSub.vue';
 import DGantt from '../components/DGantt/DGantt.vue';
+
+// Column widths with localStorage
+const leftColumnWidth = ref(localStorage.getItem('leftColumnWidth') || '20%');
+const middleColumnWidth = ref(localStorage.getItem('middleColumnWidth') || '20%');
+const rightColumnWidth = ref(localStorage.getItem('rightColumnWidth') || '60%');
+
+// Resize state
+const isResizing = ref(false);
+let initialMouseX = 0;
+let containerWidth = 0;
+let currentColumn = 0;
+let ctrlPressed = false;
+
+// Column width constraints
+const MIN_SIDE_COLUMN_WIDTH = 15;
+const MAX_SIDE_COLUMN_WIDTH = 30;
+const MIN_MIDDLE_COLUMN_WIDTH = 15;
+const MAX_MIDDLE_COLUMN_WIDTH = 30;
+
+const startResize = (e, column) => {
+  if (!ctrlPressed) {
+    console.log('Ctrl key is not pressed. Resizing is disabled.');
+    return;
+  }
+
+  isResizing.value = true;
+  initialMouseX = e.clientX;
+  currentColumn = column;
+  containerWidth = document.querySelector('.container').offsetWidth;
+
+  document.addEventListener('mousemove', handleResize);
+  document.addEventListener('mouseup', stopResize);
+};
+
+const handleResize = (e) => {
+  if (!isResizing.value) return;
+
+  const delta = e.clientX - initialMouseX;
+  const deltaPercent = (delta / containerWidth) * 100;
+
+  if (currentColumn === 1) {
+    let newLeftWidth = parseFloat(leftColumnWidth.value) + deltaPercent;
+    let newMiddleWidth = parseFloat(middleColumnWidth.value) - deltaPercent;
+
+    newLeftWidth = Math.min(Math.max(newLeftWidth, MIN_SIDE_COLUMN_WIDTH), MAX_SIDE_COLUMN_WIDTH);
+    newMiddleWidth = 100 - newLeftWidth - parseFloat(rightColumnWidth.value);
+
+    if (newMiddleWidth >= MIN_MIDDLE_COLUMN_WIDTH && newMiddleWidth <= MAX_MIDDLE_COLUMN_WIDTH) {
+      leftColumnWidth.value = `${newLeftWidth}%`;
+      middleColumnWidth.value = `${newMiddleWidth}%`;
+      localStorage.setItem("leftColumnWidth", leftColumnWidth.value);
+      localStorage.setItem("middleColumnWidth", middleColumnWidth.value);
+    }
+  } else if (currentColumn === 2) {
+    let newMiddleWidth = parseFloat(middleColumnWidth.value) + deltaPercent;
+    let newRightWidth = parseFloat(rightColumnWidth.value) - deltaPercent;
+
+    newMiddleWidth = Math.min(Math.max(newMiddleWidth, MIN_MIDDLE_COLUMN_WIDTH), MAX_MIDDLE_COLUMN_WIDTH);
+    newRightWidth = 100 - parseFloat(leftColumnWidth.value) - newMiddleWidth;
+
+    if (newRightWidth >= 40) { // Минимальная ширина для диаграммы Ганта
+      middleColumnWidth.value = `${newMiddleWidth}%`;
+      rightColumnWidth.value = `${newRightWidth}%`;
+      localStorage.setItem("middleColumnWidth", middleColumnWidth.value);
+      localStorage.setItem("rightColumnWidth", rightColumnWidth.value);
+    }
+  }
+  initialMouseX = e.clientX;
+};
+
+const stopResize = () => {
+  isResizing.value = false;
+  document.removeEventListener('mousemove', handleResize);
+  document.removeEventListener('mouseup', stopResize);
+};
+
+const handleKeyDown = (e) => {
+  if (e.ctrlKey) {
+    ctrlPressed = true;
+  }
+};
+
+const handleKeyUp = (e) => {
+  if (e.key === 'Control') {
+    ctrlPressed = false;
+  }
+};
+
+onMounted(() => {
+  document.addEventListener("keydown", handleKeyDown);
+  document.addEventListener("keyup", handleKeyUp);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("keydown", handleKeyDown);
+  document.removeEventListener("keyup", handleKeyUp);
+});
 </script>
 
 <style scoped>
-.diaganzer-app {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+.container {
   display: flex;
-  flex-direction: column;
-}
-
-.app-header {
-  text-align: center;
-  padding: 20px;
-  color: white;
-  flex-shrink: 0;
-}
-
-.app-header h1 {
-  font-size: 2.5rem;
-  margin: 0;
-  font-weight: 700;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-  letter-spacing: -1px;
-}
-
-.app-subtitle {
-  font-size: 1rem;
-  margin: 8px 0 0 0;
-  opacity: 0.9;
-  font-weight: 300;
-}
-
-.app-main {
-  flex: 1;
-  padding: 0 20px 20px;
+  height: calc(100vh - 120px);
   overflow: hidden;
+  margin-top: 50px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-.horizontal-layout {
-  display: flex;
+.resizer {
+  cursor: ew-resize;
+  width: 5px;
+  background: rgba(255, 255, 255, 0.2);
+  z-index: 3;
+  transition: background 0.2s ease;
+}
+
+.resizer:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.tasks-section,
+.subtasks-section,
+.gantt-section {
   height: 100%;
-  min-height: calc(100vh - 200px);
-  gap: 0;
-}
-
-.layout-section {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.layout-section:hover {
+.tasks-section:hover,
+.subtasks-section:hover,
+.gantt-section:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
 .tasks-section {
-  width: 20%;
-  flex-shrink: 0;
+  animation: fadeInLeft 0.6s ease-out;
 }
 
 .subtasks-section {
-  width: 20%;
-  flex-shrink: 0;
+  animation: fadeInUp 0.6s ease-out 0.1s both;
 }
 
 .gantt-section {
-  flex: 1;
-  min-width: 0; /* Позволяет flex элементу сжиматься */
+  animation: fadeInRight 0.6s ease-out 0.2s both;
 }
 
-.layout-divider {
-  width: 5px;
-  background-color: #dc3545;
-  flex-shrink: 0;
-  border-radius: 2px;
-  margin: 10px 0;
-}
-
-.app-footer {
-  text-align: center;
-  padding: 15px;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-/* Анимации загрузки */
 @keyframes fadeInLeft {
   from {
     opacity: 0;
@@ -167,57 +205,33 @@ import DGantt from '../components/DGantt/DGantt.vue';
   }
 }
 
-.tasks-section {
-  animation: fadeInLeft 0.6s ease-out;
-}
-
-.subtasks-section {
-  animation: fadeInUp 0.6s ease-out 0.1s both;
-}
-
-.gantt-section {
-  animation: fadeInRight 0.6s ease-out 0.2s both;
-}
-
 /* Адаптивность для мобильных устройств */
 @media (max-width: 1024px) {
-  .horizontal-layout {
+  .container {
     flex-direction: column;
-    gap: 10px;
+    height: auto;
+    margin-top: 20px;
   }
 
-  .layout-divider {
+  .resizer {
     width: 100%;
     height: 5px;
-    margin: 0;
+    margin: 5px 0;
   }
 
   .tasks-section,
-  .subtasks-section {
-    width: 100%;
-  }
-
+  .subtasks-section,
   .gantt-section {
-    flex: 1;
-    min-height: 400px;
+    width: 100% !important;
+    height: auto;
+    min-height: 300px;
+    margin-bottom: 10px;
   }
 }
 
 @media (max-width: 768px) {
-  .app-main {
-    padding: 0 10px 10px;
-  }
-
-  .app-header {
-    padding: 15px;
-  }
-
-  .app-header h1 {
-    font-size: 2rem;
-  }
-
-  .app-subtitle {
-    font-size: 0.9rem;
+  .container {
+    margin-top: 15px;
   }
 }
 </style>

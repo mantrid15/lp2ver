@@ -80,12 +80,148 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref } from 'vue';
-import { useTaskStore } from '../../composables/useTaskStore';
+<script setup>
+import { ref, computed, provide } from 'vue';
+import { supabase } from '../../supabase';
 
-const { tasks, selectedTaskId, addTask, selectTask } = useTaskStore();
+// Состояние хранилища
+const tasks = ref([]);
+const subTasks = ref([]);
+const selectedTaskId = ref(null);
+const loading = ref(false);
+const error = ref(null);
 
+// Получаем все задачи (где parent_task IS NULL)
+const fetchTasks = async () => {
+  try {
+    loading.value = true;
+    const { data, error: fetchError } = await supabase
+      .from('gantt')
+      .select('*')
+      .is('parent_task', null)
+      .order('start_date', { ascending: true });
+
+    if (fetchError) throw fetchError;
+    tasks.value = data;
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error fetching tasks:', err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Получаем подзадачи для выбранной задачи
+const fetchSubTasks = async (taskId) => {
+  try {
+    loading.value = true;
+    const { data, error: fetchError } = await supabase
+      .from('gantt')
+      .select('*')
+      .eq('parent_task', taskId)
+      .order('start_date', { ascending: true });
+
+    if (fetchError) throw fetchError;
+    subTasks.value = data;
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error fetching subtasks:', err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Добавляем новую задачу
+const addTask = async (task) => {
+  try {
+    const { data, error: insertError } = await supabase
+      .from('gantt')
+      .insert([
+        {
+          name: task.name,
+          start_date: task.startDate,
+          end_date: task.endDate,
+          progress: 0
+        }
+      ])
+      .select();
+
+    if (insertError) throw insertError;
+    await fetchTasks();
+    return data[0].id;
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error adding task:', err);
+    throw err;
+  }
+};
+
+// Добавляем новую подзадачу
+const addSubTask = async (subTask) => {
+  try {
+    const { data, error: insertError } = await supabase
+      .from('gantt')
+      .insert([
+        {
+          name: subTask.name,
+          start_date: subTask.startDate,
+          end_date: subTask.endDate,
+          progress: subTask.progress,
+          parent_task: subTask.taskId
+        }
+      ])
+      .select();
+
+    if (insertError) throw insertError;
+    await fetchSubTasks(subTask.taskId);
+    return data[0].id;
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error adding subtask:', err);
+    throw err;
+  }
+};
+
+// Выбираем задачу и загружаем её подзадачи
+const selectTask = async (taskId) => {
+  selectedTaskId.value = taskId;
+  if (taskId) {
+    await fetchSubTasks(taskId);
+  } else {
+    subTasks.value = [];
+  }
+};
+
+// Вычисляемое свойство для выбранной задачи
+const selectedTask = computed(() => {
+  return tasks.value.find(task => task.id === selectedTaskId.value) || null;
+});
+
+// Вычисляемое свойство для подзадач выбранной задачи
+const selectedSubTasks = computed(() => {
+  return subTasks.value.filter(subTask => subTask.parent_task === selectedTaskId.value);
+});
+
+// Предоставляем состояние дочерним компонентам
+provide('taskStore', {
+  tasks,
+  subTasks,
+  selectedTaskId,
+  selectedTask,
+  selectedSubTasks,
+  loading,
+  error,
+  addTask,
+  addSubTask,
+  selectTask,
+  fetchTasks,
+  fetchSubTasks
+});
+
+// Инициализация - загружаем задачи при создании
+fetchTasks();
+
+// Локальное состояние компонента
 const showForm = ref(false);
 const newTask = ref({
   name: '',
@@ -93,16 +229,20 @@ const newTask = ref({
   endDate: ''
 });
 
-const createTask = () => {
+const createTask = async () => {
   if (newTask.value.name && newTask.value.startDate && newTask.value.endDate) {
     if (new Date(newTask.value.startDate) > new Date(newTask.value.endDate)) {
       alert('Дата начала не может быть позже даты окончания');
       return;
     }
 
-    addTask(newTask.value);
-    resetForm();
-    showForm.value = false;
+    try {
+      await addTask(newTask.value);
+      resetForm();
+      showForm.value = false;
+    } catch (error) {
+      alert('Ошибка при создании задачи: ' + error.message);
+    }
   }
 };
 
@@ -114,7 +254,7 @@ const resetForm = () => {
   };
 };
 
-const formatDate = (dateStr: string) => {
+const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString('ru-RU');
 };
 </script>

@@ -69,10 +69,10 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { computed } from 'vue';
-import { useTaskStore } from '../../composables/useTaskStore';
-import type { SubTask } from '../../types';
+// import { useTaskStore } from '../../composables/useTaskStore';
+// import type { SubTask } from '../../types';
 
 const { selectedTask, selectedSubTasks } = useTaskStore();
 
@@ -80,8 +80,8 @@ const { selectedTask, selectedSubTasks } = useTaskStore();
 const timelineDates = computed(() => {
   if (!selectedTask.value) return [];
 
-  const startDate = new Date(selectedTask.value.startDate);
-  const endDate = new Date(selectedTask.value.endDate);
+  const startDate = new Date(selectedTask.value.start_date);
+  const endDate = new Date(selectedTask.value.end_date);
   const dates = [];
 
   const current = new Date(startDate);
@@ -95,12 +95,12 @@ const timelineDates = computed(() => {
 
 const totalDays = computed(() => timelineDates.value.length);
 
-const getBarStyle = (subTask: SubTask) => {
+const getBarStyle = (subTask) => {
   if (!selectedTask.value) return {};
 
-  const taskStart = new Date(selectedTask.value.startDate);
-  const subStart = new Date(subTask.startDate);
-  const subEnd = new Date(subTask.endDate);
+  const taskStart = new Date(selectedTask.value.start_date);
+  const subStart = new Date(subTask.start_date);
+  const subEnd = new Date(subTask.end_date);
 
   const startOffset = Math.floor((subStart.getTime() - taskStart.getTime()) / (1000 * 60 * 60 * 24));
   const duration = Math.floor((subEnd.getTime() - subStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -114,18 +114,18 @@ const getBarStyle = (subTask: SubTask) => {
   };
 };
 
-const getBarClass = (progress: number) => {
+const getBarClass = (progress) => {
   if (progress >= 80) return 'bar-high';
   if (progress >= 50) return 'bar-medium';
   if (progress >= 20) return 'bar-low';
   return 'bar-none';
 };
 
-const formatDate = (dateStr: string) => {
+const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString('ru-RU');
 };
 
-const formatDateShort = (date: Date) => {
+const formatDateShort = (date) => {
   return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}`;
 };
 </script>
