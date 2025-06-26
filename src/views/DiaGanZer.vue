@@ -1,26 +1,36 @@
 <template>
-  <div class="container">
+  <div v-if="account?.data?.session" class="container">
     <div class="tasks-section" :style="{ width: leftColumnWidth }">
-      <DTask />
+      <DTask @task-selected="handleTaskSelected" :userId="userId" />
     </div>
     <div class="resizer" @mousedown="(e) => startResize(e, 1)"></div>
 
     <div class="subtasks-section" :style="{ width: middleColumnWidth }">
-      <DSub />
+      <DSub :task-id="selectedTaskId" :userId="userId" />
     </div>
     <div class="resizer" @mousedown="(e) => startResize(e, 2)"></div>
 
     <div class="gantt-section" :style="{ width: rightColumnWidth }">
-      <DGantt />
+      <DGantt :task-id="selectedTaskId" :userId="userId" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import {onMounted, onUnmounted, ref, computed} from 'vue';
+import { useStore } from 'vuex';
 import DTask from '../components/DGantt/DTask.vue';
 import DSub from '../components/DGantt/DSub.vue';
 import DGantt from '../components/DGantt/DGantt.vue';
+
+const store = useStore();
+const userId = computed(() => store.state.userId);
+
+const selectedTaskId = ref(null);
+
+const handleTaskSelected = (taskId) => {
+  selectedTaskId.value = taskId;
+};
 
 // Column widths with localStorage
 const leftColumnWidth = ref(localStorage.getItem('leftColumnWidth') || '20%');
@@ -121,6 +131,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Оставьте стили без изменений */
 .container {
   display: flex;
   height: calc(100vh - 120px);

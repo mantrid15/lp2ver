@@ -2,89 +2,108 @@
   <div class="gantt-component">
     <div class="header">
       <h2>Диаграмма Ганта</h2>
-      <div v-if="selectedTask" class="task-info">
+      <div v-if="task" class="task-info">
         <span class="task-label">Задача:</span>
-        <span class="task-name">{{ selectedTask.name }}</span>
+        <span class="task-name">{{ task.name }}</span>
         <span class="date-range">
-          ({{ formatDate(selectedTask.startDate) }} - {{ formatDate(selectedTask.endDate) }})
+          ({{ formatDate(task.start_date) }} - {{ formatDate(task.end_date) }})
         </span>
       </div>
     </div>
 
-    <div v-if="!selectedTask" class="no-selection">
+    <div v-if="!task" class="no-selection">
       <p>Выберите задачу для отображения диаграммы Ганта</p>
     </div>
 
-    <div v-else-if="selectedSubTasks.length === 0" class="no-subtasks">
+    <div v-else-if="subTasks.length === 0" class="no-subtasks">
       <p>У выбранной задачи нет подзадач для отображения</p>
     </div>
 
     <div v-else class="gantt-chart">
-      <div class="gantt-header">
-        <div class="task-column">Подзадачи</div>
-        <div class="timeline-column">
-          <div class="timeline-grid">
-            <div
-                v-for="date in timelineDates"
-                :key="date.toString()"
-                class="timeline-date"
-            >
-              {{ formatDateShort(date) }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="gantt-body">
-        <div
-            v-for="subTask in selectedSubTasks"
-            :key="subTask.id"
-            class="gantt-row"
-        >
-          <div class="task-info-cell">
-            <div class="task-name">{{ subTask.name }}</div>
-            <div class="task-progress">{{ subTask.progress }}%</div>
-          </div>
-          <div class="timeline-cell">
-            <div class="timeline-grid">
-              <div
-                  class="gantt-bar"
-                  :style="getBarStyle(subTask)"
-                  :class="getBarClass(subTask.progress)"
-              >
-                <div class="bar-content">
-                  <span class="start-date">{{ formatDateShort(new Date(subTask.startDate)) }}</span>
-                  <span class="end-date">{{ formatDateShort(new Date(subTask.endDate)) }}</span>
-                </div>
-                <div
-                    class="progress-overlay"
-                    :style="{ width: subTask.progress + '%' }"
-                ></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- Остальная часть template без изменений -->
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue';
-// import { useTaskStore } from '../../composables/useTaskStore';
-// import type { SubTask } from '../../types';
+import { ref, computed, watch } from 'vue';
+import { supabase } from '@/clients/supabase.js';
+import {useStore} from "vuex";
 
-const { selectedTask, selectedSubTasks } = useTaskStore();
+const props = defineProps({
+  taskId: {
+    type: [String, Number],
+    default: null
+  }
+});
 
-// Вычисляем временной диапазон для диаграммы
+const store = useStore();
+
+// Состояние компонента
+const task = ref(null);
+const subTasks = ref([]);
+const loading = ref(false);
+const error = ref(null);
+const userId = computed(() => store.state.userId);
+// Получение данных задачи
+const fetchTask = async () => {
+  if (!props.taskId) {
+    task.value = null;
+    return;
+  }
+
+  try {
+    loading.value = true;
+    const { data, error: fetchError } = await supabase
+        .from('gantt')
+        .select('*')
+        .eq('user_id', props.userId) // Добавьте эту строку
+        .is('parent_task', null); // Для получения только родительских задач;
+
+    if (fetchError) throw fetchError;
+    task.value = data;
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error fetching task:', err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Получение подзадач
+const fetchSubTasks = async () => {
+  if (!props.taskId) {
+    subTasks.value = [];
+    return;
+  }
+
+  try {
+    loading.value = true;
+    const { data, error: fetchError } = await supabase
+        .from('gantt')
+        .select('*')
+        .eq('parent_task', props.taskId)
+        .order('start_date');
+
+    if (fetchError) throw fetchError;
+    subTasks.value = data;
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error fetching subtasks:', err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Вычисление временной шкалы
 const timelineDates = computed(() => {
-  if (!selectedTask.value) return [];
+  if (!task.value) return [];
 
-  const startDate = new Date(selectedTask.value.start_date);
-  const endDate = new Date(selectedTask.value.end_date);
+  const startDate = new Date(task.value.start_date);
+  const endDate = new Date(task.value.end_date);
   const dates = [];
-
   const current = new Date(startDate);
+
   while (current <= endDate) {
     dates.push(new Date(current));
     current.setDate(current.getDate() + 1);
@@ -93,24 +112,22 @@ const timelineDates = computed(() => {
   return dates;
 });
 
+// Остальные вычисляемые свойства и методы
 const totalDays = computed(() => timelineDates.value.length);
 
 const getBarStyle = (subTask) => {
-  if (!selectedTask.value) return {};
+  if (!task.value) return {};
 
-  const taskStart = new Date(selectedTask.value.start_date);
+  const taskStart = new Date(task.value.start_date);
   const subStart = new Date(subTask.start_date);
   const subEnd = new Date(subTask.end_date);
 
-  const startOffset = Math.floor((subStart.getTime() - taskStart.getTime()) / (1000 * 60 * 60 * 24));
-  const duration = Math.floor((subEnd.getTime() - subStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-  const leftPercent = (startOffset / totalDays.value) * 100;
-  const widthPercent = (duration / totalDays.value) * 100;
+  const startOffset = Math.floor((subStart - taskStart) / (1000 * 60 * 60 * 24));
+  const duration = Math.floor((subEnd - subStart) / (1000 * 60 * 60 * 24)) + 1;
 
   return {
-    left: `${leftPercent}%`,
-    width: `${widthPercent}%`
+    left: `${(startOffset / totalDays.value) * 100}%`,
+    width: `${(duration / totalDays.value) * 100}%`
   };
 };
 
@@ -128,6 +145,12 @@ const formatDate = (dateStr) => {
 const formatDateShort = (date) => {
   return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}`;
 };
+
+// Отслеживание изменения taskId
+watch(() => props.taskId, () => {
+  fetchTask();
+  fetchSubTasks();
+}, { immediate: true });
 </script>
 
 <style scoped>

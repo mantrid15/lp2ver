@@ -1,125 +1,89 @@
 <template>
-  <div class="task-component">
+  <div class="gantt-component">
     <div class="header">
-      <h2>Задачи</h2>
-      <button @click="showForm = !showForm" class="btn btn-primary">
-        {{ showForm ? 'Скрыть форму' : 'Добавить задачу' }}
-      </button>
+      <h2>Диаграмма Ганта</h2>
+      <div v-if="task" class="task-info">
+        <span class="task-label">Задача:</span>
+        <span class="task-name">{{ task.name }}</span>
+        <span class="date-range">
+          ({{ formatDate(task.start_date) }} - {{ formatDate(task.end_date) }})
+        </span>
+      </div>
     </div>
 
-    <!-- Форма создания задачи -->
-    <div v-if="showForm" class="task-form">
-      <h3>Создать новую задачу</h3>
-      <form @submit.prevent="createTask">
-        <div class="form-group">
-          <label>Наименование задачи:</label>
-          <input
-              v-model="newTask.name"
-              type="text"
-              required
-              placeholder="Введите название задачи"
-          />
-        </div>
-        <div class="form-group">
-          <label>Дата начала:</label>
-          <input
-              v-model="newTask.startDate"
-              type="date"
-              required
-          />
-        </div>
-        <div class="form-group">
-          <label>Дата окончания:</label>
-          <input
-              v-model="newTask.endDate"
-              type="date"
-              required
-          />
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="btn btn-success">Создать задачу</button>
-          <button type="button" @click="resetForm" class="btn btn-secondary">Очистить</button>
-        </div>
-      </form>
+    <div v-if="!task" class="no-selection">
+      <p>Выберите задачу для отображения диаграммы Ганта</p>
     </div>
 
-    <!-- Таблица задач -->
-    <div class="task-table">
-      <table>
-        <thead>
-        <tr>
-          <th>Наименование задачи</th>
-          <th>Дата начала</th>
-          <th>Дата окончания</th>
-          <th>Действия</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr
-            v-for="task in tasks"
-            :key="task.id"
-            :class="{ 'selected': selectedTaskId === task.id }"
-            @click="selectTask(task.id)"
-        >
-          <td>{{ task.name }}</td>
-          <td>{{ formatDate(task.startDate) }}</td>
-          <td>{{ formatDate(task.endDate) }}</td>
-          <td>
-            <button
-                @click.stop="selectTask(selectedTaskId === task.id ? null : task.id)"
-                class="btn btn-sm"
-                :class="selectedTaskId === task.id ? 'btn-warning' : 'btn-info'"
-            >
-              {{ selectedTaskId === task.id ? 'Отменить' : 'Выбрать' }}
-            </button>
-          </td>
-        </tr>
-        </tbody>
-      </table>
+    <div v-else-if="subTasks.length === 0" class="no-subtasks">
+      <p>У выбранной задачи нет подзадач для отображения</p>
+    </div>
+
+    <div v-else class="gantt-chart">
+      <!-- Остальная часть template без изменений -->
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, provide } from 'vue';
-import { supabase } from '../../supabase';
+import { ref, computed, watch } from 'vue';
+import { supabase } from '@/clients/supabase.js';
+import {useStore} from "vuex";
 
-// Состояние хранилища
-const tasks = ref([]);
+const props = defineProps({
+  taskId: {
+    type: [String, Number],
+    default: null
+  }
+});
+const store = useStore();
+
+const userId = computed(() => store.state.userId);
+// Состояние компонента
+const task = ref(null);
 const subTasks = ref([]);
-const selectedTaskId = ref(null);
 const loading = ref(false);
 const error = ref(null);
 
-// Получаем все задачи (где parent_task IS NULL)
-const fetchTasks = async () => {
+// Получение данных задачи
+const fetchTask = async () => {
+  if (!props.taskId) {
+    task.value = null;
+    return;
+  }
+
   try {
     loading.value = true;
     const { data, error: fetchError } = await supabase
-      .from('gantt')
-      .select('*')
-      .is('parent_task', null)
-      .order('start_date', { ascending: true });
+        .from('gantt')
+        .select('*')
+        .eq('user_id', props.userId) // Добавьте эту строку
+        .is('parent_task', null); // Для получения только родительских задач
 
     if (fetchError) throw fetchError;
-    tasks.value = data;
+    task.value = data;
   } catch (err) {
     error.value = err.message;
-    console.error('Error fetching tasks:', err);
+    console.error('Error fetching task:', err);
   } finally {
     loading.value = false;
   }
 };
 
-// Получаем подзадачи для выбранной задачи
-const fetchSubTasks = async (taskId) => {
+// Получение подзадач
+const fetchSubTasks = async () => {
+  if (!props.taskId) {
+    subTasks.value = [];
+    return;
+  }
+
   try {
     loading.value = true;
     const { data, error: fetchError } = await supabase
-      .from('gantt')
-      .select('*')
-      .eq('parent_task', taskId)
-      .order('start_date', { ascending: true });
+        .from('gantt')
+        .select('*')
+        .eq('parent_task', props.taskId)
+        .order('start_date');
 
     if (fetchError) throw fetchError;
     subTasks.value = data;
@@ -131,132 +95,62 @@ const fetchSubTasks = async (taskId) => {
   }
 };
 
-// Добавляем новую задачу
-const addTask = async (task) => {
-  try {
-    const { data, error: insertError } = await supabase
-      .from('gantt')
-      .insert([
-        {
-          name: task.name,
-          start_date: task.startDate,
-          end_date: task.endDate,
-          progress: 0
-        }
-      ])
-      .select();
+// Вычисление временной шкалы
+const timelineDates = computed(() => {
+  if (!task.value) return [];
 
-    if (insertError) throw insertError;
-    await fetchTasks();
-    return data[0].id;
-  } catch (err) {
-    error.value = err.message;
-    console.error('Error adding task:', err);
-    throw err;
+  const startDate = new Date(task.value.start_date);
+  const endDate = new Date(task.value.end_date);
+  const dates = [];
+  const current = new Date(startDate);
+
+  while (current <= endDate) {
+    dates.push(new Date(current));
+    current.setDate(current.getDate() + 1);
   }
-};
 
-// Добавляем новую подзадачу
-const addSubTask = async (subTask) => {
-  try {
-    const { data, error: insertError } = await supabase
-      .from('gantt')
-      .insert([
-        {
-          name: subTask.name,
-          start_date: subTask.startDate,
-          end_date: subTask.endDate,
-          progress: subTask.progress,
-          parent_task: subTask.taskId
-        }
-      ])
-      .select();
-
-    if (insertError) throw insertError;
-    await fetchSubTasks(subTask.taskId);
-    return data[0].id;
-  } catch (err) {
-    error.value = err.message;
-    console.error('Error adding subtask:', err);
-    throw err;
-  }
-};
-
-// Выбираем задачу и загружаем её подзадачи
-const selectTask = async (taskId) => {
-  selectedTaskId.value = taskId;
-  if (taskId) {
-    await fetchSubTasks(taskId);
-  } else {
-    subTasks.value = [];
-  }
-};
-
-// Вычисляемое свойство для выбранной задачи
-const selectedTask = computed(() => {
-  return tasks.value.find(task => task.id === selectedTaskId.value) || null;
+  return dates;
 });
 
-// Вычисляемое свойство для подзадач выбранной задачи
-const selectedSubTasks = computed(() => {
-  return subTasks.value.filter(subTask => subTask.parent_task === selectedTaskId.value);
-});
+// Остальные вычисляемые свойства и методы
+const totalDays = computed(() => timelineDates.value.length);
 
-// Предоставляем состояние дочерним компонентам
-provide('taskStore', {
-  tasks,
-  subTasks,
-  selectedTaskId,
-  selectedTask,
-  selectedSubTasks,
-  loading,
-  error,
-  addTask,
-  addSubTask,
-  selectTask,
-  fetchTasks,
-  fetchSubTasks
-});
+const getBarStyle = (subTask) => {
+  if (!task.value) return {};
 
-// Инициализация - загружаем задачи при создании
-fetchTasks();
+  const taskStart = new Date(task.value.start_date);
+  const subStart = new Date(subTask.start_date);
+  const subEnd = new Date(subTask.end_date);
 
-// Локальное состояние компонента
-const showForm = ref(false);
-const newTask = ref({
-  name: '',
-  startDate: '',
-  endDate: ''
-});
+  const startOffset = Math.floor((subStart - taskStart) / (1000 * 60 * 60 * 24));
+  const duration = Math.floor((subEnd - subStart) / (1000 * 60 * 60 * 24)) + 1;
 
-const createTask = async () => {
-  if (newTask.value.name && newTask.value.startDate && newTask.value.endDate) {
-    if (new Date(newTask.value.startDate) > new Date(newTask.value.endDate)) {
-      alert('Дата начала не может быть позже даты окончания');
-      return;
-    }
-
-    try {
-      await addTask(newTask.value);
-      resetForm();
-      showForm.value = false;
-    } catch (error) {
-      alert('Ошибка при создании задачи: ' + error.message);
-    }
-  }
-};
-
-const resetForm = () => {
-  newTask.value = {
-    name: '',
-    startDate: '',
-    endDate: ''
+  return {
+    left: `${(startOffset / totalDays.value) * 100}%`,
+    width: `${(duration / totalDays.value) * 100}%`
   };
+};
+
+const getBarClass = (progress) => {
+  if (progress >= 80) return 'bar-high';
+  if (progress >= 50) return 'bar-medium';
+  if (progress >= 20) return 'bar-low';
+  return 'bar-none';
 };
 
 const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString('ru-RU');
 };
+
+const formatDateShort = (date) => {
+  return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+};
+
+// Отслеживание изменения taskId
+watch(() => props.taskId, () => {
+  fetchTask();
+  fetchSubTasks();
+}, { immediate: true });
 </script>
 
 <style scoped>

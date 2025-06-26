@@ -116,11 +116,24 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useTaskStore } from '../../composables/useTaskStore';
+import {ref, computed, watch} from 'vue';
+import { supabase } from '@/clients/supabase.js';
+import {useStore} from "vuex";
 
-const { selectedTask, selectedSubTasks, addSubTask } = useTaskStore();
+// Получаем taskId из props
+const props = defineProps({
+  taskId: {
+    type: [String, Number],
+    default: null
+  }
+});
 
+// Состояние компонента
+const store = useStore();
+
+const subTasks = ref([]);
+const loading = ref(false);
+const error = ref(null);
 const showForm = ref(false);
 const newSubTask = ref({
   name: '',
@@ -128,7 +141,90 @@ const newSubTask = ref({
   endDate: '',
   progress: 0
 });
+const userId = computed(() => store.state.userId);
+// Получаем подзадачи
+const fetchSubTasks = async () => {
+  if (!props.taskId) return;
 
+  try {
+    loading.value = true;
+    const { data, error: fetchError } = await supabase
+        .from('gantt')
+        .select('*')
+        .eq('user_id', props.userId) // Добавьте эту строку
+        .is('parent_task', null); // Для получения только родительских задач
+
+    if (fetchError) throw fetchError;
+    subTasks.value = data;
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error fetching subtasks:', err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Получаем данные родительской задачи
+const selectedTask = ref(null);
+const fetchTask = async () => {
+  if (!props.taskId) return;
+
+  try {
+    loading.value = true;
+    const { data, error: fetchError } = await supabase
+        .from('gantt')
+        .select('*')
+        .eq('id', props.taskId)
+        .single();
+
+    if (fetchError) throw fetchError;
+    selectedTask.value = data;
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error fetching task:', err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Вычисляемое свойство для подзадач
+const selectedSubTasks = computed(() => subTasks.value);
+
+// Добавление подзадачи
+const addSubTask = async (subTaskData) => {
+  try {
+    const { data, error: insertError } = await supabase
+        .from('gantt')
+        .insert([{
+          name: subTaskData.name,
+          start_date: subTaskData.startDate,
+          end_date: subTaskData.endDate,
+          progress: subTaskData.progress,
+          parent_task: subTaskData.taskId
+        }])
+        .select();
+
+    if (insertError) throw insertError;
+    await fetchSubTasks();
+    return data[0].id;
+  } catch (err) {
+    console.error('Error adding subtask:', err);
+    throw err;
+  }
+};
+
+// Инициализация
+watch(() => props.taskId, (newVal) => {
+  if (newVal) {
+    fetchTask();
+    fetchSubTasks();
+  } else {
+    selectedTask.value = null;
+    subTasks.value = [];
+  }
+}, { immediate: true });
+
+// Локальные методы
 const createSubTask = async () => {
   if (!selectedTask.value) return;
 
@@ -152,12 +248,7 @@ const createSubTask = async () => {
 };
 
 const resetForm = () => {
-  newSubTask.value = {
-    name: '',
-    startDate: '',
-    endDate: '',
-    progress: 0
-  };
+  newSubTask.value = { name: '', startDate: '', endDate: '', progress: 0 };
 };
 
 const formatDate = (dateStr) => {
@@ -167,9 +258,7 @@ const formatDate = (dateStr) => {
 const calculateDuration = (startDate, endDate) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
+  return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
 };
 
 const getProgressClass = (progress) => {
@@ -178,6 +267,8 @@ const getProgressClass = (progress) => {
   if (progress >= 20) return 'progress-low';
   return 'progress-none';
 };
+
+
 </script>
 
 <style scoped>
