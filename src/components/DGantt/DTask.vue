@@ -1,313 +1,392 @@
 <template>
-  <div class="gantt-component">
+  <div class="task-component">
     <div class="header">
-      <h2>Диаграмма Ганта</h2>
-      <div v-if="task" class="task-info">
-        <span class="task-label">Задача:</span>
-        <span class="task-name">{{ task.name }}</span>
-        <span class="date-range">
-          ({{ formatDate(task.start_date) }} - {{ formatDate(task.end_date) }})
-        </span>
-      </div>
+      <h2>Задачи</h2>
+      <button @click="showForm = !showForm" class="btn btn-primary btn-sm">
+        {{ showForm ? '×' : '+' }}
+      </button>
     </div>
 
-    <div v-if="!task" class="no-selection">
-      <p>Выберите задачу для отображения диаграммы Ганта</p>
+    <!-- Форма создания/редактирования -->
+    <div v-if="showForm" class="task-form">
+      <form @submit.prevent="submitTask">
+        <div class="form-row">
+          <input v-model="taskForm.name" placeholder="Название" required class="form-input"/>
+          <input v-model="taskForm.startDate" type="date" required class="form-input date-input"/>
+          <input v-model="taskForm.endDate" type="date" required class="form-input date-input"/>
+          <button type="submit" class="btn btn-success btn-sm">
+            {{ editingTask ? '✓' : '+' }}
+          </button>
+          <button type="button" @click="resetForm" class="btn btn-secondary btn-sm">
+            ×
+          </button>
+        </div>
+      </form>
     </div>
 
-    <div v-else-if="subTasks.length === 0" class="no-subtasks">
-      <p>У выбранной задачи нет подзадач для отображения</p>
+    <!-- Таблица задач -->
+    <div class="task-table">
+      <table>
+        <thead>
+        <tr>
+          <th class="name-col">Название</th>
+          <th class="date-col">Начало</th>
+          <th class="date-col">Конец</th>
+          <th class="actions-col">Действия</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr
+            v-for="task in tasks"
+            :key="task.id"
+            :class="{ selected: selectedTaskId === task.id }"
+            @click="selectTask(task.id)"
+        >
+          <td class="name-col">{{ task.name }}</td>
+          <td class="date-col">{{ formatDateShort(task.start_date) }}</td>
+          <td class="date-col">{{ formatDateShort(task.end_date) }}</td>
+          <td class="actions-col">
+            <button @click.stop="editTask(task)" class="btn-icon" title="Редактировать">
+              ✎
+            </button>
+            <button @click.stop="deleteTask(task.id)" class="btn-icon" title="Удалить">
+              ×
+            </button>
+          </td>
+        </tr>
+        </tbody>
+      </table>
     </div>
 
-    <div v-else class="gantt-chart">
-      <!-- Остальная часть template без изменений -->
-    </div>
+    <!-- Сообщения о состоянии -->
+    <div v-if="loading" class="status-message">Загрузка...</div>
+    <div v-else-if="error" class="status-message error">{{ error }}</div>
+    <div v-else-if="tasks.length === 0" class="status-message">Нет задач</div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { supabase } from '@/clients/supabase.js';
-import {useStore} from "vuex";
+import { useStore } from 'vuex';
 
 const props = defineProps({
-  taskId: {
+  userId: {
     type: [String, Number],
-    default: null
+    required: true
   }
 });
-const store = useStore();
 
-const userId = computed(() => store.state.userId);
-// Состояние компонента
-const task = ref(null);
-const subTasks = ref([]);
+const emit = defineEmits(['task-selected']);
+
+// Состояния компонента
+const tasks = ref([]);
 const loading = ref(false);
 const error = ref(null);
+const showForm = ref(false);
+const editingTask = ref(null);
+const selectedTaskId = ref(null);
 
-// Получение данных задачи
-const fetchTask = async () => {
-  if (!props.taskId) {
-    task.value = null;
-    return;
-  }
-
-  try {
-    loading.value = true;
-    const { data, error: fetchError } = await supabase
-        .from('gantt')
-        .select('*')
-        .eq('user_id', props.userId) // Добавьте эту строку
-        .is('parent_task', null); // Для получения только родительских задач
-
-    if (fetchError) throw fetchError;
-    task.value = data;
-  } catch (err) {
-    error.value = err.message;
-    console.error('Error fetching task:', err);
-  } finally {
-    loading.value = false;
-  }
-};
-
-// Получение подзадач
-const fetchSubTasks = async () => {
-  if (!props.taskId) {
-    subTasks.value = [];
-    return;
-  }
-
-  try {
-    loading.value = true;
-    const { data, error: fetchError } = await supabase
-        .from('gantt')
-        .select('*')
-        .eq('parent_task', props.taskId)
-        .order('start_date');
-
-    if (fetchError) throw fetchError;
-    subTasks.value = data;
-  } catch (err) {
-    error.value = err.message;
-    console.error('Error fetching subtasks:', err);
-  } finally {
-    loading.value = false;
-  }
-};
-
-// Вычисление временной шкалы
-const timelineDates = computed(() => {
-  if (!task.value) return [];
-
-  const startDate = new Date(task.value.start_date);
-  const endDate = new Date(task.value.end_date);
-  const dates = [];
-  const current = new Date(startDate);
-
-  while (current <= endDate) {
-    dates.push(new Date(current));
-    current.setDate(current.getDate() + 1);
-  }
-
-  return dates;
+const taskForm = ref({
+  name: '',
+  startDate: '',
+  endDate: ''
 });
 
-// Остальные вычисляемые свойства и методы
-const totalDays = computed(() => timelineDates.value.length);
+// Получение задач из Supabase
+const fetchTasks = async () => {
+  console.log('[DTask] Запуск fetchTasks для user_id:', props.userId);
+  try {
+    loading.value = true;
+    error.value = null;
 
-const getBarStyle = (subTask) => {
-  if (!task.value) return {};
+    const { data, error: fetchError } = await supabase
+        .from('gantt')
+        .select('*')
+        .eq('user_id', props.userId)
+        .is('parent_task', null)
+        .order('start_date', { ascending: true });
 
-  const taskStart = new Date(task.value.start_date);
-  const subStart = new Date(subTask.start_date);
-  const subEnd = new Date(subTask.end_date);
+    if (fetchError) {
+      console.error('[DTask] Ошибка при получении задач:', fetchError);
+      throw fetchError;
+    }
 
-  const startOffset = Math.floor((subStart - taskStart) / (1000 * 60 * 60 * 24));
-  const duration = Math.floor((subEnd - subStart) / (1000 * 60 * 60 * 24)) + 1;
+    console.log('[DTask] Получены задачи:', data);
+    tasks.value = data;
+  } catch (err) {
+    console.error('[DTask] Ошибка:', err);
+    error.value = err.message || 'Не удалось загрузить задачи';
+  } finally {
+    loading.value = false;
+  }
+};
 
-  return {
-    left: `${(startOffset / totalDays.value) * 100}%`,
-    width: `${(duration / totalDays.value) * 100}%`
+const formatDateShort = (dateStr) => {
+  const date = new Date(dateStr);
+  return `${date.getDate()}.${date.getMonth() + 1}`;
+};
+// Создание/обновление задачи
+const submitTask = async () => {
+  console.log('[DTask] Отправка формы задачи:', taskForm.value);
+  try {
+    loading.value = true;
+
+    const taskData = {
+      name: taskForm.value.name,
+      start_date: taskForm.value.startDate,
+      end_date: taskForm.value.endDate,
+      user_id: props.userId,
+      progress: 0
+    };
+
+    if (editingTask.value) {
+      console.log('[DTask] Обновление задачи ID:', editingTask.value.id);
+      const { error: updateError } = await supabase
+          .from('gantt')
+          .update(taskData)
+          .eq('id', editingTask.value.id);
+
+      if (updateError) throw updateError;
+    } else {
+      console.log('[DTask] Создание новой задачи');
+      const { error: insertError } = await supabase
+          .from('gantt')
+          .insert(taskData);
+
+      if (insertError) throw insertError;
+    }
+
+    await fetchTasks();
+    resetForm();
+    showForm.value = false;
+  } catch (err) {
+    console.error('[DTask] Ошибка при сохранении задачи:', err);
+    error.value = err.message || 'Ошибка при сохранении задачи';
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Удаление задачи
+const deleteTask = async (taskId) => {
+  console.log('[DTask] Удаление задачи ID:', taskId);
+  if (!confirm('Вы уверены, что хотите удалить эту задачу?')) return;
+
+  try {
+    loading.value = true;
+    const { error: deleteError } = await supabase
+        .from('gantt')
+        .delete()
+        .eq('id', taskId);
+
+    if (deleteError) throw deleteError;
+
+    // Если удаляем выбранную задачу - сбрасываем выбор
+    if (selectedTaskId.value === taskId) {
+      selectedTaskId.value = null;
+      emit('task-selected', null);
+    }
+
+    await fetchTasks();
+  } catch (err) {
+    console.error('[DTask] Ошибка при удалении задачи:', err);
+    error.value = err.message || 'Ошибка при удалении задачи';
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Выбор задачи
+const selectTask = (taskId) => {
+  console.log('[DTask] Выбрана задача ID:', taskId);
+  selectedTaskId.value = taskId;
+  emit('task-selected', taskId);
+};
+
+// Редактирование задачи
+const editTask = (task) => {
+  console.log('[DTask] Редактирование задачи:', task);
+  editingTask.value = task;
+  taskForm.value = {
+    name: task.name,
+    startDate: task.start_date,
+    endDate: task.end_date
   };
+  showForm.value = true;
 };
 
-const getBarClass = (progress) => {
-  if (progress >= 80) return 'bar-high';
-  if (progress >= 50) return 'bar-medium';
-  if (progress >= 20) return 'bar-low';
-  return 'bar-none';
+// Сброс формы
+const resetForm = () => {
+  console.log('[DTask] Сброс формы');
+  taskForm.value = {
+    name: '',
+    startDate: '',
+    endDate: ''
+  };
+  editingTask.value = null;
 };
 
+// Форматирование даты
 const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString('ru-RU');
 };
 
-const formatDateShort = (date) => {
-  return `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+// Проверка валидности дат
+const validateDates = () => {
+  if (new Date(taskForm.value.startDate) > new Date(taskForm.value.endDate)) {
+    error.value = 'Дата начала не может быть позже даты окончания';
+    return false;
+  }
+  return true;
 };
 
-// Отслеживание изменения taskId
-watch(() => props.taskId, () => {
-  fetchTask();
-  fetchSubTasks();
-}, { immediate: true });
+// Загрузка данных при монтировании
+onMounted(() => {
+  console.log('[DTask] Компонент смонтирован, user_id:', props.userId);
+  fetchTasks();
+});
+
+// Отслеживание изменения userId
+watch(() => props.userId, (newVal) => {
+  console.log('[DTask] Изменился user_id:', newVal);
+  fetchTasks();
+});
 </script>
 
 <style scoped>
 .task-component {
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
+  padding: 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
 }
 
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
+  padding: 0 4px;
 }
 
 .header h2 {
   margin: 0;
-  color: #333;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .task-form {
-  background: #f8f9fa;
-  padding: 20px;
-  border-radius: 6px;
-  margin-bottom: 20px;
-  border: 1px solid #e9ecef;
+  margin-bottom: 8px;
 }
 
-.task-form h3 {
-  margin-top: 0;
-  color: #495057;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-  color: #495057;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: #80bdff;
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-}
-
-.form-actions {
+.form-row {
   display: flex;
-  gap: 10px;
+  gap: 4px;
+}
+
+.form-input {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.date-input {
+  max-width: 80px;
 }
 
 .task-table {
-  overflow-x: auto;
+  flex: 1;
+  overflow-y: auto;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
 }
 
 th, td {
-  padding: 12px;
+  padding: 6px 4px;
   text-align: left;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid #eee;
+  line-height: 1.2;
 }
 
 th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  color: #495057;
+  font-weight: 500;
+  color: #555;
+  background-color: #f9f9f9;
+  position: sticky;
+  top: 0;
 }
 
-tbody tr {
-  cursor: pointer;
-  transition: background-color 0.2s;
+.name-col {
+  width: 45%;
+  padding-left: 8px;
 }
 
-tbody tr:hover {
-  background-color: #f8f9fa;
+.date-col {
+  width: 20%;
 }
 
-tbody tr.selected {
-  background-color: #e3f2fd;
+.actions-col {
+  width: 15%;
+  text-align: right;
+  padding-right: 8px;
+}
+
+tr.selected {
+  background-color: #f0f7ff;
+}
+
+tr:hover {
+  background-color: #f5f5f5;
 }
 
 .btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background-color: #007bff;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #0056b3;
-}
-
-.btn-success {
-  background-color: #28a745;
-  color: white;
-}
-
-.btn-success:hover {
-  background-color: #1e7e34;
-}
-
-.btn-secondary {
-  background-color: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background-color: #545b62;
-}
-
-.btn-info {
-  background-color: #17a2b8;
-  color: white;
-}
-
-.btn-info:hover {
-  background-color: #117a8b;
-}
-
-.btn-warning {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.btn-warning:hover {
-  background-color: #d39e00;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
 }
 
 .btn-sm {
-  padding: 4px 8px;
+  padding: 2px 6px;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  margin-left: 2px;
+  color: #666;
+}
+
+.btn-icon:hover {
+  color: #333;
+}
+
+.status-message {
+  padding: 8px;
+  text-align: center;
+  color: #666;
   font-size: 12px;
+}
+
+.error {
+  color: #d32f2f;
+}
+
+@media (max-width: 768px) {
+  .date-col {
+    display: none;
+  }
+
+  .name-col {
+    width: 70%;
+  }
 }
 </style>

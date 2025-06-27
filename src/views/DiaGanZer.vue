@@ -1,37 +1,102 @@
 <template>
-  <div v-if="account?.data?.session" class="container">
+  <div v-if="isAuthenticated" class="container">
     <div class="tasks-section" :style="{ width: leftColumnWidth }">
-      <DTask @task-selected="handleTaskSelected" :userId="userId" />
+      <DTask
+          @task-selected="handleTaskSelected"
+          :userId="userId"
+      />
     </div>
     <div class="resizer" @mousedown="(e) => startResize(e, 1)"></div>
 
     <div class="subtasks-section" :style="{ width: middleColumnWidth }">
-      <DSub :task-id="selectedTaskId" :userId="userId" />
+      <DSub
+          :task-id="selectedTaskId"
+          :userId="userId"
+          v-if="selectedTaskId"
+      />
+      <div v-else class="no-task-selected">
+        <p>Выберите задачу для просмотра подзадач</p>
+      </div>
     </div>
     <div class="resizer" @mousedown="(e) => startResize(e, 2)"></div>
 
     <div class="gantt-section" :style="{ width: rightColumnWidth }">
-      <DGantt :task-id="selectedTaskId" :userId="userId" />
+      <DGantt
+          :task-id="selectedTaskId"
+          :userId="userId"
+          v-if="selectedTaskId"
+      />
+      <div v-else class="no-task-selected">
+        <p>Выберите задачу для отображения диаграммы Ганта</p>
+      </div>
+
     </div>
+    <button
+        @click="testSupabaseConnection"
+        class="test-connection-btn"
+    >
+      Test Supabase Connection
+    </button>
+    <!-- Кнопка для тестирования подключения (можно удалить после проверки) -->
+
+  </div>
+
+  <div v-else class="auth-message">
+    <p>Пожалуйста, войдите в систему для доступа к диаграмме Ганта</p>
   </div>
 </template>
 
 <script setup>
-import {onMounted, onUnmounted, ref, computed} from 'vue';
+import { onMounted, onUnmounted, ref, computed } from 'vue';
 import { useStore } from 'vuex';
+import { supabase } from '@/clients/supabase.js';
 import DTask from '../components/DGantt/DTask.vue';
 import DSub from '../components/DGantt/DSub.vue';
 import DGantt from '../components/DGantt/DGantt.vue';
 
+const isAuthenticated = ref(false);
+
 const store = useStore();
-const userId = computed(() => store.state.userId);
+const userId = computed(() => {
+  console.log('DiaGanZer - userId:', store.state.userId);
+  return store.state.userId;
+});
+
+const testSupabaseConnection = async () => {
+  console.log('Testing Supabase connection...');
+  try {
+    const { data, error } = await supabase
+        .from('gantt')
+        .select('*');
+        // .limit(1);
+
+    if (error) throw error;
+    console.log('Supabase test successful, data:', data);
+  } catch (err) {
+    console.error('Supabase test failed:', err);
+  }
+};
+// Проверяем аутентификацию при загрузке компонента
+onMounted(async () => {
+  console.log('DiaGanZer - Checking authentication');
+  const { data: { session } } = await supabase.auth.getSession();
+  isAuthenticated.value = !!session;
+
+  // Подписываемся на изменения состояния аутентификации
+  supabase.auth.onAuthStateChange((event, session) => {
+    console.log('DiaGanZer - Auth state changed:', event, session);
+    isAuthenticated.value = !!session;
+  });
+
+  document.addEventListener("keydown", handleKeyDown);
+  document.addEventListener("keyup", handleKeyUp);
+});
 
 const selectedTaskId = ref(null);
 
 const handleTaskSelected = (taskId) => {
   selectedTaskId.value = taskId;
 };
-
 // Column widths with localStorage
 const leftColumnWidth = ref(localStorage.getItem('leftColumnWidth') || '20%');
 const middleColumnWidth = ref(localStorage.getItem('middleColumnWidth') || '20%');
@@ -131,6 +196,41 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+
+.no-task-selected {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #666;
+  font-size: 1.1em;
+}
+
+.auth-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  color: #d32f2f;
+  font-size: 1.2em;
+}
+
+.test-connection-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 8px 16px;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+.test-connection-btn:hover {
+  background-color: #1565c0;
+}
 /* Оставьте стили без изменений */
 .container {
   display: flex;
