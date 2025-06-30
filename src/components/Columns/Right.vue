@@ -273,6 +273,7 @@ export default {
 
     const handleDragStart = (event, folder) => {
       dragSourceFolder.value = folder; // Устанавливаем источник перетаскивания
+      event.dataTransfer.effectAllowed = 'move'; // Указываем, что это перемещение
       if (isAltPressed.value) {
         // Для вложенного перетаскивания используем другой тип данных
         event.dataTransfer.setData('application/x-folder-nesting', folder.dir_hash);
@@ -283,7 +284,7 @@ export default {
         draggedFolder.value = folder;
         console.log(`Начато обычное перетаскивание папки ${folder.dir_name} (${folder.dir_hash})`);
       }
-      fetchFolders();
+      // fetchFolders();
     };
     // Новая функция для проверки существования папки с таким же именем
     const checkDuplicateFolderName = async (parentHash, folderName) => {
@@ -303,7 +304,7 @@ export default {
     };
 
     const resetAllFolderStyles = () => {
-      console.log('Resetting all folder styles...');
+      // console.log('Resetting all folder styles...');
       const folders = document.querySelectorAll('.folder-card');
       folders.forEach(folder => {
         folder.style.border = '2px solid #000000';
@@ -541,10 +542,10 @@ export default {
 
     const handleDragOver = (event, folder) => {
       event.preventDefault();
-      console.log('DragOver started', {
-        isAltPressed: isAltPressed.value,
-        dataTypes: [...event.dataTransfer.types]
-      });
+      // console.log('DragOver started', {
+      //   isAltPressed: isAltPressed.value,
+      //   dataTypes: [...event.dataTransfer.types]
+      // });
       resetAllFolderStyles(); // Сначала сбрасываем все стили
       // Для перетаскивания из Left в Right
       const folderData = event.dataTransfer.types.includes('application/x-folder-move');
@@ -556,14 +557,14 @@ export default {
         return;
       }
       if (isAltPressed.value) {
-        console.log('Alt nesting drag detected');
+        // console.log('Alt nesting drag detected');
         event.currentTarget.classList.add('nesting-target');
         event.currentTarget.style.border = '2px dashed blue';
-        logFolderState('Alt drag over', event.currentTarget);
+        // logFolderState('Alt drag over', event.currentTarget);
       } else {
-        console.log('Normal drag detected');
+        // console.log('Normal drag detected');
         event.currentTarget.classList.add('dragging-to-right');
-        logFolderState('Normal drag over', event.currentTarget);
+        // logFolderState('Normal drag over', event.currentTarget);
       }
     };
 
@@ -591,7 +592,6 @@ export default {
 
     const handleDrop = async (event, targetFolder) => {
       if (isProcessing.value) return;
-
       try {
         isProcessing.value = true;
         event.preventDefault();
@@ -599,7 +599,13 @@ export default {
 
         // Обработка разных типов перетаскивания
         if (isAltPressed.value && dragSourceFolder.value) {
+          console.log('Processing Alt-nesting operation', {
+            source: dragSourceFolder.value.dir_name,
+            target: targetFolder.dir_name
+          });
           await nestFolder(dragSourceFolder.value, targetFolder);
+          dragSourceFolder.value = null; // Сброс источника после операции
+          console.log('Alt-nesting completed');
           return;
         }
 
@@ -715,8 +721,8 @@ export default {
           isProcessing.value = false;
           resetAllFolderStyles();
           draggedFolder.value = null;
-          console.log('Final styles reset in handleDrop');
-          logFolderState('Final state after handleDrop');
+          // console.log('Final styles reset in handleDrop');
+          // logFolderState('Final state after handleDrop');
           // console.groupEnd();
         }
       } finally {
@@ -1340,7 +1346,7 @@ export default {
                 filter: `user_id=eq.${userId.value}`
               },
               async (payload) => {
-                console.log('Изменение в dir:', payload);
+                // console.log('Изменение в dir:', payload);
 
                 // Обработка разных типов событий
                 switch (payload.eventType) {
