@@ -194,7 +194,6 @@ export default {
     const draggedFolder = ref(null);
     const subfolderCounts = ref({});
     const store = useStore();
-
     const isProcessing = ref(false);
     // Добавляем состояние для snackbar
     const snackbar = ref({
@@ -265,16 +264,11 @@ export default {
     const getFontSize = (folderName) => {
       const words = folderName.split(' ');
       const hasMultipleWords = words.length > 1;
-      const isLong = folderName.length > 13;
-
+      const isLong = folderName.length > 12;
       if (hasMultipleWords && isLong) {
-        if (folderName.length > 27) { // Если очень длинное - уменьшаем на 20%
-          return '80%';
-        } else { // Если просто длинное - уменьшаем на 10%
-          return '90%';
-        }
+        return folderName.length > 25 ? '80%' : '90%';
       }
-      return '100%'; // Стандартный размер
+      return '100%';
     };
 
     const handleDragStart = (event, folder) => {
@@ -321,7 +315,7 @@ export default {
             'dragging-from-left'
         );
       });
-      logFolderState('After resetAllFolderStyles');
+      // logFolderState('After resetAllFolderStyles');
     };
     // Новая функция для вложения папки
     /**
@@ -332,166 +326,143 @@ export default {
      * @returns {Promise<void>}
      */
 // В методе nestFolder (внутри setup()) добавим обновление ссылок:
-        // В методе nestFolder (внутри setup()) заменим текущую реализацию:
     const nestFolder = async (sourceFolder, targetFolder) => {
-          const operationId = `nest_${Date.now()}`;
-          console.groupCollapsed(`[${operationId}] nestFolder: ${sourceFolder.dir_name} -> ${targetFolder.dir_name}`);
+      const operationId = `nest_${Date.now()}`;
+      console.groupCollapsed(`[${operationId}] nestFolder: ${sourceFolder.dir_name} -> ${targetFolder.dir_name}`);
 
-          try {
-            // 1. Инициализация и сброс стилей
-            logOperation('Начало операции', { operationId });
-            resetAllFolderStyles();
-            logFolderState('После сброса стилей');
+      try {
+        isProcessing.value = true;
+        resetAllFolderStyles();
 
-            // 2. Проверка циклического вложения
-            if (sourceFolder.dir_hash === targetFolder.dir_hash) {
-              const errorMsg = 'Попытка вложить папку в саму себя';
-              console.error(errorMsg);
-              showSnackbar('Нельзя вложить папку в саму себя!', 'error');
-              throw new Error(errorMsg);
-            }
+        // Проверки (циклическое вложение, дубликаты и т.д.)
+        if (sourceFolder.dir_hash === targetFolder.dir_hash) {
+          showSnackbar('Нельзя вложить папку в саму себя!', 'error');
+          throw new Error('Self-nesting attempt');
+        }
 
-            if (await checkCircularNesting(sourceFolder.dir_hash, targetFolder.dir_hash)) {
-              const errorMsg = 'Обнаружено циклическое вложение';
-              console.error(errorMsg);
-              showSnackbar('Циклическое вложение папок!', 'error');
-              throw new Error(errorMsg);
-            }
+        if (await checkCircularNesting(sourceFolder.dir_hash, targetFolder.dir_hash)) {
+          showSnackbar('Циклическое вложение папок!', 'error');
+          throw new Error('Circular nesting detected');
+        }
 
-            // 3. Проверка существования папки с таким же именем
-            const isDuplicate = await checkDuplicateFolderName(targetFolder.dir_hash, sourceFolder.dir_name);
-            if (isDuplicate) {
-              console.log('Обнаружена папка с таким же именем, выполняем слияние');
-              showSnackbar(
-                  `Папка "${sourceFolder.dir_name}" уже существует. Содержимое будет объединено.`,
-                  'warning'
-              );
+        // Основная логика перемещения
+        const isDuplicate = await checkDuplicateFolderName(targetFolder.dir_hash, sourceFolder.dir_name);
+        if (isDuplicate) {
+          // Логика слияния папок
+          await mergeFolders(sourceFolder, targetFolder);
+          showSnackbar(`Папки "${sourceFolder.dir_name}" объединены`, 'success');
+        } else {
+          // Стандартное вложение
+          await performNesting(sourceFolder, targetFolder);
+          showSnackbar(`"${sourceFolder.dir_name}" → "${targetFolder.dir_name}"`, 'success');
+        }
 
-              // 3.1. Находим существующую папку с таким же именем
-              const { data: existingFolders, error: fetchError } = await supabase
-                  .from('dir')
-                  .select('*')
-                  .eq('parent_hash', targetFolder.dir_hash)
-                  .eq('dir_name', sourceFolder.dir_name);
+      } catch (error) {
+        console.error(`[${operationId}] Ошибка:`, error);
+        showSnackbar('Ошибка при вложении папки', 'error');
+      } finally {
+        resetDragState();
+        isProcessing.value = false;
+        console.groupEnd();
+      }
+    };
+// Новый метод для стандартного вложения
+    const performNesting = async (sourceFolder, targetFolder) => {
+      // 1. Обновляем ссылки в child folder
+      const { error: updateLinksError } = await supabase
+          .from('links')
+          .update({ parent_hash: targetFolder.dir_hash })
+          .eq('dir_hash', sourceFolder.dir_hash);
 
-              if (fetchError) throw fetchError;
-              if (!existingFolders || existingFolders.length === 0) {
-                throw new Error('Не найдена папка для слияния');
-              }
+      if (updateLinksError) throw updateLinksError;
 
-              const existingFolder = existingFolders[0];
+      // 2. Обновляем саму папку
+      const { error: updateFolderError } = await supabase
+          .from('dir')
+          .update({
+            parent_hash: targetFolder.dir_hash,
+            range: null
+          })
+          .eq('dir_hash', sourceFolder.dir_hash);
 
-              // 3.2. Переносим ссылки из sourceFolder в existingFolder
-              const { error: updateLinksError } = await supabase
-                  .from('links')
-                  .update({
-                    dir_hash: existingFolder.dir_hash,
-                    parent_hash: targetFolder.dir_hash
-                  })
-                  .eq('dir_hash', sourceFolder.dir_hash);
+      if (updateFolderError) throw updateFolderError;
 
-              if (updateLinksError) throw updateLinksError;
+      // 3. Пересчет range для оставшихся папок
+      await reindexRootFolders();
+      // 4. Обновляем UI
+      await Promise.all([
+        fetchFolders(),
+        getSubfolderCount(targetFolder.dir_hash),
+        getCombinedLinkCount(targetFolder.dir_hash),
+        getCombinedLinkCount(sourceFolder.dir_hash)
+      ]);
+    };
+// Новый метод для слияния папок
+    const mergeFolders = async (sourceFolder, targetFolder) => {
+      // 1. Находим существующую папку
+      const { data: existingFolders, error: fetchError } = await supabase
+          .from('dir')
+          .select('*')
+          .eq('parent_hash', targetFolder.dir_hash)
+          .eq('dir_name', sourceFolder.dir_name);
 
-              // 3.3. Переносим подпапки из sourceFolder в existingFolder
-              const { error: updateSubfoldersError } = await supabase
-                  .from('dir')
-                  .update({
-                    parent_hash: existingFolder.dir_hash
-                  })
-                  .eq('parent_hash', sourceFolder.dir_hash);
+      if (fetchError) throw fetchError;
+      if (!existingFolders?.length) throw new Error('Folder not found for merging');
 
-              if (updateSubfoldersError) throw updateSubfoldersError;
+      const existingFolder = existingFolders[0];
+      // 2. Переносим ссылки
+      const { error: updateLinksError } = await supabase
+          .from('links')
+          .update({
+            dir_hash: existingFolder.dir_hash,
+            parent_hash: targetFolder.dir_hash
+          })
+          .eq('dir_hash', sourceFolder.dir_hash);
 
-              // 3.4. Удаляем только sourceFolder (child folder)
-              const { error: deleteError } = await supabase
-                  .from('dir')
-                  .delete()
-                  .eq('dir_hash', sourceFolder.dir_hash)
-                  .is('parent_hash', null); // Важное условие - удаляем только если parent_hash null
+      if (updateLinksError) throw updateLinksError;
 
-              if (deleteError) throw deleteError;
+      // 3. Переносим подпапки
+      const { error: updateSubfoldersError } = await supabase
+          .from('dir')
+          .update({ parent_hash: existingFolder.dir_hash })
+          .eq('parent_hash', sourceFolder.dir_hash);
 
-              // 3.5. Обновляем счетчики
-              await Promise.all([
-                fetchFolders(),
-                getSubfolderCount(targetFolder.dir_hash),
-                getCombinedLinkCount(targetFolder.dir_hash),
-                getCombinedLinkCount(existingFolder.dir_hash)
-              ]);
+      if (updateSubfoldersError) throw updateSubfoldersError;
+      // 4. Удаляем sourceFolder
+      const { error: deleteError } = await supabase
+          .from('dir')
+          .delete()
+          .eq('dir_hash', sourceFolder.dir_hash);
 
-              showSnackbar(`Содержимое папки "${sourceFolder.dir_name}" объединено`, 'success');
-              return;
-            }
+      if (deleteError) throw deleteError;
+      // 5. Переиндексация
+      await reindexRootFolders();
+    };
+    // Новый метод для переиндексации корневых папок
+    const reindexRootFolders = async () => {
+      const { data: rootFolders, error } = await supabase
+          .from('dir')
+          .select('*')
+          .is('parent_hash', null)
+          .order('range', { ascending: true });
 
-            // 4. Если дубликатов нет - стандартное вложение
-            // ... (остальной код без изменений)
-            // 4.1. Обновляем ссылки в child folder
-            const { error: updateLinksError } = await supabase
-                .from('links')
-                .update({
-                  parent_hash: targetFolder.dir_hash
-                })
-                .eq('dir_hash', sourceFolder.dir_hash);
+      if (error) throw error;
 
-            if (updateLinksError) throw updateLinksError;
+      const updates = rootFolders.map((folder, index) => ({
+        dir_hash: folder.dir_hash,
+        range: index + 1
+      }));
 
-            // 4.2. Обновляем саму папку (делаем ее дочерней)
-            const { error: updateFolderError } = await supabase
-                .from('dir')
-                .update({
-                  parent_hash: targetFolder.dir_hash,
-                  range: null
-                })
-                .eq('dir_hash', sourceFolder.dir_hash);
+      for (const update of updates) {
+        const { error: updateError } = await supabase
+            .from('dir')
+            .update({ range: update.range })
+            .eq('dir_hash', update.dir_hash);
+        if (updateError) throw updateError;
+      }
+    };
 
-            if (updateFolderError) throw updateFolderError;
-
-            // 4.3. Пересчет range для оставшихся папок
-            const { data: siblings, error: siblingsError } = await supabase
-                .from('dir')
-                .select('*')
-                .is('parent_hash', null)
-                .order('range', { ascending: true });
-
-            if (siblingsError) throw siblingsError;
-
-            const remainingSiblings = siblings.filter(f => f.dir_hash !== sourceFolder.dir_hash);
-            if (remainingSiblings.length > 0) {
-              const updates = remainingSiblings.map((folder, index) => ({
-                dir_hash: folder.dir_hash,
-                range: index + 1
-              }));
-
-              for (const update of updates) {
-                const { error: updateError } = await supabase
-                    .from('dir')
-                    .update({ range: update.range })
-                    .eq('dir_hash', update.dir_hash);
-                if (updateError) throw updateError;
-              }
-            }
-
-            // 4.4. Обновляем UI
-            await Promise.all([
-              fetchFolders(),
-              getSubfolderCount(targetFolder.dir_hash),
-              getCombinedLinkCount(targetFolder.dir_hash),
-              getCombinedLinkCount(sourceFolder.dir_hash)
-            ]);
-
-            showSnackbar(`"${sourceFolder.dir_name}" → "${targetFolder.dir_name}"`, 'success');
-          } catch (error) {
-            console.error(`[${operationId}] Ошибка:`, error);
-            showSnackbar('Ошибка при вложении папки', 'error');
-            throw error;
-          } finally {
-            resetAllFolderStyles();
-            dragSourceFolder.value = null;
-            logFolderState('Финальное состояние');
-            console.groupEnd();
-          }
-        };
-// Вспомогательные функции
+    // Вспомогательные функции
     /**
      * Логирование операций с возможностью отключения
      * @param {string} message - Сообщение для лога
@@ -546,7 +517,6 @@ export default {
         let currentHash = targetHash;
         while (currentHash) {
           if (currentHash === sourceHash) return true;
-
           const { data: folder, error } = await supabase
               .from('dir')
               .select('parent_hash')
@@ -621,22 +591,17 @@ export default {
 
     const handleDrop = async (event, targetFolder) => {
       if (isProcessing.value) return;
-      isProcessing.value = true;
 
       try {
+        isProcessing.value = true;
         event.preventDefault();
-        console.group('[handleDrop] Started');
-        console.log('Drop target:', targetFolder.dir_name);
-        console.log('Event data:', {
-          ctrlKey: event.ctrlKey,
-          altKey: event.altKey,
-          isAltPressed: isAltPressed.value,
-          dataTypes: [...event.dataTransfer.types]
-        });
-
-        // 1. Сбрасываем все стили в начале операции
         resetAllFolderStyles();
-        console.log('Styles reset at start of handleDrop');
+
+        // Обработка разных типов перетаскивания
+        if (isAltPressed.value && dragSourceFolder.value) {
+          await nestFolder(dragSourceFolder.value, targetFolder);
+          return;
+        }
 
         try {
           // 2. Обработка перемещения из Left в Right
@@ -747,17 +712,23 @@ export default {
           showSnackbar('Произошла ошибка при перемещении папки', 'error');
         } finally {
           // 5. Гарантированный сброс стилей в конце
+          isProcessing.value = false;
           resetAllFolderStyles();
           draggedFolder.value = null;
           console.log('Final styles reset in handleDrop');
           logFolderState('Final state after handleDrop');
-          console.groupEnd();
+          // console.groupEnd();
         }
       } finally {
         isProcessing.value = false;
       }
     };
-
+    const resetDragState = () => {
+      isAltPressed.value = false;
+      dragSourceFolder.value = null;
+      dragTargetFolder.value = null;
+      resetAllFolderStyles();
+    };
     const updateFolderRanges = async (updates) => {
       try {
         for (const update of updates) {
@@ -1537,6 +1508,10 @@ export default {
     });
 
     return {
+      resetDragState,
+      performNesting,
+      mergeFolders,
+      reindexRootFolders,
       handleDragEnd,
       syncFoldersState,
       snackbar,
