@@ -291,7 +291,12 @@ export default {
     const handleDragStart = (event, folder) => {
       if (event.ctrlKey) {
         // Для перетаскивания между Left и Right используем другой тип данных
-        event.dataTransfer.setData('application/x-folder-move', JSON.stringify(folder));
+        event.dataTransfer.clearData();
+        event.dataTransfer.setData('application/x-folder-move', JSON.stringify({
+          dir_hash: folder.dir_hash,
+          dir_name: folder.dir_name,
+          parent_hash: folder.parent_hash
+        }));
         console.log(`Начато перетаскивание папки ${folder.dir_name} (${folder.dir_hash}) для перемещения в Right`);
       } else {
         // Оригинальное перетаскивание (внутри Left)
@@ -321,6 +326,9 @@ export default {
         try {
           const folderToMove = JSON.parse(folderData);
 
+          if (!folderToMove?.dir_hash) {
+            throw new Error('Invalid folder data');
+          }
           // 1. Получаем максимальный range из Right
           const { data: rightFolders, error: rangeError } = await supabase
               .from('dir')
