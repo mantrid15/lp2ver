@@ -240,12 +240,13 @@ export default {
      // Новая функция для обработки отпускания Alt
     const handleKeyUp = (event) => {
       if (event.key === 'Alt') {
-        hasMovedDuringAlt.value = false; // Сбрасываем флаг, так как Alt отпущен
-        dragSourceFolder.value = null;   // Дополнительно сброс перетаскиваемой папки
+        isAltPressed.value = false;
+        hasMovedDuringAlt.value = false; // Добавляем сброс флага
+        dragSourceFolder.value = null;
         dragTargetFolder.value = null;
         console.log('Alt key released, reset drag state and hasMovedDuringAlt');
       }
-    };
+    }
 
     const getSubfolderCount = async (dirHash) => {
       try {
@@ -675,12 +676,14 @@ export default {
         }
 
         // 2. Обработка вложения папки (Alt + перетаскивание)
-        if (isAltPressed.value && dragSourceFolder.value?.dir_hash) {
+        if (isAltPressed.value && dragSourceFolder.value?.dir_hash && !hasMovedDuringAlt.value) {
           try {
             console.log(`Nesting folder "${dragSourceFolder.value.dir_name}" into "${targetFolder.dir_name}"`);
-
             await nestFolder(dragSourceFolder.value, targetFolder);
-            hasMovedDuringAlt.value = true;
+            hasMovedDuringAlt.value = true; // Устанавливаем флаг, чтобы предотвратить повторное вложение
+
+            // Сброс состояния сразу после успешного вложения
+            resetDragState(); // Сброс состояния перетаскивания
             return;
           } catch (error) {
             console.error('Folder nesting failed:', error);
@@ -721,10 +724,12 @@ export default {
 
     const resetDragState = () => {
       isAltPressed.value = false;
+      hasMovedDuringAlt.value = false; // Добавляем сброс флага
       dragSourceFolder.value = null;
       dragTargetFolder.value = null;
       resetAllFolderStyles();
     };
+
     const updateFolderRanges = async (updates) => {
       try {
         for (const update of updates) {
