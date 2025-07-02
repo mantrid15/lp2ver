@@ -191,10 +191,10 @@ export default {
     const logEnabled = props.debugMode ? 1 : 0;
 
     let realtimeChannel = null;
-    let draggedFolder = null;
+    let draggedFolder = ref(null);
     const subfolderCounts = ref({});
     const store = useStore();
-    const isProcessing = ref(false);
+    let isProcessing = ref(false);
     // Добавляем состояние для snackbar
     const snackbar = ref({
       show: false,
@@ -212,7 +212,7 @@ export default {
 
     const isAltPressed = ref(false);
     const dragTargetFolder = ref(null);
-    const dragSourceFolder = ref(null);
+    let dragSourceFolder = ref(null);
 
 
     const sortedLinks = ref([...props.links]);
@@ -278,19 +278,18 @@ export default {
     };
 
     const handleDragStart = (event, folder) => {
+      // Инициализация если не определена
+      if (!draggedFolder.value) draggedFolder.value = {};
+
       dragSourceFolder.value = folder; // Устанавливаем источник перетаскивания
-      event.dataTransfer.effectAllowed = 'move'; // Указываем, что это перемещение
+      event.dataTransfer.effectAllowed = 'move';
+
       if (isAltPressed.value) {
-        // Для вложенного перетаскивания используем другой тип данных
-        event.dataTransfer.setData('application/x-folder-nesting', folder.dir_hash);
-        console.log(`Начато перетаскивание папки ${folder.dir_name} (${folder.dir_hash}) для вложения`);
+        event.dataTransfer.setData('application/x-folder-nesting', JSON.stringify(folder));
       } else {
-        // Обычное перетаскивание (как было раньше)
         event.dataTransfer.setData('text/plain', folder.dir_hash);
         draggedFolder.value = folder;
-        console.log(`Начато обычное перетаскивание папки ${folder.dir_name} (${folder.dir_hash})`);
       }
-      // fetchFolders();
     };
     // Новая функция для проверки существования папки с таким же именем
     const checkDuplicateFolderName = async (parentHash, folderName) => {
@@ -597,34 +596,39 @@ export default {
     };
 
     const handleDrop = async (event, targetFolder) => {
-      if (isProcessing.value) return;
+      // Защитная инициализация реактивных переменных
+      if (!isProcessing) isProcessing = ref(false);
+      if (!draggedFolder) draggedFolder = ref(null);
+      if (!dragSourceFolder) dragSourceFolder = ref(null);
+
+      if (isProcessing.value) {
+        console.warn('Drop operation already in progress');
+        return;
+      }
+
+      isProcessing.value = true;
 
       try {
-        event.preventDefault();
-        resetAllFolderStyles();
-
-        // Проверка на существование целевой папки
-        if (!targetFolder || !targetFolder.dir_hash) {
-          console.error('Target folder is invalid:', targetFolder);
-          showSnackbar('Не удалось определить целевую папку', 'error');
+        // Базовые проверки
+        if (!event || !targetFolder?.dir_hash) {
+          console.error('Invalid drop event or target folder');
           return;
         }
 
+        event.preventDefault();
+        resetAllFolderStyles();
+
         // 1. Обработка перемещения из Left в Right (Ctrl + перетаскивание)
-        const folderData = event.dataTransfer.getData('application/x-folder-move');
+        const folderData = event.dataTransfer?.getData('application/x-folder-move');
         if (folderData) {
           try {
             const folderToMove = JSON.parse(folderData);
 
-            // Валидация данных папки
-            if (!folderToMove || !folderToMove.dir_hash) {
-              throw new Error('Invalid folder data');
+            if (!folderToMove?.dir_hash) {
+              throw new Error('Invalid folder data from Left component');
             }
 
-            console.log('Moving folder from Left to Right:', {
-              folder: folderToMove.dir_name,
-              target: targetFolder.dir_name
-            });
+            console.log(`Moving folder "${folderToMove.dir_name}" to Right`);
 
             // Получаем максимальный range в Right
             const { data: maxRangeData, error: rangeError } = await supabase
@@ -636,20 +640,20 @@ export default {
 
             if (rangeError) throw rangeError;
 
-            const newRange = maxRangeData?.length > 0 ? maxRangeData[0].range + 1 : 1;
+            const newRange = (maxRangeData?.[0]?.range ?? 0) + 1;
 
-            // Обновляем папку в базе данных
+            // Обновляем папку в базе
             const { error: updateError } = await supabase
                 .from('dir')
                 .update({
-                  parent_hash: null, // Делаем корневой
-                  range: newRange   // Устанавливаем новый range
+                  parent_hash: null,
+                  range: newRange
                 })
                 .eq('dir_hash', folderToMove.dir_hash);
 
             if (updateError) throw updateError;
 
-            // Обновляем ссылки этой папки
+            // Обновляем связанные ссылки
             const { error: linksError } = await supabase
                 .from('links')
                 .update({
@@ -663,91 +667,55 @@ export default {
             showSnackbar(`Папка "${folderToMove.dir_name}" перемещена в Right`, 'success');
             await fetchFolders();
             return;
-
           } catch (error) {
-            console.error('Error moving folder from Left to Right:', error);
-            showSnackbar('Ошибка при перемещении папки', 'error');
+            console.error('Left-to-Right move failed:', error);
+            showSnackbar('Ошибка перемещения папки из Left', 'error');
             return;
           }
         }
 
-        // 2. Обработка вложения папки при Alt (Alt + перетаскивание)
-        if (isAltPressed.value && dragSourceFolder.value) {
+        // 2. Обработка вложения папки (Alt + перетаскивание)
+        if (isAltPressed.value && dragSourceFolder.value?.dir_hash) {
           try {
-            if (hasMovedDuringAlt.value) {
-              console.log('Operation already performed during this Alt press');
-              return;
-            }
-
-            console.log('Nesting folder:', {
-              source: dragSourceFolder.value.dir_name,
-              target: targetFolder.dir_name
-            });
+            console.log(`Nesting folder "${dragSourceFolder.value.dir_name}" into "${targetFolder.dir_name}"`);
 
             await nestFolder(dragSourceFolder.value, targetFolder);
             hasMovedDuringAlt.value = true;
             return;
-
           } catch (error) {
-            console.error('Error nesting folder:', error);
-            showSnackbar('Ошибка при вложении папки', 'error');
+            console.error('Folder nesting failed:', error);
+            showSnackbar('Ошибка вложения папки', 'error');
             return;
           }
         }
 
-        // 3. Оригинальный функционал перетаскивания с Ctrl (внутри Right)
-        if (!event.ctrlKey) {
-          console.log('Operation cancelled - Ctrl key not pressed');
-          return;
-        }
-
-        if (draggedFolder.value && draggedFolder.value.dir_hash !== targetFolder.dir_hash) {
+        // 3. Стандартное перетаскивание внутри Right (Ctrl)
+        if (event.ctrlKey && draggedFolder.value?.dir_hash && draggedFolder.value.dir_hash !== targetFolder.dir_hash) {
           try {
-            console.log('Swapping folders:', {
-              source: draggedFolder.value.dir_name,
-              target: targetFolder.dir_name
-            });
+            console.log(`Swapping folders "${draggedFolder.value.dir_name}" and "${targetFolder.dir_name}"`);
 
-            const updatedFolders = [...folders.value];
-            const draggedIndex = updatedFolders.findIndex(f => f.dir_hash === draggedFolder.value.dir_hash);
-            const targetIndex = updatedFolders.findIndex(f => f.dir_hash === targetFolder.dir_hash);
-
-            if (draggedIndex === -1 || targetIndex === -1) {
-              throw new Error('Invalid folder indices');
-            }
-
-            // Меняем местами range
-            const [draggedRange, targetRange] = [
-              updatedFolders[draggedIndex].range,
-              updatedFolders[targetIndex].range
+            const folderUpdates = [
+              { dir_hash: draggedFolder.value.dir_hash, range: targetFolder.range },
+              { dir_hash: targetFolder.dir_hash, range: draggedFolder.value.range }
             ];
 
-            updatedFolders[draggedIndex].range = targetRange;
-            updatedFolders[targetIndex].range = draggedRange;
-
-            // Обновляем в базе данных
-            await updateFolderRanges([
-              { dir_hash: updatedFolders[draggedIndex].dir_hash, range: updatedFolders[draggedIndex].range },
-              { dir_hash: updatedFolders[targetIndex].dir_hash, range: updatedFolders[targetIndex].range }
-            ]);
-
-            folders.value = updatedFolders;
-            await getCombinedLinkCount(targetFolder.dir_hash);
-            selectedFolderHash.value = null;
-
+            await updateFolderRanges(folderUpdates);
+            await fetchFolders();
           } catch (error) {
-            console.error('Error swapping folders:', error);
-            showSnackbar('Ошибка при перестановке папок', 'error');
+            console.error('Folder swap failed:', error);
+            showSnackbar('Ошибка перестановки папок', 'error');
           }
         }
 
       } catch (error) {
-        console.error('[handleDrop] Unexpected error:', error);
+        console.error('Unexpected error in handleDrop:', error);
         showSnackbar('Неожиданная ошибка при обработке', 'error');
       } finally {
+        // Гарантированный сброс состояния
         isProcessing.value = false;
+        if (draggedFolder.value) draggedFolder.value = null;
+        if (dragSourceFolder.value) dragSourceFolder.value = null;
         resetAllFolderStyles();
-        draggedFolder.value = null;
       }
     };
 
@@ -1540,6 +1508,8 @@ export default {
     });
 
     return {
+      isProcessing,
+      hasMovedDuringAlt,
       resetDragState,
       performNesting,
       mergeFolders,
