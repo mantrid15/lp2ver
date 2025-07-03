@@ -368,12 +368,13 @@ export default {
         console.error(`[${operationId}] Ошибка:`, error);
         showSnackbar('Ошибка при вложении папки', 'error');
       } finally {
-        resetDragState();
+        // moved these resets here to ensure they happen as soon as possible
         isProcessing.value = false;
+        resetDragState(); // Resets hasMovedDuringAlt and dragSource/TargetFolder
         console.groupEnd();
       }
-    };
-// Новый метод для стандартного вложения
+    };// Новый метод для стандартного вложения
+
     const performNesting = async (sourceFolder, targetFolder) => {
       // 1. Обновляем ссылки в child folder
       const { error: updateLinksError } = await supabase
@@ -607,6 +608,13 @@ export default {
         return;
       }
 
+      // Проверяем, была ли уже Alt-операция в текущем цикле Drag&Drop.
+      // Если да, то игнорируем последующие Alt-дропы до отпускания Alt.
+      if (isAltPressed.value && hasMovedDuringAlt.value) {
+        console.log('Already moved a folder with Alt pressed. Ignoring subsequent Alt-drops until Alt is released.');
+        return;
+      }
+
       isProcessing.value = true;
 
       try {
@@ -672,6 +680,9 @@ export default {
             console.error('Left-to-Right move failed:', error);
             showSnackbar('Ошибка перемещения папки из Left', 'error');
             return;
+          } finally {
+            isProcessing.value = false; // Reset isProcessing after Left-to-Right move
+            resetAllFolderStyles();
           }
         }
 
@@ -680,11 +691,15 @@ export default {
           try {
             console.log(`Nesting folder "${dragSourceFolder.value.dir_name}" into "${targetFolder.dir_name}"`);
             await nestFolder(dragSourceFolder.value, targetFolder);
-            hasMovedDuringAlt.value = true; // Устанавливаем флаг, чтобы предотвратить повторное вложение
+            hasMovedDuringAlt.value = true; // Устанавливаем флаг, чтобы предотвратить повторное вложение ДО отпускания Alt
 
-            // Сброс состояния сразу после успешного вложения
-            resetDragState(); // Сброс состояния перетаскивания
-            return;
+            // Сброс dragSourceFolder и dragTargetFolder после успешной Alt-операции
+            dragSourceFolder.value = null;
+            dragTargetFolder.value = null;
+            // isProcessing и hasMovedDuringAlt теперь корректно сбрасываются
+            // isProcessing.value = false; // Moved to finally block
+            // hasMovedDuringAlt.value = false; // This is reset on keyup, not here
+            return; // Exit after Alt-drop
           } catch (error) {
             console.error('Folder nesting failed:', error);
             showSnackbar('Ошибка вложения папки', 'error');
@@ -707,6 +722,9 @@ export default {
           } catch (error) {
             console.error('Folder swap failed:', error);
             showSnackbar('Ошибка перестановки папок', 'error');
+          } finally {
+            isProcessing.value = false; // Reset isProcessing after Ctrl-drag
+            resetAllFolderStyles();
           }
         }
 
@@ -714,16 +732,17 @@ export default {
         console.error('Unexpected error in handleDrop:', error);
         showSnackbar('Неожиданная ошибка при обработке', 'error');
       } finally {
-        // Гарантированный сброс состояния
+        // Гарантированный сброс isProcessing после любой операции,
+        // но hasMovedDuringAlt должен сбрасываться только при отпускании Alt.
         isProcessing.value = false;
-        if (draggedFolder.value) draggedFolder.value = null;
-        if (dragSourceFolder.value) dragSourceFolder.value = null;
+        // Здесь не нужно сбрасывать dragSourceFolder и dragTargetFolder,
+        // так как это делается в начале handleDrop или в Alt-блоке.
         resetAllFolderStyles();
       }
     };
 
     const resetDragState = () => {
-      isAltPressed.value = false;
+      // isAltPressed.value = false;
       hasMovedDuringAlt.value = false; // Добавляем сброс флага
       dragSourceFolder.value = null;
       dragTargetFolder.value = null;
