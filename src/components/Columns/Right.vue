@@ -241,7 +241,6 @@ export default {
     const handleKeyUp = (event) => {
       if (event.key === 'Alt') {
         isAltPressed.value = false;
-        hasMovedDuringAlt.value = false; // Добавляем сброс флага
         dragSourceFolder.value = null;
         dragTargetFolder.value = null;
         console.log('Alt key released, reset drag state and hasMovedDuringAlt');
@@ -334,46 +333,30 @@ export default {
      */
 // В методе nestFolder (внутри setup()) добавим обновление ссылок:
     const nestFolder = async (sourceFolder, targetFolder) => {
-      const operationId = `nest_${Date.now()}`;
-      console.groupCollapsed(`[${operationId}] nestFolder: ${sourceFolder.dir_name} -> ${targetFolder.dir_name}`);
-
       try {
-        isProcessing.value = true;
-        resetAllFolderStyles();
-
-        // Проверки (циклическое вложение, дубликаты и т.д.)
         if (sourceFolder.dir_hash === targetFolder.dir_hash) {
           showSnackbar('Нельзя вложить папку в саму себя!', 'error');
-          throw new Error('Self-nesting attempt');
+          return;
         }
 
         if (await checkCircularNesting(sourceFolder.dir_hash, targetFolder.dir_hash)) {
           showSnackbar('Циклическое вложение папок!', 'error');
-          throw new Error('Circular nesting detected');
+          return;
         }
 
-        // Основная логика перемещения
         const isDuplicate = await checkDuplicateFolderName(targetFolder.dir_hash, sourceFolder.dir_name);
         if (isDuplicate) {
-          // Логика слияния папок
           await mergeFolders(sourceFolder, targetFolder);
           showSnackbar(`Папки "${sourceFolder.dir_name}" объединены`, 'success');
         } else {
-          // Стандартное вложение
           await performNesting(sourceFolder, targetFolder);
-          showSnackbar(`"${sourceFolder.dir_name}" → "${targetFolder.dir_name}"`, 'success');
+          // showSnackbar(`"${sourceFolder.dir_name}" → "${targetFolder.dir_name}"`, 'success');
         }
-
       } catch (error) {
-        console.error(`[${operationId}] Ошибка:`, error);
-        showSnackbar('Ошибка при вложении папки', 'error');
-      } finally {
-        // moved these resets here to ensure they happen as soon as possible
-        isProcessing.value = false;
-        resetDragState(); // Resets hasMovedDuringAlt and dragSource/TargetFolder
-        console.groupEnd();
+        console.error('Ошибка вложения папки:', error);
+        showSnackbar('Ошибка вложения папки', 'error');
       }
-    };// Новый метод для стандартного вложения
+    };
 
     const performNesting = async (sourceFolder, targetFolder) => {
       // 1. Обновляем ссылки в child folder
@@ -469,7 +452,6 @@ export default {
         if (updateError) throw updateError;
       }
     };
-
     // Вспомогательные функции
     /**
      * Логирование операций с возможностью отключения
@@ -598,147 +580,86 @@ export default {
     };
 
     const handleDrop = async (event, targetFolder) => {
-      // Защитная инициализация реактивных переменных
-      if (!isProcessing) isProcessing = ref(false);
-      if (!draggedFolder) draggedFolder = ref(null);
-      if (!dragSourceFolder) dragSourceFolder = ref(null);
-
       if (isProcessing.value) {
         console.warn('Drop operation already in progress');
-        return;
-      }
-
-      // Проверяем, была ли уже Alt-операция в текущем цикле Drag&Drop.
-      // Если да, то игнорируем последующие Alt-дропы до отпускания Alt.
-      if (isAltPressed.value && hasMovedDuringAlt.value) {
-        console.log('Already moved a folder with Alt pressed. Ignoring subsequent Alt-drops until Alt is released.');
         return;
       }
 
       isProcessing.value = true;
 
       try {
-        // Базовые проверки
-        if (!event || !targetFolder?.dir_hash) {
-          console.error('Invalid drop event or target folder');
-          return;
-        }
-
         event.preventDefault();
         resetAllFolderStyles();
 
-        // 1. Обработка перемещения из Left в Right (Ctrl + перетаскивание)
+        // 1. Обработка перемещения из Left в Right
         const folderData = event.dataTransfer?.getData('application/x-folder-move');
         if (folderData) {
-          try {
-            const folderToMove = JSON.parse(folderData);
-
-            if (!folderToMove?.dir_hash) {
-              throw new Error('Invalid folder data from Left component');
-            }
-
-            console.log(`Moving folder "${folderToMove.dir_name}" to Right`);
-
-            // Получаем максимальный range в Right
-            const { data: maxRangeData, error: rangeError } = await supabase
-                .from('dir')
-                .select('range')
-                .is('parent_hash', null)
-                .order('range', { ascending: false })
-                .limit(1);
-
-            if (rangeError) throw rangeError;
-
-            const newRange = (maxRangeData?.[0]?.range ?? 0) + 1;
-
-            // Обновляем папку в базе
-            const { error: updateError } = await supabase
-                .from('dir')
-                .update({
-                  parent_hash: null,
-                  range: newRange
-                })
-                .eq('dir_hash', folderToMove.dir_hash);
-
-            if (updateError) throw updateError;
-
-            // Обновляем связанные ссылки
-            const { error: linksError } = await supabase
-                .from('links')
-                .update({
-                  parent_hash: null,
-                  dir_hash: folderToMove.dir_hash
-                })
-                .eq('dir_hash', folderToMove.dir_hash);
-
-            if (linksError) throw linksError;
-
-            showSnackbar(`Папка "${folderToMove.dir_name}" перемещена в Right`, 'success');
-            await fetchFolders();
-            return;
-          } catch (error) {
-            console.error('Left-to-Right move failed:', error);
-            showSnackbar('Ошибка перемещения папки из Left', 'error');
-            return;
-          } finally {
-            isProcessing.value = false; // Reset isProcessing after Left-to-Right move
-            resetAllFolderStyles();
-          }
+          const folderToMove = JSON.parse(folderData);
+          await performLeftToRightMove(folderToMove);
+          return;
         }
 
-        // 2. Обработка вложения папки (Alt + перетаскивание)
-        if (isAltPressed.value && dragSourceFolder.value?.dir_hash && !hasMovedDuringAlt.value) {
-          try {
-            console.log(`Nesting folder "${dragSourceFolder.value.dir_name}" into "${targetFolder.dir_name}"`);
-            await nestFolder(dragSourceFolder.value, targetFolder);
-            hasMovedDuringAlt.value = true; // Устанавливаем флаг, чтобы предотвратить повторное вложение ДО отпускания Alt
-
-            // Сброс dragSourceFolder и dragTargetFolder после успешной Alt-операции
-            dragSourceFolder.value = null;
-            dragTargetFolder.value = null;
-            // isProcessing и hasMovedDuringAlt теперь корректно сбрасываются
-            // isProcessing.value = false; // Moved to finally block
-            // hasMovedDuringAlt.value = false; // This is reset on keyup, not here
-            return; // Exit after Alt-drop
-          } catch (error) {
-            console.error('Folder nesting failed:', error);
-            showSnackbar('Ошибка вложения папки', 'error');
-            return;
-          }
+        // 2. Обработка вложения папки (Alt)
+        if (isAltPressed.value && dragSourceFolder.value?.dir_hash) {
+          await nestFolder(dragSourceFolder.value, targetFolder);
+          return;
         }
 
         // 3. Стандартное перетаскивание внутри Right (Ctrl)
         if (event.ctrlKey && draggedFolder.value?.dir_hash && draggedFolder.value.dir_hash !== targetFolder.dir_hash) {
-          try {
-            console.log(`Swapping folders "${draggedFolder.value.dir_name}" and "${targetFolder.dir_name}"`);
-
-            const folderUpdates = [
-              { dir_hash: draggedFolder.value.dir_hash, range: targetFolder.range },
-              { dir_hash: targetFolder.dir_hash, range: draggedFolder.value.range }
-            ];
-
-            await updateFolderRanges(folderUpdates);
-            await fetchFolders();
-          } catch (error) {
-            console.error('Folder swap failed:', error);
-            showSnackbar('Ошибка перестановки папок', 'error');
-          } finally {
-            isProcessing.value = false; // Reset isProcessing after Ctrl-drag
-            resetAllFolderStyles();
-          }
+          await swapFolders(draggedFolder.value, targetFolder);
         }
 
       } catch (error) {
         console.error('Unexpected error in handleDrop:', error);
         showSnackbar('Неожиданная ошибка при обработке', 'error');
       } finally {
-        // Гарантированный сброс isProcessing после любой операции,
-        // но hasMovedDuringAlt должен сбрасываться только при отпускании Alt.
         isProcessing.value = false;
-        // Здесь не нужно сбрасывать dragSourceFolder и dragTargetFolder,
-        // так как это делается в начале handleDrop или в Alt-блоке.
-        resetAllFolderStyles();
+        dragSourceFolder.value = null;
+        dragTargetFolder.value = null;
+        draggedFolder.value = null;
       }
+    };
+
+    const swapFolders = async (source, target) => {
+      const updates = [
+        { dir_hash: source.dir_hash, range: target.range },
+        { dir_hash: target.dir_hash, range: source.range }
+      ];
+
+      for (const update of updates) {
+        await supabase
+            .from('dir')
+            .update({ range: update.range })
+            .eq('dir_hash', update.dir_hash);
+      }
+
+      showSnackbar('Папки переставлены', 'success');
+      fetchFolders();
+    };
+
+    const performLeftToRightMove = async (folder) => {
+      const { data: maxRangeData } = await supabase
+          .from('dir')
+          .select('range')
+          .is('parent_hash', null)
+          .order('range', { ascending: false })
+          .limit(1);
+
+      const newRange = (maxRangeData?.[0]?.range ?? 0) + 1;
+
+      await supabase
+          .from('dir')
+          .update({ parent_hash: null, range: newRange })
+          .eq('dir_hash', folder.dir_hash);
+
+      await supabase
+          .from('links')
+          .update({ parent_hash: null, dir_hash: folder.dir_hash })
+          .eq('dir_hash', folder.dir_hash);
+
+      showSnackbar(`Папка "${folder.dir_name}" перемещена в Right`, 'success');
+      fetchFolders();
     };
 
     const resetDragState = () => {
@@ -1515,13 +1436,13 @@ export default {
     watch(dialog, (newVal) => {
       console.log('dialog changed:', newVal);
     });
-
     // Добавим watch для переподписки при изменении userId
     watch(userId, (newVal) => {
       if (newVal) {
         setupRealtime();
       }
     });
+
     watch(isAltPressed, (newVal) => {
       console.log(`Alt key state changed: ${newVal}`);
       if (!newVal) {
