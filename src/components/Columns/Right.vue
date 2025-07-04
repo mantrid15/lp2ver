@@ -386,6 +386,8 @@ export default {
         showSnackbar('Ошибка вложения папки', 'error');
       }
     };
+
+
     const mergeSubfolders = async (sourceFolderHash, targetFolderHash) => {
       try {
         // Получаем подпапки исходной папки
