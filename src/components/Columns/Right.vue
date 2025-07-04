@@ -331,6 +331,33 @@ export default {
      * @throws {Error} При ошибках валидации или запросов к БД
      * @returns {Promise<void>}
      */
+
+    const updateLinksParentHash = async (sourceDirHash, targetDirHash) => {
+      try {
+        // Находим ссылки, где dir_hash = sourceDirHash и parent_hash IS NULL
+        const { data: linksToUpdate, error: findError } = await supabase
+            .from('links')
+            .select('id')
+            .eq('dir_hash', sourceDirHash)
+            .is('parent_hash', null);
+
+        if (findError) throw findError;
+        if (!linksToUpdate || linksToUpdate.length === 0) return;
+
+        // Обновляем parent_hash для найденных ссылок
+        const { error: updateError } = await supabase
+            .from('links')
+            .update({ parent_hash: targetDirHash })
+            .in('id', linksToUpdate.map(link => link.id));
+
+        if (updateError) throw updateError;
+
+        console.log(`Updated ${linksToUpdate.length} links with new parent_hash`);
+      } catch (error) {
+        console.error('Error updating links parent_hash:', error);
+        throw error;
+      }
+    };
 // В методе nestFolder (внутри setup()) добавим обновление ссылок:
     const nestFolder = async (sourceFolder, targetFolder) => {
       try {
@@ -349,6 +376,8 @@ export default {
           await mergeFolders(sourceFolder, targetFolder);
           showSnackbar(`Папки "${sourceFolder.dir_name}" объединены`, 'success');
         } else {
+          // Перед вложением обновляем ссылки
+          await updateLinksParentHash(sourceFolder.dir_hash, targetFolder.dir_hash);
           await performNesting(sourceFolder, targetFolder);
           // showSnackbar(`"${sourceFolder.dir_name}" → "${targetFolder.dir_name}"`, 'success');
         }
@@ -359,14 +388,7 @@ export default {
     };
 
     const performNesting = async (sourceFolder, targetFolder) => {
-      // 1. Обновляем ссылки в child folder
-      const { error: updateLinksError } = await supabase
-          .from('links')
-          .update({ parent_hash: targetFolder.dir_hash })
-          .eq('dir_hash', sourceFolder.dir_hash);
-
-      if (updateLinksError) throw updateLinksError;
-
+      // 1. Обновляем ссылки в child folder (теперь это делается в nestFolder)
       // 2. Обновляем саму папку
       const { error: updateFolderError } = await supabase
           .from('dir')
@@ -377,7 +399,6 @@ export default {
           .eq('dir_hash', sourceFolder.dir_hash);
 
       if (updateFolderError) throw updateFolderError;
-
       // 3. Пересчет range для оставшихся папок
       await reindexRootFolders();
       // 4. Обновляем UI
@@ -387,8 +408,7 @@ export default {
         getCombinedLinkCount(targetFolder.dir_hash),
         getCombinedLinkCount(sourceFolder.dir_hash)
       ]);
-    };
-// Новый метод для слияния папок
+    };// Новый метод для слияния папок
     const mergeFolders = async (sourceFolder, targetFolder) => {
       // 1. Находим существующую папку
       const { data: existingFolders, error: fetchError } = await supabase
@@ -857,6 +877,7 @@ export default {
         }
       }
     };
+
     const resetRadio = () => {
       selectedFolderId.value = null;
     };
@@ -1464,6 +1485,7 @@ export default {
     });
 
     return {
+      updateLinksParentHash,
       isProcessing,
       hasMovedDuringAlt,
       resetDragState,
