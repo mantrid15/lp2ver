@@ -109,6 +109,7 @@ export default {
     const folders = ref([]);
     const childFoldersWithCounts = ref([]);
     const draggedFolder = ref(null);
+    const ctrlPressed = ref(false);
 
     const selectedFolderHash = computed(() => {
       if (props.selectedFolderHash && typeof props.selectedFolderHash === 'object') {
@@ -122,6 +123,19 @@ export default {
       message: '',
       color: 'error'
     });
+
+    // Обработчики клавиш Ctrl
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey) {
+        ctrlPressed.value = true;
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (e.key === 'Control') {
+        ctrlPressed.value = false;
+      }
+    };
 
     const showSnackbar = (message, color = 'error') => {
       snackbar.value = { show: true, message, color };
@@ -186,7 +200,7 @@ export default {
 
 // Нормализуем selectedFolderHash для внутреннего использования
     const normalizedSelectedHash = computed(() => {
-      const result = !props.selectedFolderHash ? null :
+      return !props.selectedFolderHash ? null :
           typeof props.selectedFolderHash === 'object' ?
               props.selectedFolderHash.dir_hash :
               props.selectedFolderHash;
@@ -268,6 +282,7 @@ export default {
         }
       }
     };
+
     const isDefaultState = computed(() => {
       return !props.rightFolder && !props.selectedFolderHash;
     });
@@ -298,6 +313,22 @@ export default {
           parent_hash: folder.parent_hash
         }));
         console.log(`Начато перетаскивание папки ${folder.dir_name} (${folder.dir_hash}) для перемещения в Right`);
+
+        // НОВЫЙ КОД: Устанавливаем parent_hash в NULL для всех ссылок этой папки
+        if (ctrlPressed.value) {
+          supabase
+            .from('links')
+            .update({ parent_hash: null })
+            .eq('dir_hash', folder.dir_hash)
+            .then(({ error }) => {
+              if (error) {
+                console.error('Ошибка при обновлении ссылок:', error);
+                showSnackbar('Ошибка при обновлении ссылок', 'error');
+              } else {
+                console.log(`Для всех ссылок папки ${folder.dir_name} установлен parent_hash = NULL`);
+              }
+            });
+        }
       } else {
         // Оригинальное перетаскивание (внутри Left)
         event.dataTransfer.setData('text/plain', folder.dir_hash);
@@ -386,16 +417,20 @@ export default {
       }
     };
 
-    onMounted(fetchFolders);
+    onMounted(() => {
+      fetchFolders();
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+    });
+
+    onUnmounted(() => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    });
+
     watch(() => props.rightFolder, fetchFolders);
     watch(() => props.selectedFolderHash, fetchFolders);
-    // watch(() => props.selectedFolderHash, (newVal, oldVal) => {
-    //   console.log('[Left] selectedFolderHash prop changed:', {
-    //     from: oldVal,
-    //     to: newVal,
-    //     type: typeof newVal
-    //   });
-    // }, { immediate: true });
+
     return {
       columnSize,
       displayedFolders,

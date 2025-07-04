@@ -67,16 +67,16 @@
             </div>
           </th>
           <th >
-  <span class="header-label-container" @click="(e) => handleClick(e, 'description')" data-sort-key="description" style="cursor: pointer;">
-    <span class="header-label">{{ DESCRIPTION_LABEL }}</span>
-    <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
-  </span>
+            <span class="header-label-container" @click="(e) => handleClick(e, 'description')" data-sort-key="description" style="cursor: pointer;">
+              <span class="header-label">{{ DESCRIPTION_LABEL }}</span>
+              <span class="sort-icon">{{ getSortIcon('description') || SORT_DEFAULT_ICON }}</span>
+            </span>
           </th>
           <th >
-  <span class="header-label-container" @click="(e) => handleClick(e, 'keywords')" data-sort-key="keywords" style="cursor: pointer;">
-    <span class="header-label">{{ KEYWORDS_LABEL }}</span>
-    <span class="sort-icon">{{ getSortIcon('keywords') || SORT_DEFAULT_ICON }}</span>
-  </span>
+            <span class="header-label-container" @click="(e) => handleClick(e, 'keywords')" data-sort-key="keywords" style="cursor: pointer;">
+              <span class="header-label">{{ KEYWORDS_LABEL }}</span>
+              <span class="sort-icon">{{ getSortIcon('keywords') || SORT_DEFAULT_ICON }}</span>
+            </span>
           </th>
           <th>
             <span class="header-label-container" @click="(e) => handleClick(e, 'date')" data-sort-key="date" style="cursor: pointer;">
@@ -103,7 +103,7 @@
                             :alt="getFaviconUrl(link.favicon_hash)"
 -->
 
-            <td class="content-padding fav-column" @click="handleFavClick(link)">
+          <td class="content-padding fav-column" @click="handleFavClick(link)">
                         <img
                             v-if="link.favicon_hash"
                             :src="getFaviconUrl(link.favicon_hash)"
@@ -153,7 +153,6 @@
             <span v-else>
               <template v-if="link.parent_hash">
                 {{ getFolderNameByHash(link.parent_hash) }}<span class="folder-separator">/</span>
-                <span class="subfolder">{{ getFolderNameByHash(link.dir_hash) }}</span>
                 <span class="subfolder">{{ getFolderNameByHash(link.dir_hash) }}</span>
               </template>
               <template v-else>
