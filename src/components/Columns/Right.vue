@@ -386,6 +386,55 @@ export default {
         showSnackbar('Ошибка вложения папки', 'error');
       }
     };
+    const mergeSubfolders = async (sourceFolderHash, targetFolderHash) => {
+      try {
+        // Получаем подпапки исходной папки
+        const { data: sourceSubfolders, error: sourceError } = await supabase
+            .from('dir')
+            .select('*')
+            .eq('parent_hash', sourceFolderHash);
+
+        if (sourceError) throw sourceError;
+
+        // Получаем подпапки целевой папки
+        const { data: targetSubfolders, error: targetError } = await supabase
+            .from('dir')
+            .select('*')
+            .eq('parent_hash', targetFolderHash);
+
+        if (targetError) throw targetError;
+
+        // Создаем карту подпапок целевой папки по именам
+        const targetSubfoldersMap = new Map();
+        targetSubfolders.forEach(folder => {
+          targetSubfoldersMap.set(folder.dir_name, folder);
+        });
+
+        // Обрабатываем каждую подпапку исходной папки
+        for (const subfolder of sourceSubfolders) {
+          const existingFolder = targetSubfoldersMap.get(subfolder.dir_name);
+
+          if (existingFolder) {
+            // Если подпапка с таким именем уже существует - сливаем
+            await mergeFolders(subfolder, existingFolder);
+          } else {
+            // Если подпапки нет - перемещаем
+            const { error } = await supabase
+                .from('dir')
+                .update({ parent_hash: targetFolderHash })
+                .eq('dir_hash', subfolder.dir_hash);
+
+            if (error) throw error;
+          }
+        }
+
+        console.log('Subfolders merged successfully');
+      } catch (error) {
+        console.error('Error merging subfolders:', error);
+        throw error;
+      }
+    };
+
 
     const performNesting = async (sourceFolder, targetFolder) => {
       // 1. Обновляем ссылки в child folder (теперь это делается в nestFolder)
