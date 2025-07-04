@@ -124,19 +124,6 @@ export default {
       color: 'error'
     });
 
-    // Обработчики клавиш Ctrl
-    const handleKeyDown = (e) => {
-      if (e.ctrlKey) {
-        ctrlPressed.value = true;
-      }
-    };
-
-    const handleKeyUp = (e) => {
-      if (e.key === 'Control') {
-        ctrlPressed.value = false;
-      }
-    };
-
     const showSnackbar = (message, color = 'error') => {
       snackbar.value = { show: true, message, color };
       setTimeout(() => {
@@ -204,9 +191,6 @@ export default {
           typeof props.selectedFolderHash === 'object' ?
               props.selectedFolderHash.dir_hash :
               props.selectedFolderHash;
-
-      // console.log('[Left] Computed normalizedSelectedHash:', result);
-      return result;
     });
 
     const getFolderColor = (folder) => {
@@ -246,12 +230,12 @@ export default {
 
         try {
           const { error } = await supabase
-            .from('links')
-            .update({
-              parent_hash: props.rightFolder?.dir_hash || null,
-              dir_hash: dirHash
-            })
-            .eq('id', link.id);
+              .from('links')
+              .update({
+                parent_hash: props.rightFolder?.dir_hash || null,
+                dir_hash: dirHash
+              })
+              .eq('id', link.id);
 
           if (error) throw error;
 
@@ -282,14 +266,13 @@ export default {
         }
       }
     };
-
     const isDefaultState = computed(() => {
       return !props.rightFolder && !props.selectedFolderHash;
     });
 
     const shouldShowNoFoldersMessage = computed(() => {
       return (props.rightFolder || props.selectedFolderHash) &&
-        displayedFolders.value.length === 0;
+          displayedFolders.value.length === 0;
     });
 
     const getFontSize = (folderName) => {
@@ -303,6 +286,18 @@ export default {
       return '100%';
     };
 
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey) {
+        ctrlPressed.value = true;
+      }
+    };
+
+    const handleKeyUp = (e) => {
+      if (e.key === 'Control') {
+        ctrlPressed.value = false;
+      }
+    };
+
     const handleDragStart = (event, folder) => {
       if (event.ctrlKey) {
         // Для перетаскивания между Left и Right используем другой тип данных
@@ -312,23 +307,17 @@ export default {
           dir_name: folder.dir_name,
           parent_hash: folder.parent_hash
         }));
-        console.log(`Начато перетаскивание папки ${folder.dir_name} (${folder.dir_hash}) для перемещения в Right`);
 
-        // НОВЫЙ КОД: Устанавливаем parent_hash в NULL для всех ссылок этой папки
-        if (ctrlPressed.value) {
-          supabase
-            .from('links')
-            .update({ parent_hash: null })
-            .eq('dir_hash', folder.dir_hash)
-            .then(({ error }) => {
-              if (error) {
-                console.error('Ошибка при обновлении ссылок:', error);
-                showSnackbar('Ошибка при обновлении ссылок', 'error');
-              } else {
-                console.log(`Для всех ссылок папки ${folder.dir_name} установлен parent_hash = NULL`);
-              }
-            });
-        }
+        // Обновляем parent_hash для ссылок только при Ctrl+перетаскивании
+        supabase
+          .from('links')
+          .update({ parent_hash: null })
+          .eq('dir_hash', folder.dir_hash)
+          .then(({ error }) => {
+            if (error) {
+              console.error('Error updating links:', error);
+            }
+          });
       } else {
         // Оригинальное перетаскивание (внутри Left)
         event.dataTransfer.setData('text/plain', folder.dir_hash);
@@ -422,16 +411,11 @@ export default {
       window.addEventListener('keydown', handleKeyDown);
       window.addEventListener('keyup', handleKeyUp);
     });
-
-    onUnmounted(() => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    });
-
     watch(() => props.rightFolder, fetchFolders);
     watch(() => props.selectedFolderHash, fetchFolders);
 
     return {
+      ctrlPressed,
       columnSize,
       displayedFolders,
       isDefaultState,

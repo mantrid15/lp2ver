@@ -166,6 +166,7 @@
     </div>
   </div>
 </template>
+
 <script>
 import { computed, ref, watchEffect, onMounted, onUnmounted, watch} from 'vue';
 import { useStore } from 'vuex';
@@ -621,6 +622,7 @@ export default {
   },
 };
 </script>
+
 <style scoped>
 td.has-subfolder {
   background: linear-gradient(135deg, #ffc0cb, #ff69b4); /* Розовый градиент */

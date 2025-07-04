@@ -829,15 +829,27 @@ export default {
       if (props.draggedLink) {
         const linkToUpdate = props.draggedLink;
         try {
+          const updateData = {
+            dir_hash: dirHash,
+            parent_hash: null // Всегда сбрасываем parent_hash при перетаскивании на папку
+          };
+
           const { error } = await supabase
               .from('links')
-              .update({ dir_hash: dirHash })
+              .update(updateData)
               .eq('id', linkToUpdate.id);
+
           if (error) throw error;
+
+          // Обновляем счетчики для старой и новой папки
           await getLinkCount(dirHash);
           if (linkToUpdate.dir_hash) {
             await getLinkCount(linkToUpdate.dir_hash);
           }
+          if (linkToUpdate.parent_hash) {
+            await getCombinedLinkCount(linkToUpdate.parent_hash);
+          }
+
           sortedLinks.value = sortedLinks.value.filter(link => link.id !== linkToUpdate.id);
           emit('update-dragged-link', null);
         } catch (error) {
@@ -845,7 +857,6 @@ export default {
         }
       }
     };
-
     const resetRadio = () => {
       selectedFolderId.value = null;
     };
