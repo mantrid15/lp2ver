@@ -361,6 +361,7 @@ export default {
 // В методе nestFolder (внутри setup()) добавим обновление ссылок:
     const nestFolder = async (sourceFolder, targetFolder) => {
       try {
+        // Проверки на циклическое вложение
         if (sourceFolder.dir_hash === targetFolder.dir_hash) {
           showSnackbar('Нельзя вложить папку в саму себя!', 'error');
           return;
@@ -371,16 +372,175 @@ export default {
           return;
         }
 
-        const isDuplicate = await checkDuplicateFolderName(targetFolder.dir_hash, sourceFolder.dir_name);
-        if (isDuplicate) {
-          await mergeFolders(sourceFolder, targetFolder);
-          showSnackbar(`Папки "${sourceFolder.dir_name}" объединены`, 'success');
-        } else {
-          // Перед вложением обновляем ссылки
-          await updateLinksParentHash(sourceFolder.dir_hash, targetFolder.dir_hash);
-          await performNesting(sourceFolder, targetFolder);
-          // showSnackbar(`"${sourceFolder.dir_name}" → "${targetFolder.dir_name}"`, 'success');
+        // Проверяем, есть ли в целевой папке подпапка с таким же именем
+        const { data: existingFolders, error: fetchError } = await supabase
+            .from('dir')
+            .select('*')
+            .eq('parent_hash', targetFolder.dir_hash)
+            .eq('dir_name', sourceFolder.dir_name);
+
+        if (fetchError) throw fetchError;
+
+        const existingFolder = existingFolders?.[0];
+
+        // 1. Если в исходной папке нет элементов links
+        const { count: linksCount, error: countError } = await supabase
+            .from('links')
+            .select('*', { count: 'exact' })
+            .eq('dir_hash', sourceFolder.dir_hash);
+
+        if (countError) throw countError;
+
+        if (linksCount === 0) {
+          // Просто обновляем parent_hash исходной папки
+          const { error: updateError } = await supabase
+              .from('dir')
+              .update({ parent_hash: targetFolder.dir_hash })
+              .eq('dir_hash', sourceFolder.dir_hash);
+
+          if (updateError) throw updateError;
+
+          showSnackbar(`Пустая папка "${sourceFolder.dir_name}" вложена в "${targetFolder.dir_name}"`, 'success');
+          return;
         }
+
+        // 2. Проверяем есть ли подпапки в исходной папке
+        const { count: subfoldersCount, error: subfoldersError } = await supabase
+            .from('dir')
+            .select('*', { count: 'exact' })
+            .eq('parent_hash', sourceFolder.dir_hash);
+
+        if (subfoldersError) throw subfoldersError;
+
+        // 3. Если есть дубликат имени в целевой папке
+        if (existingFolder) {
+          // Переносим все корневые ссылки из исходной папки в существующую
+          const { error: moveRootLinksError } = await supabase
+              .from('links')
+              .update({
+                dir_hash: existingFolder.dir_hash,
+                parent_hash: targetFolder.dir_hash
+              })
+              .eq('dir_hash', sourceFolder.dir_hash)
+              .is('parent_hash', null);
+
+          if (moveRootLinksError) throw moveRootLinksError;
+
+          // Переносим все ссылки с parent_hash исходной папки
+          const { error: moveChildLinksError } = await supabase
+              .from('links')
+              .update({
+                parent_hash: existingFolder.dir_hash
+              })
+              .eq('parent_hash', sourceFolder.dir_hash);
+
+          if (moveChildLinksError) throw moveChildLinksError;
+
+          // Если есть подпапки - переносим их в существующую папку
+          if (subfoldersCount > 0) {
+            const { data: subfolders, error: sfError } = await supabase
+                .from('dir')
+                .select('*')
+                .eq('parent_hash', sourceFolder.dir_hash);
+
+            if (sfError) throw sfError;
+
+            for (const subfolder of subfolders) {
+              // Проверяем есть ли такая подпапка в существующей папке
+              const { data: duplicates, error: dupError } = await supabase
+                  .from('dir')
+                  .select('*')
+                  .eq('parent_hash', existingFolder.dir_hash)
+                  .eq('dir_name', subfolder.dir_name);
+
+              if (dupError) throw dupError;
+
+              if (duplicates && duplicates.length > 0) {
+                const duplicateSubfolder = duplicates[0];
+
+                // Переносим ссылки из исходной подпапки в существующую
+                const { error: updateLinksError } = await supabase
+                    .from('links')
+                    .update({
+                      dir_hash: duplicateSubfolder.dir_hash,
+                      parent_hash: existingFolder.dir_hash
+                    })
+                    .eq('dir_hash', subfolder.dir_hash);
+
+                if (updateLinksError) throw updateLinksError;
+
+                // Точно удаляем только исходную подпапку (из sourceFolder)
+                const { error: deleteError } = await supabase
+                    .from('dir')
+                    .delete()
+                    .eq('dir_hash', subfolder.dir_hash)
+                    .eq('parent_hash', sourceFolder.dir_hash); // Важно: проверяем parent_hash
+
+                if (deleteError) throw deleteError;
+              } else {
+                // Просто перемещаем подпапку
+                const { error: moveError } = await supabase
+                    .from('dir')
+                    .update({ parent_hash: existingFolder.dir_hash })
+                    .eq('dir_hash', subfolder.dir_hash);
+
+                if (moveError) throw moveError;
+              }
+            }
+          }
+
+          // Точно удаляем только исходную папку (sourceFolder)
+          const { error: deleteError } = await supabase
+              .from('dir')
+              .delete()
+              .eq('dir_hash', sourceFolder.dir_hash)
+              .eq('parent_hash', sourceFolder.parent_hash); // Проверяем исходный parent_hash
+
+          if (deleteError) throw deleteError;
+
+          showSnackbar(`Содержимое папки "${sourceFolder.dir_name}" объединено с существующей`, 'success');
+        } else {
+          // Нет дубликата - простое вложение
+
+          // Обновляем parent_hash исходной папки
+          const { error: updateFolderError } = await supabase
+              .from('dir')
+              .update({ parent_hash: targetFolder.dir_hash })
+              .eq('dir_hash', sourceFolder.dir_hash);
+
+          if (updateFolderError) throw updateFolderError;
+
+          // Обновляем parent_hash корневых ссылок
+          const { error: updateRootLinksError } = await supabase
+              .from('links')
+              .update({ parent_hash: targetFolder.dir_hash })
+              .eq('dir_hash', sourceFolder.dir_hash)
+              .is('parent_hash', null);
+
+          if (updateRootLinksError) throw updateRootLinksError;
+
+          // Если есть подпапки - обновляем их parent_hash
+          if (subfoldersCount > 0) {
+            const { error: updateSubfoldersError } = await supabase
+                .from('dir')
+                .update({ parent_hash: targetFolder.dir_hash })
+                .eq('parent_hash', sourceFolder.dir_hash);
+
+            if (updateSubfoldersError) throw updateSubfoldersError;
+          }
+
+          showSnackbar(`Папка "${sourceFolder.dir_name}" вложена в "${targetFolder.dir_name}"`, 'success');
+        }
+
+        // Обновляем данные
+        await Promise.all([
+          fetchFolders(),
+          getSubfolderCount(targetFolder.dir_hash),
+          getCombinedLinkCount(targetFolder.dir_hash),
+          ...(existingFolder
+              ? [getCombinedLinkCount(existingFolder.dir_hash)]
+              : [getCombinedLinkCount(sourceFolder.dir_hash)])
+        ]);
       } catch (error) {
         console.error('Ошибка вложения папки:', error);
         showSnackbar('Ошибка вложения папки', 'error');
