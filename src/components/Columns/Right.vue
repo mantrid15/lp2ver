@@ -294,9 +294,10 @@ export default {
     // Новая функция для проверки существования папки с таким же именем
     const checkDuplicateFolderName = async (parentHash, folderName) => {
       try {
+        // Проверяем наличие папок с таким же именем в указанном parentHash
         const { data, error } = await supabase
             .from('dir')
-            .select('dir_name')
+            .select('*')
             .eq('parent_hash', parentHash)
             .eq('dir_name', folderName);
 
@@ -361,7 +362,7 @@ export default {
 // В методе nestFolder (внутри setup()) добавим обновление ссылок:
     const nestFolder = async (sourceFolder, targetFolder) => {
       try {
-        // Проверки на циклическое вложение
+        // 1. Проверка на вложение папки в саму себя
         if (sourceFolder.dir_hash === targetFolder.dir_hash) {
           showSnackbar('Нельзя вложить папку в саму себя!', 'error');
           return;
@@ -597,7 +598,6 @@ export default {
       }
     };
 
-
     const performNesting = async (sourceFolder, targetFolder) => {
       // 1. Обновляем ссылки в child folder (теперь это делается в nestFolder)
       // 2. Обновляем саму папку
@@ -716,18 +716,18 @@ export default {
       if (!logEnabled) return;
 
       if (process.env.NODE_ENV === 'development') {
-        console.groupCollapsed(`Состояние папок (${context})`);
+        // console.groupCollapsed(`Состояние папок (${context})`);
         document.querySelectorAll('.folder-card').forEach((el, index) => {
-          console.log(`Папка #${index + 1}:`, {
-            name: el.querySelector('.folder-name')?.textContent?.trim(),
-            hash: el.dataset.folderHash,
-            classes: el.className,
-            styles: {
-              border: el.style.border,
-              background: el.style.backgroundColor,
-              opacity: el.style.opacity
-            }
-          });
+          // console.log(`Папка #${index + 1}:`, {
+          //   name: el.querySelector('.folder-name')?.textContent?.trim(),
+          //   hash: el.dataset.folderHash,
+          //   classes: el.className,
+          //   styles: {
+          //     border: el.style.border,
+          //     background: el.style.backgroundColor,
+          //     opacity: el.style.opacity
+          //   }
+          // });
         });
         console.groupEnd();
       }
@@ -735,9 +735,29 @@ export default {
     // Вспомогательная функция для проверки циклического вложения
     const checkCircularNesting = async (sourceHash, targetHash) => {
       try {
+        // Если пытаемся вложить папку в саму себя
+        if (sourceHash === targetHash) {
+          return true;
+        }
+
+        // Проверяем всю цепочку parent_hash для targetFolder
         let currentHash = targetHash;
+        const visitedHashes = new Set();
+
         while (currentHash) {
-          if (currentHash === sourceHash) return true;
+          // Если нашли цикл
+          if (visitedHashes.has(currentHash)) {
+            return true;
+          }
+
+          // Если sourceHash встречается в цепочке parent_hash
+          if (currentHash === sourceHash) {
+            return true;
+          }
+
+          visitedHashes.add(currentHash);
+
+          // Получаем parent_hash текущей папки
           const { data: folder, error } = await supabase
               .from('dir')
               .select('parent_hash')
@@ -745,8 +765,11 @@ export default {
               .single();
 
           if (error) throw error;
-          currentHash = folder?.parent_hash;
+          if (!folder) break;
+
+          currentHash = folder.parent_hash;
         }
+
         return false;
       } catch (error) {
         console.error('Ошибка при проверке циклического вложения:', error);
@@ -1578,7 +1601,7 @@ export default {
                 table: 'links'
               },
               async (payload) => {
-                console.log('Изменение в links:', payload);
+                // console.log('Изменение в links:', payload);
 
                 // Обновляем счетчики для затронутых папок
                 if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {

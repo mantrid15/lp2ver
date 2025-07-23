@@ -340,71 +340,93 @@ export default {
       event.preventDefault();
       event.currentTarget.style.opacity = '1';
 
-      // Обработка перемещения из Left в Right
-      const folderData = event.dataTransfer.getData('application/x-folder-move');
-      if (folderData) {
-        try {
-          const folderToMove = JSON.parse(folderData);
+  // Обработка перемещения из Left в Right
+  const folderData = event.dataTransfer.getData('application/x-folder-move');
+  if (!folderData) return; // Если нет данных о перемещении между компонентами - выходим
+
+  try {
+    const folderToMove = JSON.parse(folderData);
+    console.log('[Drag&Drop] Начало обработки перетаскивания папки в Right:', {
+      dir_hash: folderToMove.dir_hash,
+      dir_name: folderToMove.dir_name,
+      parent_hash: folderToMove.parent_hash
+    });
 
           if (!folderToMove?.dir_hash) {
             throw new Error('Invalid folder data');
           }
-          // 1. Получаем максимальный range из Right
-          const { data: rightFolders, error: rangeError } = await supabase
-              .from('dir')
-              .select('range')
-              .is('parent_hash', null)
-              .order('range', { ascending: false })
-              .limit(1);
 
-          if (rangeError) throw rangeError;
+      // Проверяем, есть ли в Right папка с таким же dir_hash
+      console.log('[Drag&Drop] Проверка существования папки в Right...');
+      const { data: existingRightFolder, error: checkError } = await supabase
+          .from('dir')
+          .select('*')
+          .eq('dir_hash', folderToMove.dir_hash)
+          .is('parent_hash', null)
+          .single();
 
-          const newRange = rightFolders.length > 0 ? rightFolders[0].range + 1 : 1;
+      if (!checkError && existingRightFolder) {
+        console.log('[Drag&Drop] Найдена дублирующая папка в Right:', {
+          existing_dir_hash: existingRightFolder.dir_hash,
+          existing_dir_name: existingRightFolder.dir_name
+        });
 
-          // 2. Обновляем папку - убираем parent_hash и устанавливаем новый range
-          const { error: updateError } = await supabase
-              .from('dir')
-              .update({
-                parent_hash: null,
-                range: newRange
-              })
-              .eq('dir_hash', folderToMove.dir_hash);
+        // 1. Удаляем parent_hash у всех ссылок из перемещаемой папки
+        console.log('[Drag&Drop] Удаление parent_hash у ссылок...');
+        const { error: clearParentError } = await supabase
+            .from('links')
+            .update({ parent_hash: null })
+            .eq('dir_hash', folderToMove.dir_hash);
 
-          if (updateError) throw updateError;
+        if (clearParentError) throw clearParentError;
+        console.log('[Drag&Drop] parent_hash у ссылок успешно удален');
 
-          // 3. Обновляем ссылки, которые были в этой папке
-          const { error: linksError } = await supabase
-              .from('links')
-              .update({
-                parent_hash: null,
-                dir_hash: folderToMove.dir_hash
-              })
-              .eq('dir_hash', folderToMove.dir_hash);
+        // 2. Переносим все ссылки в существующую папку Right
+        console.log('[Drag&Drop] Перенос ссылок в существующую папку Right...');
+        const { error: transferError } = await supabase
+            .from('links')
+            .update({ dir_hash: existingRightFolder.dir_hash })
+            .eq('dir_hash', folderToMove.dir_hash);
 
-          if (linksError) throw linksError;
+        if (transferError) throw transferError;
+        console.log('[Drag&Drop] Ссылки успешно перенесены');
 
-          showSnackbar(`Папка "${folderToMove.dir_name}" перемещена в Right`);
-          await fetchFolders();
+        // 3. Удаляем дублирующую папку из Left
+        console.log('[Drag&Drop] Удаление папки из Left...', {
+          dir_hash: folderToMove.dir_hash,
+          parent_hash: folderToMove.parent_hash
+        });
+        const { error: deleteError } = await supabase
+            .from('dir')
+            .delete()
+            .eq('dir_hash', folderToMove.dir_hash)
+            .eq('parent_hash', folderToMove.parent_hash); // Жесткое совпадение по обоим параметрам
 
-        } catch (error) {
-          console.error('Ошибка при перемещении папки:', error);
-          showSnackbar('Ошибка при перемещении папки', 'error');
-        }
-        return;
-      }
+        if (deleteError) throw deleteError;
+        console.log('[Drag&Drop] Папка успешно удалена из Left');
 
-      // Оригинальная обработка для перетаскивания внутри Left
-      if (!event.ctrlKey) return;
+            showSnackbar(`Ссылки перенесены в существующую папку "${existingRightFolder.dir_name}"`);
+            await fetchFolders();
+            return;
+          }
 
-      if (draggedFolder.value && draggedFolder.value.dir_hash !== targetFolder.dir_hash) {
-        const [dragged, target] = [draggedFolder.value, targetFolder];
-        await Promise.all([
-          supabase.from('dir').update({ parent_hash: target.parent_hash }).eq('dir_hash', dragged.dir_hash),
-          supabase.from('dir').update({ parent_hash: dragged.parent_hash }).eq('dir_hash', target.dir_hash)
-        ]);
-        await fetchFolders();
-      }
-    };
+    // Если дубликата нет - стандартное перемещение
+    console.log('[Drag&Drop] Дублирующей папки в Right не найдено, выполнение стандартного перемещения...');
+
+    // Здесь должен быть код для перемещения в Right, если папка уникальна
+    // Но это должно обрабатываться в компоненте Right, а не Left
+
+    // Показываем сообщение, что нужно перетащить в Right
+    showSnackbar('Перетащите папку в правую колонку (Right)', 'info');
+
+  } catch (error) {
+    console.error('[Drag&Drop] Ошибка при обработке перетаскивания:', {
+      error: error.message,
+      stack: error.stack
+    });
+    showSnackbar('Ошибка при перемещении папки', 'error');
+  }
+};
 
     onMounted(() => {
       fetchFolders();
