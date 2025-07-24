@@ -20,7 +20,6 @@
               <input type="checkbox" v-model="showAllDirs" style="margin-right: 5px;" />
             </div>
           </th>
-
           <th>
             <div style="display: flex; align-items: center;">
               <span class="header-label-container" @click="(e) => handleClick(e, 'title')" data-sort-key="title" style="cursor: pointer;">
@@ -99,10 +98,6 @@
             @dragstart="onDragStart(link)"
             @dragend="onDragEnd"
         >
-            <!--
-                            :alt="getFaviconUrl(link.favicon_hash)"
--->
-
           <td class="content-padding fav-column" @click="handleFavClick(link)">
                         <img
                             v-if="link.favicon_hash"
@@ -408,29 +403,37 @@ export default {
     const rowCount = computed(() => filteredLinks.value.length); // Обновлено для использования filteredLinks
 
     const sortByKey = (a, b, key, order) => {
-      const modifier = order === 'asc' ? 1 : -1;
-      // Если ключ сортировки — 'dir_name', сортируем по названию папки
-      if (key === 'dir_name') {
-        const aFolder = folders.value.find(f => f.dir_hash === a.dir_hash);
-        const bFolder = folders.value.find(f => f.dir_hash === b.dir_hash);
-        const aValue = aFolder ? aFolder.dir_name : '';
-        const bValue = bFolder ? bFolder.dir_name : '';
-        // Пустые значения идут после непустых
-        if (aValue === '' && bValue !== '') return 1; // a идет после b
-        if (bValue === '' && aValue !== '') return -1; // a идет перед b
-        if (aValue === '' && bValue === '') return 0; // a и b равны
-        // Сортировка по значению
-        return (aValue > bValue ? 1 : -1) * modifier;
-      }
-      // Для остальных ключей сортировки (включая 'date')
-      const aValue = a[key] !== null ? a[key].toString() : '';
-      const bValue = b[key] !== null ? b[key].toString() : '';
-      if (key === 'date') {
-        return (new Date(b.date) - new Date(a.date)) * modifier;
-      }
-      return (aValue > bValue ? 1 : -1) * modifier;
-    };
+  const modifier = order === 'asc' ? 1 : -1;
 
+  // Если ключ сортировки — 'dir_name', сортируем по полному пути папки
+  if (key === 'dir_name') {
+    // Получаем полный путь для a
+    const aParentFolder = a.parent_hash ? folders.value.find(f => f.dir_hash === a.parent_hash) : null;
+    const aFolder = folders.value.find(f => f.dir_hash === a.dir_hash);
+    const aPath = (aParentFolder ? aParentFolder.dir_name + '/' : '') + (aFolder ? aFolder.dir_name : '');
+
+    // Получаем полный путь для b
+    const bParentFolder = b.parent_hash ? folders.value.find(f => f.dir_hash === b.parent_hash) : null;
+    const bFolder = folders.value.find(f => f.dir_hash === b.dir_hash);
+    const bPath = (bParentFolder ? bParentFolder.dir_name + '/' : '') + (bFolder ? bFolder.dir_name : '');
+
+    // Пустые значения идут после непустых
+    if (aPath === '' && bPath !== '') return 1; // a идет после b
+    if (bPath === '' && aPath !== '') return -1; // a идет перед b
+    if (aPath === '' && bPath === '') return 0; // a и b равны
+
+    // Сортировка по полному пути
+    return (aPath > bPath ? 1 : -1) * modifier;
+  }
+
+  // Для остальных ключей сортировки (включая 'date')
+  const aValue = a[key] !== null ? a[key].toString() : '';
+  const bValue = b[key] !== null ? b[key].toString() : '';
+  if (key === 'date') {
+    return (new Date(b.date) - new Date(a.date)) * modifier;
+  }
+  return (aValue > bValue ? 1 : -1) * modifier;
+};
     watchEffect(() => {
       if (!filteredLinks.value || !filteredLinks.value.length) {
         sortedLinks.value = [];
@@ -447,7 +450,7 @@ export default {
       if (key === 'url' && event.ctrlKey) {
         emit('handle-url-click', event, key);
       } else {
-        // Если чекбокс включен и ключ сортировки — 'date', меняем его на 'dir_name'
+        // Всегда используем 'dir_name' для сортировки по папкам, когда showAllDirs=true
         const sortKey = showAllDirs.value && key === 'date' ? 'dir_name' : key;
         if (currentSortKey.value === sortKey) {
           currentSortOrder.value = currentSortOrder.value === 'asc' ? 'desc' : 'asc';
