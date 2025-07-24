@@ -845,13 +845,33 @@ export default {
         event.preventDefault();
         resetAllFolderStyles();
 
-        // 1. Обработка перемещения из Left в Right
-        const folderData = event.dataTransfer?.getData('application/x-folder-move');
-        if (folderData) {
-          const folderToMove = JSON.parse(folderData);
-          await performLeftToRightMove(folderToMove);
-          return;
-        }
+    // 1. Обработка перемещения из Left в Right
+    const folderData = event.dataTransfer?.getData('application/x-folder-move');
+    if (folderData) {
+      const folderToMove = JSON.parse(folderData);
+
+      // Проверяем, есть ли в Right папка с таким же именем
+      const duplicateFolder = folders.value.find(
+        f => f.dir_name === folderToMove.dir_name && f.parent_hash === null
+      );
+
+      if (duplicateFolder) {
+        // Удаляем исходную папку из Left
+        const { error: deleteError } = await supabase
+          .from('dir')
+          .delete()
+          .eq('dir_hash', folderToMove.dir_hash)
+          .eq('parent_hash', folderToMove.parent_hash); // Важно проверять parent_hash
+
+        if (deleteError) throw deleteError;
+
+        showSnackbar(`Папка "${folderToMove.dir_name}" удалена, так как уже существует в Right`, 'success');
+      } else {
+        // Стандартное перемещение, если дубликата нет
+        await performLeftToRightMove(folderToMove);
+      }
+      return;
+    }
 
         // 2. Обработка вложения папки (Alt)
         if (isAltPressed.value && dragSourceFolder.value?.dir_hash) {
@@ -859,10 +879,10 @@ export default {
           return;
         }
 
-        // 3. Стандартное перетаскивание внутри Right (Ctrl)
-        if (event.ctrlKey && draggedFolder.value?.dir_hash && draggedFolder.value.dir_hash !== targetFolder.dir_hash) {
-          await swapFolders(draggedFolder.value, targetFolder);
-        }
+    // 3. Стандартное перетаскивание внутри Right (Ctrl)
+    if (event.ctrlKey && draggedFolder.value?.dir_hash && draggedFolder.value.dir_hash !== targetFolder.dir_hash) {
+      await swapFolders(draggedFolder.value, targetFolder);
+    }
 
       } catch (error) {
         console.error('Unexpected error in handleDrop:', error);
