@@ -22,16 +22,16 @@
             >
               <v-list-item-title
                   :style="{
-        display: 'flex',
-        height: '30px',
-        padding: '0 2px',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: editingFolderId === folder.id
-          ? 'pink'
-          : (linkCounts[folder.dir_hash] > 0 ? 'lightgreen' : 'red'),
-        width: '100%'
-      }"
+                    display: 'flex',
+                    height: '30px',
+                    padding: '0 2px',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: editingFolderId === folder.id
+                      ? 'pink'
+                      : (linkCounts[folder.dir_hash] > 0 ? 'lightgreen' : 'red'),
+                    width: '100%'
+                  }"
               >
                 <div style="flex-grow: 1; display: flex; align-items: center; max-width: calc(100% - 50px);">
                   <v-radio
@@ -42,20 +42,16 @@
                       @click.stop="handleToggleFolder(folder.id)"
                       style="margin-right: 20px; padding: 0; min-width: 20px; min-height: 20px;"
                   ></v-radio>
-<!--                  <div v-if="editingFolderId === folder.id" style="display: flex; width: 100%; align-items: center;">-->
-                    <v-text-field v-if="editingFolderId === folder.id"
-                                  v-model="editingFolderName"
-                        hide-details
-                        solo
-                        style="font-size: 0.8em; padding: 0; margin-left: 10px;"
-                    ></v-text-field>
-<!--                  </div>-->
-                  <span v-else style="overflow: hidden;  /* Уменьшено пространство между радио и текстом */
--                 text-overflow: ellipsis;
-                 white-space: nowrap;
-                 font-size: 1em;">
-          {{ folder.dir_name }}
-        </span>
+                  <v-text-field
+                      v-if="editingFolderId === folder.id"
+                      v-model="editingFolderName"
+                      hide-details
+                      solo
+                      style="font-size: 0.8em; padding: 0; margin-left: 10px;"
+                  ></v-text-field>
+                  <span v-else style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1em;">
+                    {{ getFolderPath(folder) }}
+                  </span>
                 </div>
                 <div v-if="editingFolderId === folder.id">
                   <v-btn icon @click.stop="handleCancelEdit" style="color: red; background: transparent;">
@@ -66,12 +62,11 @@
                   </v-btn>
                 </div>
                 <span v-else style="color: white;">
-        {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
-      </span>
+                  {{ linkCounts[folder.dir_hash] > 0 ? linkCounts[folder.dir_hash] : 0 }}
+                </span>
               </v-list-item-title>
             </v-list-item>
           </v-list>
-
         </v-card-text>
       </div>
       <v-card-actions class="fixed-actions">
@@ -86,11 +81,10 @@
 </template>
 
 <script>
-import { supabase } from '@/clients/supabase.js'; // Импортируйте supabase
+import { supabase } from '@/clients/supabase.js';
 import { computed, ref } from 'vue';
 import { useStore } from 'vuex';
 
-// Функция для вычисления SHA‑256 хеша строки
 const hashString = async (inputString) => {
   try {
     const encoder = new TextEncoder();
@@ -105,7 +99,6 @@ const hashString = async (inputString) => {
   }
 };
 
-// Функция для проверки уникальности хеша на новом названии
 const checkHashUniqueness = async (dirHash, userId, currentFolderId = null) => {
   try {
     let query = supabase
@@ -118,7 +111,6 @@ const checkHashUniqueness = async (dirHash, userId, currentFolderId = null) => {
     }
     const {data, error} = await query;
     if (error) throw error;
-    console.log('Результат проверки уникальности:', data);
     return data.length === 0;
   } catch (error) {
     console.error('Ошибка при проверке уникальности хеша:', error);
@@ -186,7 +178,16 @@ export default {
       }
     });
 
-    const userId = computed(() => store.state.userId); // Получаем userId из Vuex store
+    const userId = computed(() => store.state.userId);
+
+    const getFolderPath = (folder) => {
+      if (!folder.parent_hash) return folder.dir_name;
+
+      const parentFolder = props.folders.find(f => f.dir_hash === folder.parent_hash);
+      if (!parentFolder) return folder.dir_name;
+
+      return `${parentFolder.dir_name}/${folder.dir_name}`;
+    };
 
     const handleEditDirHash = () => {
       const selectedFolder = props.folders.find(f => f.id === localSelectedFolderId.value);
@@ -260,7 +261,6 @@ export default {
           setTimeout(() => {
             errorMessage.value = '';
           }, 2000);
-          console.error('Ошибка при обновлении директории:', error);
           return;
         }
 
@@ -275,7 +275,6 @@ export default {
           setTimeout(() => {
             errorMessage.value = '';
           }, 2000);
-          console.error('Ошибка при обновлении ссылок:', linkError);
           return;
         }
 
@@ -303,6 +302,7 @@ export default {
       successMessage,
       localSelectedFolderId,
       internalVisible,
+      getFolderPath,
       handleEditDirHash,
       handleClearDirHash,
       handleDeleteFolder,

@@ -548,7 +548,6 @@ export default {
       }
     };
 
-
     const mergeSubfolders = async (sourceFolderHash, targetFolderHash) => {
       try {
         // Получаем подпапки исходной папки
@@ -706,7 +705,6 @@ export default {
         }
       }
     };
-
     /**
      * Логирование состояния папок с возможностью отключения
      * @param {string} context - Контекст для лога
