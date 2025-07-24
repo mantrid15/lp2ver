@@ -694,7 +694,7 @@ td:nth-child(5) {
 }
 th:nth-child(6),
 td:nth-child(6) {
-  width: 11ch; /* Date column */
+  width: 15ch; /* Date column */
 }
 th:nth-child(2) .header-label-container {
   font-size: 1em; /* Уменьшите размер шрифта заголовка */
