@@ -340,17 +340,17 @@ export default {
       event.preventDefault();
       event.currentTarget.style.opacity = '1';
 
-  // Обработка перемещения из Left в Right
-  const folderData = event.dataTransfer.getData('application/x-folder-move');
-  if (!folderData) return; // Если нет данных о перемещении между компонентами - выходим
+      // Обработка перемещения из Left в Right
+      const folderData = event.dataTransfer.getData('application/x-folder-move');
+      if (!folderData) return; // Если нет данных о перемещении между компонентами - выходим
 
-  try {
-    const folderToMove = JSON.parse(folderData);
-    console.log('[Drag&Drop] Начало обработки перетаскивания папки в Right:', {
-      dir_hash: folderToMove.dir_hash,
-      dir_name: folderToMove.dir_name,
-      parent_hash: folderToMove.parent_hash
-    });
+      try {
+        const folderToMove = JSON.parse(folderData);
+        console.log('[Drag&Drop] Начало обработки перетаскивания папки в Right:', {
+          dir_hash: folderToMove.dir_hash,
+          dir_name: folderToMove.dir_name,
+          parent_hash: folderToMove.parent_hash
+        });
 
           if (!folderToMove?.dir_hash) {
             throw new Error('Invalid folder data');

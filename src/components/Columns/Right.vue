@@ -865,6 +865,11 @@ export default {
 
         if (deleteError) throw deleteError;
 
+        // Обновляем счетчик подпапок для родительской папки в Left
+        if (folderToMove.parent_hash) {
+          await getSubfolderCount(folderToMove.parent_hash);
+        }
+
         showSnackbar(`Папка "${folderToMove.dir_name}" удалена, так как уже существует в Right`, 'success');
       } else {
         // Стандартное перемещение, если дубликата нет
