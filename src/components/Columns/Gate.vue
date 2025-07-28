@@ -17,7 +17,12 @@
       <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
     </span>
               <!-- Чекбокс с правым отступом 3 пикселя -->
-              <input type="checkbox" v-model="showAllDirs" style="margin-right: 5px;" />
+              <input
+                  type="checkbox"
+                  v-model="showAllDirs"
+                  @change="handleShowAllDirsChange"
+                  style="margin-right: 5px;"
+              />
             </div>
           </th>
           <th>
@@ -69,6 +74,7 @@
                 <input
                     type="checkbox"
                     v-model="freezeFolders"
+                    @change="handleFreezeChange"
                     id="freeze-checkbox"
                     style="margin-right: 5px;"
                 >
@@ -248,6 +254,18 @@ export default {
     const folders = ref([]);
     const showAllDirs = ref(false);
     const faviconUrl = ref('');
+
+    const handleShowAllDirsChange = (event) => {
+      if (event.target.checked) {
+        freezeFolders.value = false;
+      }
+    };
+
+    const handleFreezeChange = (event) => {
+      if (event.target.checked) {
+        showAllDirs.value = false;
+      }
+    };
 
     const dateColumnLabel = computed(() => {
       return showAllDirs.value ? 'Folder' : 'Date';
@@ -585,6 +603,20 @@ export default {
 
     watch(filter, debouncedFilter);
 
+    watch(freezeFolders, (newVal) => {
+      if (newVal) {
+        // При включении Freeze отключаем showAllDirs
+        showAllDirs.value = false;
+      }
+    });
+
+    watch(showAllDirs, (newVal) => {
+      if (newVal) {
+        // При включении showAllDirs отключаем Freeze
+        freezeFolders.value = false;
+      }
+    });
+
     onMounted(() => {
       subscribeToRealtimeChanges();
       fetchFolders().then(() => {
@@ -602,6 +634,8 @@ export default {
     });
 
     return {
+      handleShowAllDirsChange,
+      handleFreezeChange,
       freezeFolders,
       dateColumnLabel,
       showAllDirs,
