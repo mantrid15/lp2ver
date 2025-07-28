@@ -1,6 +1,6 @@
 <template>
   <div class="column column-1" :style="{ width: width }">
-    <v-container class="folders-container">
+    <v-container class="folders-container scrollable-container">
       <v-row>
         <template v-if="isDefaultState">
           <v-col cols="12" class="text-center start-working-message">
@@ -458,6 +458,9 @@ export default {
 </script>
 
 <style scoped>
+
+
+
 .column {
   flex-shrink: 0;
   overflow: hidden;
@@ -468,7 +471,36 @@ export default {
 .folders-container {
   height: 100%;
   padding: 3% 10px 5%;
+  overflow-y: auto;
+  max-height: calc(100vh - 64px);
+  background-color: #b8c8f1; /* Цвет фона как в Left */
+  overflow-x: hidden;
 }
+
+/* Стили для скроллбара как в Right */
+.folders-container::-webkit-scrollbar {
+  width: 15px;
+}
+
+.folders-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.folders-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+
+.folders-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Убедимся, что контейнер колонки не создает лишних прокруток */
+.column {
+  overflow: hidden;
+  height: 100%;
+}
+
 
 .folder-card {
   background-color: #fff;
