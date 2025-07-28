@@ -26,6 +26,7 @@
                 <span class="header-label">{{ TITLE_LABEL }}</span>
                 <span class="sort-icon">{{ getSortIcon('title') || SORT_DEFAULT_ICON }}</span>
               </span>
+
               <!-- Модуль фильтрации -->
               <div style="position: relative; width: 100px; left: 0; top: 0;">
                 <input
@@ -62,6 +63,16 @@
                 >
                   mdi-close-circle
                 </v-icon>
+              </div>
+              <!-- Добавляем чекбокс Freeze -->
+              <div style="display: flex; align-items: center; margin-left: 10px;">
+                <input
+                    type="checkbox"
+                    v-model="freezeFolders"
+                    id="freeze-checkbox"
+                    style="margin-right: 5px;"
+                >
+                <label for="freeze-checkbox" style="color: white; font-size: 0.8em;">Freeze</label>
               </div>
             </div>
           </th>
@@ -217,6 +228,8 @@ export default {
   },
   emits: ['handle-url-click', 'sort', 'update-dragged-link'],
   setup(props, { emit }) {
+    const freezeFolders = ref(false); // Состояние чекбокса Freeze
+
     const channel = ref(null); // Объявляем channel как ref
     const store = useStore();
     const userId = computed(() => store.state.userId);
@@ -306,6 +319,14 @@ export default {
         return titleMatch || descriptionMatch || keywordsMatch || urlMatch;
       };
       const allFilteredLinks = props.links.filter(matchesSearchTerm);
+      // Если включен Freeze, возвращаем только ссылки без папок (как при клике на желтый бокс)
+      if (freezeFolders.value) {
+        return props.links.filter(link =>
+            !link.dir_hash &&
+            !link.parent_hash &&
+            matchesSearchTerm(link)
+        );
+      }
       // Если checkbox включён, возвращаем все элементы, без фильтрации по dir_hash
       if (showAllDirs.value) {
         return allFilteredLinks;
@@ -363,7 +384,7 @@ export default {
         isCtrlPressed.value = true;
       }
     };
-    // Обработчик отпускания клавиши Ctrl
+        // Обработчик отпускания клавиши Ctrl
     const handleKeyUp = (event) => {
       if (!event.ctrlKey) {
         isCtrlPressed.value = false;
@@ -403,48 +424,37 @@ export default {
     const rowCount = computed(() => filteredLinks.value.length); // Обновлено для использования filteredLinks
 
     const sortByKey = (a, b, key, order) => {
-  const modifier = order === 'asc' ? 1 : -1;
+      const modifier = order === 'asc' ? 1 : -1;
 
-  // Если ключ сортировки — 'dir_name', сортируем по полному пути папки
-  if (key === 'dir_name') {
-    // Получаем полный путь для a
-    const aParentFolder = a.parent_hash ? folders.value.find(f => f.dir_hash === a.parent_hash) : null;
-    const aFolder = folders.value.find(f => f.dir_hash === a.dir_hash);
-    const aPath = (aParentFolder ? aParentFolder.dir_name + '/' : '') + (aFolder ? aFolder.dir_name : '');
+      // Если ключ сортировки — 'dir_name', сортируем по полному пути папки
+      if (key === 'dir_name') {
+        // Получаем полный путь для a
+        const aParentFolder = a.parent_hash ? folders.value.find(f => f.dir_hash === a.parent_hash) : null;
+        const aFolder = folders.value.find(f => f.dir_hash === a.dir_hash);
+        const aPath = (aParentFolder ? aParentFolder.dir_name + '/' : '') + (aFolder ? aFolder.dir_name : '');
 
-    // Получаем полный путь для b
-    const bParentFolder = b.parent_hash ? folders.value.find(f => f.dir_hash === b.parent_hash) : null;
-    const bFolder = folders.value.find(f => f.dir_hash === b.dir_hash);
-    const bPath = (bParentFolder ? bParentFolder.dir_name + '/' : '') + (bFolder ? bFolder.dir_name : '');
+        // Получаем полный путь для b
+        const bParentFolder = b.parent_hash ? folders.value.find(f => f.dir_hash === b.parent_hash) : null;
+        const bFolder = folders.value.find(f => f.dir_hash === b.dir_hash);
+        const bPath = (bParentFolder ? bParentFolder.dir_name + '/' : '') + (bFolder ? bFolder.dir_name : '');
 
-    // Пустые значения идут после непустых
-    if (aPath === '' && bPath !== '') return 1; // a идет после b
-    if (bPath === '' && aPath !== '') return -1; // a идет перед b
-    if (aPath === '' && bPath === '') return 0; // a и b равны
+        // Пустые значения идут после непустых
+        if (aPath === '' && bPath !== '') return 1; // a идет после b
+        if (bPath === '' && aPath !== '') return -1; // a идет перед b
+        if (aPath === '' && bPath === '') return 0; // a и b равны
 
-    // Сортировка по полному пути
-    return (aPath > bPath ? 1 : -1) * modifier;
-  }
-
-  // Для остальных ключей сортировки (включая 'date')
-  const aValue = a[key] !== null ? a[key].toString() : '';
-  const bValue = b[key] !== null ? b[key].toString() : '';
-  if (key === 'date') {
-    return (new Date(b.date) - new Date(a.date)) * modifier;
-  }
-  return (aValue > bValue ? 1 : -1) * modifier;
-};
-    watchEffect(() => {
-      if (!filteredLinks.value || !filteredLinks.value.length) {
-        sortedLinks.value = [];
-        return;
+        // Сортировка по полному пути
+        return (aPath > bPath ? 1 : -1) * modifier;
       }
-      sortedLinks.value = [...filteredLinks.value].sort((a, b) =>
-          sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
-      );
-    });
 
-    watch(filter, debouncedFilter);
+      // Для остальных ключей сортировки (включая 'date')
+      const aValue = a[key] !== null ? a[key].toString() : '';
+      const bValue = b[key] !== null ? b[key].toString() : '';
+      if (key === 'date') {
+        return (new Date(b.date) - new Date(a.date)) * modifier;
+      }
+      return (aValue > bValue ? 1 : -1) * modifier;
+    };
 
     const handleClick = (event, key) => {
       if (key === 'url' && event.ctrlKey) {
@@ -563,6 +573,18 @@ export default {
       }
     };
 
+    watchEffect(() => {
+      if (!filteredLinks.value || !filteredLinks.value.length) {
+        sortedLinks.value = [];
+        return;
+      }
+      sortedLinks.value = [...filteredLinks.value].sort((a, b) =>
+          sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+      );
+    });
+
+    watch(filter, debouncedFilter);
+
     onMounted(() => {
       subscribeToRealtimeChanges();
       fetchFolders().then(() => {
@@ -580,6 +602,7 @@ export default {
     });
 
     return {
+      freezeFolders,
       dateColumnLabel,
       showAllDirs,
       getFolderNameByHash,
@@ -627,6 +650,19 @@ export default {
 </script>
 
 <style scoped>
+
+/* Стили для чекбокса Freeze */
+#freeze-checkbox {
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+label[for="freeze-checkbox"] {
+  cursor: pointer;
+  user-select: none;
+  margin-left: 2px;
+}
+
 td.has-subfolder {
   background: linear-gradient(135deg, #ffc0cb, #ff69b4); /* Розовый градиент */
   font-weight: bold;
