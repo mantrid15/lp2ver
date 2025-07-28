@@ -5,10 +5,12 @@
         <thead>
         <tr>
           <th>
-            <span class="row-count-button">{{ rowCount.toString().padStart(3, '0') }}</span>
-            <!--
-                        <span class="header-label">{{ FAVORITE_ICON }}</span>
-            -->
+             <span
+                 class="row-count-button"
+                 :title="showAllDirs ? `Total records: ${totalRecords}` : 'Filtered records'"
+             >
+                {{ rowCount.toString().padStart(3, '0') }}
+             </span>
           </th>
           <th style="width: 15ch;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
@@ -80,6 +82,22 @@
                 >
                 <label for="freeze-checkbox" style="color: white; font-size: 0.8em;">Freeze</label>
               </div>
+              <!-- Добавляем select для пагинации -->
+              <select
+                  v-model="currentPage"
+                  @change="handlePageChange(currentPage)"
+                  class="pagination-select"
+                  :class="{ 'active-pagination': showAllDirs, 'inactive-pagination': !showAllDirs }"
+                  :disabled="!showAllDirs"
+              >
+                <option
+                    v-for="page in totalPages"
+                    :key="page"
+                    :value="page"
+                >{{ page }}
+                </option>
+              </select>
+
             </div>
           </th>
           <th >
@@ -254,6 +272,11 @@ export default {
     const folders = ref([]);
     const showAllDirs = ref(false);
     const faviconUrl = ref('');
+
+    const currentPage = ref(1);
+    const totalPages = ref(1);
+    const pageSize = 1000; // Количество строк на странице
+    const totalRecords = ref(0); // Общее количество записей
 
     const handleShowAllDirsChange = (event) => {
       if (event.target.checked) {
@@ -439,9 +462,21 @@ export default {
       emit('update-dragged-link', null);
     };
 
-    const rowCount = computed(() => filteredLinks.value.length); // Обновлено для использования filteredLinks
+    const rowCount = computed(() => {
+      // Если пагинация активна (showAllDirs=true), показываем общее количество строк
+      if (showAllDirs.value) {
+        return totalPages.value * pageSize; // Или точное количество, если доступно
+      }
+      // В обычном режиме - количество отфильтрованных строк
+      return filteredLinks.value.length;
+    }); // Обновлено для использования filteredLinks
 
     const sortByKey = (a, b, key, order) => {
+      // Если данные загружены с сервера уже отсортированными по дате,
+      // можно добавить проверку чтобы избежать лишних сортировок
+      if (key === 'date' && currentSortKey.value === 'date') {
+        return 0;
+      }
       const modifier = order === 'asc' ? 1 : -1;
 
       // Если ключ сортировки — 'dir_name', сортируем по полному пути папки
@@ -591,6 +626,43 @@ export default {
       }
     };
 
+    // Функция загрузки данных с пагинацией
+    const fetchPaginatedLinks = async (page = 1) => {
+      try {
+        let query = supabase
+            .from('links')
+            .select('*', { count: 'exact' })
+            .order('date', { ascending: false });
+
+        if (!showAllDirs.value) {
+          query = query.is('dir_hash', null).is('parent_hash', null);
+        } else {
+          query = query.range((page - 1) * pageSize, page * pageSize - 1);
+        }
+
+        const { data, count, error } = await query;
+
+        if (error) throw error;
+
+        totalPages.value = showAllDirs.value ? Math.ceil(count / pageSize) : 1;
+        totalRecords.value = count; // Сохраняем общее количество
+
+        return data || [];
+      } catch (error) {
+        console.error('Ошибка загрузки данных:', error);
+        return [];
+      }
+    };
+    // Обработчик изменения страницы
+    const handlePageChange = async (page) => {
+      if (!showAllDirs.value) return; // Защита на случай если select стал активным
+
+      currentPage.value = page;
+      const newLinks = await fetchPaginatedLinks(page);
+      // Обновляем данные (адаптируйте под вашу архитектуру)
+      sortedLinks.value = newLinks;
+    };
+
     watchEffect(() => {
       if (!filteredLinks.value || !filteredLinks.value.length) {
         sortedLinks.value = [];
@@ -610,14 +682,26 @@ export default {
       }
     });
 
-    watch(showAllDirs, (newVal) => {
+    watch(showAllDirs, async (newVal) => {
       if (newVal) {
-        // При включении showAllDirs отключаем Freeze
+        // При включении showAllDirs загружаем первую страницу
+        const newLinks = await fetchPaginatedLinks(1);
+        // Обновляем данные (адаптируйте под вашу архитектуру)
+        sortedLinks.value = newLinks;
         freezeFolders.value = false;
+      } else {
+        // При выключении возвращаемся к обычному режиму
+        const newLinks = await fetchPaginatedLinks(1);
+        sortedLinks.value = newLinks;
       }
     });
 
     onMounted(() => {
+ /*     const initialLinks = await fetchPaginatedLinks(1);
+      // Здесь нужно обновить props.links, возможно через emit или store
+      // Временное решение:*/
+      // sortedLinks.value = initialLinks;
+
       subscribeToRealtimeChanges();
       fetchFolders().then(() => {
         window.addEventListener('keydown', handleKeyDown);
@@ -634,6 +718,10 @@ export default {
     });
 
     return {
+      totalRecords,
+      currentPage,
+      totalPages,
+      handlePageChange,
       handleShowAllDirsChange,
       handleFreezeChange,
       freezeFolders,
@@ -684,6 +772,47 @@ export default {
 </script>
 
 <style scoped>
+
+.pagination-select {
+  margin-right: 5px;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 2px 20px 2px 5px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+  background-size: 12px;
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+/* Стиль для активной пагинации (когда showAllDirs=true) */
+.active-pagination {
+  background-color: #ffb6c1; /* Розовый цвет */
+  border-color: #ff69b4;
+}
+
+/* Стиль для неактивной пагинации */
+.inactive-pagination {
+  background-color: #e0e0e0; /* Серый цвет */
+  color: #9e9e9e;
+  cursor: not-allowed;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239e9e9e'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+}
+
+.pagination-select-container {
+  position: relative; /* Контейнер для позиционирования select */
+  width: 100%;
+  height: 100%;
+}
 
 /* Стили для чекбокса Freeze */
 #freeze-checkbox {
@@ -794,6 +923,9 @@ th:nth-child(2) {
   width: fit-content; /* Заливка по содержимому */
   min-width: 60px; /* Минимальная ширина для удобства нажатия */
 }
+.row-count-button:hover {
+  background-color: #e0e0e0;
+}
 .table-container {
   max-height: calc(100vh - 100px);
   overflow-y: auto;
@@ -831,6 +963,7 @@ td {
 }
 th {
   background-color: darkgrey;
+  overflow: hidden; /* Чтобы select не выходил за границы */
   position: relative;
 }
 thead {
