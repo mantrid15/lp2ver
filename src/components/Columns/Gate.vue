@@ -9,7 +9,7 @@
                  class="row-count-button"
                  :title="showAllDirs ? `Total records: ${totalRecords}` : 'Filtered records'"
              >
-                {{ rowCount.toString().padStart(3, '0') }}
+                {{ showAllDirs ? sortedLinks.length.toString().padStart(4, '0') : filteredLinks.length.toString().padStart(4, '0') }}
              </span>
           </th>
           <th style="width: 15ch;">
