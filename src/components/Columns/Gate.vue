@@ -8,8 +8,7 @@
              <span
                  class="row-count-button"
                  :title="showAllDirs ? `Total records: ${totalRecords}` : 'Filtered records'"
-             >
-                {{ showAllDirs ? sortedLinks.length.toString().padStart(4, '0') : filteredLinks.length.toString().padStart(4, '0') }}
+             >  {{ showAllDirs ? sortedLinks.length.toString().padStart(4, '0') : filteredLinks.length.toString().padStart(4, '0') }}
              </span>
           </th>
           <th style="width: 15ch;">
@@ -253,7 +252,6 @@ export default {
   emits: ['handle-url-click', 'sort', 'update-dragged-link'],
   setup(props, { emit }) {
     const freezeFolders = ref(false); // Состояние чекбокса Freeze
-
     const channel = ref(null); // Объявляем channel как ref
     const store = useStore();
     const userId = computed(() => store.state.userId);
@@ -278,9 +276,18 @@ export default {
     const pageSize = 1000; // Количество строк на странице
     const totalRecords = ref(0); // Общее количество записей
 
+    const currentDisplayedLinks = computed(() => {
+      // Если включен showAllDirs, используем sortedLinks (уже с пагинацией)
+      // Иначе используем отфильтрованные ссылки
+      return showAllDirs.value ? sortedLinks.value : filteredLinks.value;
+    });
+
     const handleShowAllDirsChange = (event) => {
       if (event.target.checked) {
         freezeFolders.value = false;
+      } else {
+        // Сбрасываем на первую страницу при снятии чекбокса
+        currentPage.value = 1;
       }
     };
 
@@ -513,15 +520,24 @@ export default {
       if (key === 'url' && event.ctrlKey) {
         emit('handle-url-click', event, key);
       } else {
-        // Всегда используем 'dir_name' для сортировки по папкам, когда showAllDirs=true
         const sortKey = showAllDirs.value && key === 'date' ? 'dir_name' : key;
+
         if (currentSortKey.value === sortKey) {
           currentSortOrder.value = currentSortOrder.value === 'asc' ? 'desc' : 'asc';
         } else {
           currentSortOrder.value = 'asc';
         }
         currentSortKey.value = sortKey;
-        emit('sort', sortKey, currentSortOrder.value);
+
+        // Если showAllDirs включен, сортируем текущий отображаемый список
+        if (showAllDirs.value) {
+          sortedLinks.value = [...sortedLinks.value].sort((a, b) =>
+              sortByKey(a, b, sortKey, currentSortOrder.value)
+          );
+        } else {
+          // Иначе эмитим событие для родительского компонента
+          emit('sort', sortKey, currentSortOrder.value);
+        }
       }
     };
 
@@ -625,7 +641,6 @@ export default {
         console.error('Ошибка при получении директорий:', error);
       }
     };
-
     // Функция загрузки данных с пагинацией
     const fetchPaginatedLinks = async (page = 1) => {
       try {
@@ -634,6 +649,13 @@ export default {
             .select('*', { count: 'exact' })
             .order('date', { ascending: false });
 
+        // Добавляем фильтрацию по поисковому запросу
+        if (filter.value) {
+          query = query.or(
+              `title.ilike.%${filter.value}%,description.ilike.%${filter.value}%,keywords.cs.{"${filter.value}"},url.ilike.%${filter.value}%`
+          );
+        }
+
         if (!showAllDirs.value) {
           query = query.is('dir_hash', null).is('parent_hash', null);
         } else {
@@ -641,11 +663,10 @@ export default {
         }
 
         const { data, count, error } = await query;
-
         if (error) throw error;
 
         totalPages.value = showAllDirs.value ? Math.ceil(count / pageSize) : 1;
-        totalRecords.value = count; // Сохраняем общее количество
+        totalRecords.value = count;
 
         return data || [];
       } catch (error) {
@@ -655,23 +676,33 @@ export default {
     };
     // Обработчик изменения страницы
     const handlePageChange = async (page) => {
-      if (!showAllDirs.value) return; // Защита на случай если select стал активным
+      if (!showAllDirs.value) return;
 
       currentPage.value = page;
       const newLinks = await fetchPaginatedLinks(page);
-      // Обновляем данные (адаптируйте под вашу архитектуру)
-      sortedLinks.value = newLinks;
+      sortedLinks.value = newLinks; // Сохраняем новые данные
+
+      // Сортируем новые данные
+      sortedLinks.value = [...newLinks].sort((a, b) =>
+          sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+      );
     };
 
     watchEffect(() => {
-      if (!filteredLinks.value || !filteredLinks.value.length) {
-        sortedLinks.value = [];
-        return;
-      }
+    if (!filteredLinks.value || !filteredLinks.value.length) {
+      sortedLinks.value = [];
+      return;
+    }
+
+    // Если showAllDirs выключен, просто сортируем filteredLinks
+    if (!showAllDirs.value) {
       sortedLinks.value = [...filteredLinks.value].sort((a, b) =>
-          sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+        sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
-    });
+    }
+    // При showAllDirs=true данные будут загружаться через fetchPaginatedLinks
+    // и сортироваться в handlePageChange
+  });
 
     watch(filter, debouncedFilter);
 
@@ -686,13 +717,13 @@ export default {
       if (newVal) {
         // При включении showAllDirs загружаем первую страницу
         const newLinks = await fetchPaginatedLinks(1);
-        // Обновляем данные (адаптируйте под вашу архитектуру)
         sortedLinks.value = newLinks;
         freezeFolders.value = false;
       } else {
-        // При выключении возвращаемся к обычному режиму
-        const newLinks = await fetchPaginatedLinks(1);
-        sortedLinks.value = newLinks;
+        // При выключении возвращаемся к обычному режиму (не используем пагинацию)
+        sortedLinks.value = [...filteredLinks.value].sort((a, b) =>
+            sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+        );
       }
     });
 
