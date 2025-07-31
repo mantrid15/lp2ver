@@ -32,7 +32,6 @@
                 <span class="header-label">{{ TITLE_LABEL }}</span>
                 <span class="sort-icon">{{ getSortIcon('title') || SORT_DEFAULT_ICON }}</span>
               </span>
-
               <!-- Модуль фильтрации -->
               <div style="position: relative; width: 100px; left: 0; top: 0;">
                 <input
@@ -210,8 +209,7 @@ const KEYWORDS_LABEL = 'Keywords';
 const DATE_LABEL = 'Date';
 const SORT_ASC_ICON = '↑';
 const SORT_DESC_ICON = '↓';
-// const SORT_DEFAULT_ICON = '�?�';
-const SORT_DEFAULT_ICON =  '⇅';
+const SORT_DEFAULT_ICON = '⇅';
 const DELETE_ICON = '❌';
 const DELETE_ICON_TIMEOUT = 3000; // 3 секунды
 
@@ -536,6 +534,7 @@ export default {
         }
       }
     };
+
     const formatDate = (dateString) => {
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('ru-RU').format(date);
@@ -682,6 +681,7 @@ export default {
           sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
     };
+
     watchEffect(() => {
       if (!filteredLinks.value || !filteredLinks.value.length) {
         sortedLinks.value = [];
@@ -703,10 +703,20 @@ export default {
       }
     });
 
+    watch(() => props.draggedLink, async (newVal, oldVal) => {
+      if (showAllDirs.value && newVal !== oldVal) {
+        // Если showAllDirs включен и draggedLink изменился, обновляем данные
+        const newLinks = await fetchPaginatedLinks(currentPage.value);
+        sortedLinks.value = [...newLinks].sort((a, b) =>
+            sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+        );
+      }
+    });
+
     watch(showAllDirs, async (newVal) => {
       if (newVal) {
         // При включении showAllDirs загружаем первую страницу
-        const newLinks = await fetchPaginatedLinks(1);
+        const newLinks = await fetchPaginatedLinks(currentPage.value);
         sortedLinks.value = newLinks;
         freezeFolders.value = false;
       } else {
@@ -718,11 +728,6 @@ export default {
     });
 
     onMounted(() => {
- /*     const initialLinks = await fetchPaginatedLinks(1);
-      // Здесь нужно обновить props.links, возможно через emit или store
-      // Временное решение:*/
-      // sortedLinks.value = initialLinks;
-
       subscribeToRealtimeChanges();
       fetchFolders().then(() => {
         window.addEventListener('keydown', handleKeyDown);
