@@ -479,40 +479,32 @@ export default {
     }); // Обновлено для использования filteredLinks
 
     const sortByKey = (a, b, key, order) => {
-      // Если данные загружены с сервера уже отсортированными по дате,
-      // можно добавить проверку чтобы избежать лишних сортировок
-      if (key === 'date' && currentSortKey.value === 'date') {
-        return 0;
-      }
       const modifier = order === 'asc' ? 1 : -1;
-
       // Если ключ сортировки — 'dir_name', сортируем по полному пути папки
       if (key === 'dir_name') {
-        // Получаем полный путь для a
         const aParentFolder = a.parent_hash ? folders.value.find(f => f.dir_hash === a.parent_hash) : null;
         const aFolder = folders.value.find(f => f.dir_hash === a.dir_hash);
         const aPath = (aParentFolder ? aParentFolder.dir_name + '/' : '') + (aFolder ? aFolder.dir_name : '');
 
-        // Получаем полный путь для b
         const bParentFolder = b.parent_hash ? folders.value.find(f => f.dir_hash === b.parent_hash) : null;
         const bFolder = folders.value.find(f => f.dir_hash === b.dir_hash);
         const bPath = (bParentFolder ? bParentFolder.dir_name + '/' : '') + (bFolder ? bFolder.dir_name : '');
 
-        // Пустые значения идут после непустых
-        if (aPath === '' && bPath !== '') return 1; // a идет после b
-        if (bPath === '' && aPath !== '') return -1; // a идет перед b
-        if (aPath === '' && bPath === '') return 0; // a и b равны
+        if (aPath === '' && bPath !== '') return 1;
+        if (bPath === '' && aPath !== '') return -1;
+        if (aPath === '' && bPath === '') return 0;
 
-        // Сортировка по полному пути
         return (aPath > bPath ? 1 : -1) * modifier;
       }
 
-      // Для остальных ключей сортировки (включая 'date')
-      const aValue = a[key] !== null ? a[key].toString() : '';
-      const bValue = b[key] !== null ? b[key].toString() : '';
+      // Для ключа 'date' всегда сортируем по дате, независимо от showAllDirs
       if (key === 'date') {
         return (new Date(b.date) - new Date(a.date)) * modifier;
       }
+
+      // Для остальных ключей сортировки
+      const aValue = a[key] !== null ? a[key].toString() : '';
+      const bValue = b[key] !== null ? b[key].toString() : '';
       return (aValue > bValue ? 1 : -1) * modifier;
     };
 
@@ -520,26 +512,28 @@ export default {
       if (key === 'url' && event.ctrlKey) {
         emit('handle-url-click', event, key);
       } else {
-        const sortKey = showAllDirs.value && key === 'date' ? 'dir_name' : key;
+        // Определяем ключ сортировки: если showAllDirs включен и ключ - date, используем dir_name
+        // Иначе используем переданный ключ
+        const sortKey = (showAllDirs.value && key === 'date') ? 'dir_name' : key;
 
-        if (currentSortKey.value === sortKey) {
-          currentSortOrder.value = currentSortOrder.value === 'asc' ? 'desc' : 'asc';
-        } else {
-          currentSortOrder.value = 'asc';
-        }
-        currentSortKey.value = sortKey;
+          if (currentSortKey.value === sortKey) {
+            currentSortOrder.value = currentSortOrder.value === 'asc' ? 'desc' : 'asc';
+          } else {
+            currentSortOrder.value = 'asc';
+          }
+          currentSortKey.value = sortKey;
 
-        // Если showAllDirs включен, сортируем текущий отображаемый список
-        if (showAllDirs.value) {
-          sortedLinks.value = [...sortedLinks.value].sort((a, b) =>
-              sortByKey(a, b, sortKey, currentSortOrder.value)
-          );
-        } else {
-          // Иначе эмитим событие для родительского компонента
+          // Всегда эмитим событие сортировки, но родительский компонент должен учитывать showAllDirs
           emit('sort', sortKey, currentSortOrder.value);
+
+          // Если showAllDirs включен, сортируем текущий отображаемый список
+          if (showAllDirs.value) {
+            sortedLinks.value = [...sortedLinks.value].sort((a, b) =>
+                sortByKey(a, b, sortKey, currentSortOrder.value)
+            );
+          }
         }
-      }
-    };
+      };
 
     const formatDate = (dateString) => {
       const date = new Date(dateString);
@@ -689,20 +683,16 @@ export default {
     };
 
     watchEffect(() => {
-    if (!filteredLinks.value || !filteredLinks.value.length) {
-      sortedLinks.value = [];
-      return;
-    }
+      if (!filteredLinks.value || !filteredLinks.value.length) {
+        sortedLinks.value = [];
+        return;
+      }
 
-    // Если showAllDirs выключен, просто сортируем filteredLinks
-    if (!showAllDirs.value) {
+      // Всегда сортируем filteredLinks, независимо от showAllDirs
       sortedLinks.value = [...filteredLinks.value].sort((a, b) =>
-        sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+          sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
-    }
-    // При showAllDirs=true данные будут загружаться через fetchPaginatedLinks
-    // и сортироваться в handlePageChange
-  });
+    });
 
     watch(filter, debouncedFilter);
 
