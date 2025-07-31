@@ -526,15 +526,16 @@ export default {
           // Всегда эмитим событие сортировки, но родительский компонент должен учитывать showAllDirs
           emit('sort', sortKey, currentSortOrder.value);
 
-          // Если showAllDirs включен, сортируем текущий отображаемый список
-          if (showAllDirs.value) {
-            sortedLinks.value = [...sortedLinks.value].sort((a, b) =>
+        // Если showAllDirs включен, загружаем данные для текущей страницы
+        if (showAllDirs.value) {
+          fetchPaginatedLinks(currentPage.value).then(newLinks => {
+            sortedLinks.value = [...newLinks].sort((a, b) =>
                 sortByKey(a, b, sortKey, currentSortOrder.value)
             );
-          }
+          });
         }
-      };
-
+      }
+    };
     const formatDate = (dateString) => {
       const date = new Date(dateString);
       return new Intl.DateTimeFormat('ru-RU').format(date);
@@ -681,7 +682,6 @@ export default {
           sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
       );
     };
-
     watchEffect(() => {
       if (!filteredLinks.value || !filteredLinks.value.length) {
         sortedLinks.value = [];
