@@ -5,7 +5,7 @@
         <thead>
         <tr>
           <th>
-            <span class="row-count-button" style="visibility: hidden;">0000</span>
+            <span class="row-count-button" style=" color: black">NOTE</span>
           </th>
           <th>
              <span
@@ -98,7 +98,6 @@
                 >{{ page }}
                 </option>
               </select>
-
             </div>
           </th>
           <th >
@@ -136,10 +135,10 @@
         >
             <td class="content-padding note-column">
               <img
-                  v-if="link.note"
-                  src="/src/assets/images/document.png"
+                  :src="link.note ? '/src/assets/images/document.png' : '/src/assets/images/document-empty.png'"
                   class="note-icon"
-                  :title="link.note"
+                  :title="link.note || ''"
+                  :style="{ opacity: link.note ? 0.8 : 0.3 }"
                   :loading="'lazy'"
               />
             </td>
@@ -1060,12 +1059,12 @@ tbody tr {
 .note-icon {
   width: 16px;
   height: 16px;
-  opacity: 0.8;
+  /*opacity: 0.8;*/
   transition: opacity 0.2s;
 }
 
 .note-icon:hover {
-  opacity: 1;
+  opacity: 1 !important; /* Переопределяем opacity при наведении */
 }
 
 /* Стили для столбца с фавиконками */
