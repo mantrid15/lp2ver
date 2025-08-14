@@ -2,10 +2,29 @@
   <!-- Модальное окно для редактирования заметки -->
   <div v-if="showNoteModal" class="note-modal-overlay" @click.self="closeNoteModal">
     <div class="note-modal">
-      <textarea v-model="currentNoteText" class="note-textarea" placeholder="Введите текст заметки..."></textarea>
+      <textarea
+          v-model="currentNoteText"
+          class="note-textarea"
+          placeholder="Введите текст заметки..."
+          :readonly="!isEditing"
+          ref="noteTextarea"
+      ></textarea>
       <div class="note-modal-buttons">
         <button @click="closeNoteModal" class="cancel-button">Отмена</button>
-        <button @click="saveNote" class="save-button">Сохранить!</button>
+        <button
+            @click="toggleEditMode"
+            class="edit-button"
+            :class="{ 'active': isEditing }"
+        >
+          {{ isEditing ? 'Отменить редактирование' : 'Редактирование' }}
+        </button>
+        <button
+            @click="saveNote"
+            class="save-button"
+            :disabled="!isEditing"
+        >
+          Сохранить!
+        </button>
       </div>
     </div>
   </div>
@@ -222,7 +241,7 @@
 </template>
 
 <script>
-import { computed, ref, watchEffect, onMounted, onUnmounted, watch} from 'vue';
+import { computed, ref, watchEffect, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
 import { debounce } from 'lodash';
@@ -306,12 +325,37 @@ export default {
     const currentNoteLink = ref(null);
     const isNoteHovered = ref(false);
 
+    // Добавляем новые переменные для работы с заметками
+    const isEditing = ref(false);
+    const noteTextarea = ref(null);
+
     // Функции для работы с заметками
     const handleNoteClick = (link) => {
-      if (isCtrlPressed.value) {
+      if (isCtrlPressed.value && link.note) {
         currentNoteLink.value = link;
-        currentNoteText.value = link.note || '';
+        currentNoteText.value = link.note;
         showNoteModal.value = true;
+        isEditing.value = false; // По умолчанию режим просмотра
+
+        // Фокусируем textarea при открытии
+        nextTick(() => {
+          if (noteTextarea.value) {
+            noteTextarea.value.focus();
+          }
+        });
+      }
+    };
+
+    const toggleEditMode = () => {
+      isEditing.value = !isEditing.value;
+
+      // При активации редактирования фокусируем textarea
+      if (isEditing.value) {
+        nextTick(() => {
+          if (noteTextarea.value) {
+            noteTextarea.value.focus();
+          }
+        });
       }
     };
 
@@ -323,10 +367,11 @@ export default {
       showNoteModal.value = false;
       currentNoteLink.value = null;
       currentNoteText.value = '';
+      isEditing.value = false;
     };
 
     const saveNote = async () => {
-      if (!currentNoteLink.value) return;
+      if (!currentNoteLink.value || !isEditing.value) return;
 
       try {
         const { error } = await supabase
@@ -342,7 +387,7 @@ export default {
           sortedLinks.value[linkIndex].note = currentNoteText.value;
         }
 
-        closeNoteModal();
+        isEditing.value = false;
       } catch (error) {
         console.error('Ошибка при сохранении заметки:', error);
         alert('Не удалось сохранить заметку');
@@ -819,6 +864,9 @@ export default {
     });
 
     return {
+      isEditing,
+      noteTextarea,
+      toggleEditMode,
       showNoteModal,
       currentNoteText,
       handleNoteClick,
