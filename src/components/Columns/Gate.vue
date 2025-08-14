@@ -1,4 +1,15 @@
 <template>
+  <!-- Модальное окно для редактирования заметки -->
+  <div v-if="showNoteModal" class="note-modal-overlay" @click.self="closeNoteModal">
+    <div class="note-modal">
+      <textarea v-model="currentNoteText" class="note-textarea" placeholder="Введите текст заметки..."></textarea>
+      <div class="note-modal-buttons">
+        <button @click="closeNoteModal" class="cancel-button">Отмена</button>
+        <button @click="saveNote" class="save-button">Сохранить!</button>
+      </div>
+    </div>
+  </div>
+
   <div class="column column-2" :style="{ width }">
     <div class="table-container">
       <table>
@@ -133,7 +144,11 @@
             @dragstart="onDragStart(link)"
             @dragend="onDragEnd"
         >
-            <td class="content-padding note-column">
+            <td  class="content-padding note-column"
+                 @click="handleNoteClick(link)"
+                 @mouseenter="setNoteHover(true)"
+                 @mouseleave="setNoteHover(false)"
+            >
               <img
                   :src="link.note ? '/src/assets/images/document.png' : '/src/assets/images/document-empty.png'"
                   class="note-icon"
@@ -285,6 +300,54 @@ export default {
     const totalPages = ref(1);
     const pageSize = 1000; // Количество строк на странице
     const totalRecords = ref(0); // Общее количество записей
+
+    const showNoteModal = ref(false);
+    const currentNoteText = ref('');
+    const currentNoteLink = ref(null);
+    const isNoteHovered = ref(false);
+
+    // Функции для работы с заметками
+    const handleNoteClick = (link) => {
+      if (isCtrlPressed.value) {
+        currentNoteLink.value = link;
+        currentNoteText.value = link.note || '';
+        showNoteModal.value = true;
+      }
+    };
+
+    const setNoteHover = (state) => {
+      isNoteHovered.value = state;
+    };
+
+    const closeNoteModal = () => {
+      showNoteModal.value = false;
+      currentNoteLink.value = null;
+      currentNoteText.value = '';
+    };
+
+    const saveNote = async () => {
+      if (!currentNoteLink.value) return;
+
+      try {
+        const { error } = await supabase
+            .from('links')
+            .update({ note: currentNoteText.value })
+            .eq('id', currentNoteLink.value.id);
+
+        if (error) throw error;
+
+        // Обновляем локальное состояние
+        const linkIndex = sortedLinks.value.findIndex(l => l.id === currentNoteLink.value.id);
+        if (linkIndex !== -1) {
+          sortedLinks.value[linkIndex].note = currentNoteText.value;
+        }
+
+        closeNoteModal();
+      } catch (error) {
+        console.error('Ошибка при сохранении заметки:', error);
+        alert('Не удалось сохранить заметку');
+      }
+    };
 
     const currentDisplayedLinks = computed(() => {
       // Если включен showAllDirs, используем sortedLinks (уже с пагинацией)
@@ -756,6 +819,12 @@ export default {
     });
 
     return {
+      showNoteModal,
+      currentNoteText,
+      handleNoteClick,
+      closeNoteModal,
+      saveNote,
+      setNoteHover,
       totalRecords,
       currentPage,
       totalPages,
@@ -1054,6 +1123,73 @@ tbody tr {
   width: 24px;
   text-align: center;
   cursor: default;
+}
+
+/* Стили для модального окна заметки */
+.note-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.note-modal {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.note-textarea {
+  width: 100%;
+  height: 150px;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.note-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cancel-button {
+  padding: 8px 16px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancel-button:hover {
+  background-color: #cc0000;
+}
+
+.save-button {
+  padding: 8px 16px;
+  background-color: #00C851;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.save-button:hover {
+  background-color: #007E33;
 }
 
 .note-icon {
