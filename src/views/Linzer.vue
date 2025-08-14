@@ -142,7 +142,7 @@ export default {
       try {
         const { data, error } = await supabase
             .from("links")
-            .select("id, date, url, title, description, keywords, favicon_name, favicon_hash, url_hash, dir_hash, parent_hash");
+            .select("id, date, note, url, title, description, keywords, favicon_name, favicon_hash, url_hash, dir_hash, parent_hash");
         if (error) {
           console.error("Error fetching links:", error);
         } else {

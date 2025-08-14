@@ -5,6 +5,9 @@
         <thead>
         <tr>
           <th>
+            <span class="row-count-button" style="visibility: hidden;">0000</span>
+          </th>
+          <th>
              <span
                  class="row-count-button"
                  :title="showAllDirs ? `Total records: ${totalRecords}` : 'Filtered records'"
@@ -13,10 +16,10 @@
           </th>
           <th style="width: 15ch;">
             <div style="display: flex; align-items: center; justify-content: space-between;">
-    <span class="header-label-container" @click="(e) => handleClick(e, 'url')" style="cursor: pointer; text-align: left;">
-      <span class="header-label">{{ URL_LABEL }}</span>
-      <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
-    </span>
+              <span class="header-label-container" @click="(e) => handleClick(e, 'url')" style="cursor: pointer; text-align: left;">
+                <span class="header-label">{{ URL_LABEL }}</span>
+                <span class="sort-icon">{{ getSortIcon('url') || SORT_DEFAULT_ICON }}</span>
+              </span>
               <!-- Чекбокс с правым отступом 3 пикселя -->
               <input
                   type="checkbox"
@@ -131,6 +134,15 @@
             @dragstart="onDragStart(link)"
             @dragend="onDragEnd"
         >
+            <td class="content-padding note-column">
+              <img
+                  v-if="link.note"
+                  src="/src/assets/images/document.png"
+                  class="note-icon"
+                  :title="link.note"
+                  :loading="'lazy'"
+              />
+            </td>
           <td class="content-padding fav-column" @click="handleFavClick(link)">
                         <img
                             v-if="link.favicon_hash"
@@ -200,6 +212,7 @@ import { computed, ref, watchEffect, onMounted, onUnmounted, watch} from 'vue';
 import { useStore } from 'vuex';
 import { supabase } from '@/clients/supabase.js';
 import { debounce } from 'lodash';
+import documentIcon from '@/assets/images/document.png'
 
 const FAVORITE_ICON = 'F';
 const URL_LABEL = 'URL';
@@ -894,6 +907,8 @@ td.has-subfolder {
 .dragging {
   background-color: violet; /* Цвет фона для перетаскиваемой строки */
 }
+
+
 th:nth-child(1){
   width: 24px; /* FAV column */
   background-color: green;
@@ -903,31 +918,43 @@ td:nth-child(1) {
 }
 th:nth-child(2),
 td:nth-child(2) {
-  width: 15%; /* URL column */
+  width: 24px; /* FAV column */
 }
+
 th:nth-child(3),
 td:nth-child(3) {
-  width: 50%; /* Title column */
+  width: 15%; /* URL column */
 }
+
 th:nth-child(4),
 td:nth-child(4) {
-  width: 30%; /* Description column */
+  width: 50%; /* Title column */
 }
+
 th:nth-child(5),
 td:nth-child(5) {
-  width: 20%; /* Keywords column */
+  width: 30%; /* Description column */
 }
+
 th:nth-child(6),
 td:nth-child(6) {
+  width: 20%; /* Keywords column */
+}
+
+th:nth-child(7),
+td:nth-child(7) {
   width: 15ch; /* Date column */
 }
-th:nth-child(2) .header-label-container {
+
+th:nth-child(3) .header-label-container {
   font-size: 1em; /* Уменьшите размер шрифта заголовка */
 }
-th:nth-child(2) {
+
+th:nth-child(3) {
   text-align: left; /* Выравнивание заголовка по правому краю */
   padding-left: 5px; /* Отступ слева на 5 пикселей */
 }
+
 .row-count-button {
   font-size: 14px;
   /* Минимальный размер шрифта – можно подбирать в зависимости от размера ячейки */
@@ -949,13 +976,16 @@ th:nth-child(2) {
   width: fit-content; /* Заливка по содержимому */
   min-width: 60px; /* Минимальная ширина для удобства нажатия */
 }
+
 .row-count-button:hover {
   background-color: #e0e0e0;
 }
+
 .table-container {
   max-height: calc(100vh - 100px);
   overflow-y: auto;
 }
+
 .header-label-container {
   display: inline-flex;
   align-items: center;
@@ -1003,6 +1033,7 @@ thead th {
   padding-left: 5px;
   border-bottom: 1px solid gray; /* Одиночная граница внизу заголовков */
 }
+
 tbody {
   overflow-x: hidden; /* Скрыть горизонтальную прокрутку */
   max-height: calc(100vh - 50px);
@@ -1011,21 +1042,44 @@ tbody {
   display: block; !* Убедитесь, что tbody ведет себя как блок *!
   */
 }
+
 thead,
 tbody tr {
   display: table;
   width: 100%;
   table-layout: fixed;
 }
+
+/* Стили для столбца с заметками */
+.note-column {
+  width: 24px;
+  text-align: center;
+  cursor: default;
+}
+
+.note-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.note-icon:hover {
+  opacity: 1;
+}
+
+/* Стили для столбца с фавиконками */
 .fav-column {
   position: relative;
   cursor: pointer;
   text-align: center;
 }
+
 .favicon {
   width: 18px;
   height: 18px;
 }
+
 .delete-icon {
   position: absolute;
   top: 50%;
@@ -1035,17 +1089,20 @@ tbody tr {
   cursor: pointer;
   display: block; /* �?конка всегда видна, если активна */
 }
+
 .strike-through {
   text-decoration: line-through;
   text-decoration-color: red;
   text-decoration-thickness: 3px;
 }
+
 /* Удаление сдвоенной границы между ячейками */
 table {
   border-collapse: collapse;
   width: 100%; /* Ширина таблицы равна ширине контейнера */
   table-layout: fixed; /* Фиксированная ширина столбцов */
 }
+
 th, td {
   border: 1px solid gray;
 }
