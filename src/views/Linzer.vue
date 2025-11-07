@@ -21,7 +21,6 @@
         @sort="sort"
         :draggedLink="draggedLink"
         @update-dragged-link="updateDraggedLink"
-        @update-link-counts="updateLinkCounts"
 
     />
     <div class="resizer" @mousedown="(e) => startResize(e, 2)"></div>

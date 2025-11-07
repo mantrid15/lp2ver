@@ -331,19 +331,24 @@ export default {
 
     // Функции для работы с заметками
     const handleNoteClick = (link) => {
-      if (isCtrlPressed.value && link.note) {
-        currentNoteLink.value = link;
-        currentNoteText.value = link.note;
-        showNoteModal.value = true;
-        isEditing.value = false; // По умолчанию режим просмотра
+      currentNoteLink.value = link;
+      currentNoteText.value = link.note || '';
+      showNoteModal.value = true;
 
-        // Фокусируем textarea при открытии
-        nextTick(() => {
-          if (noteTextarea.value) {
-            noteTextarea.value.focus();
+      // Если у ссылки уже есть заметка, открываем в режиме просмотра
+      // Если заметки нет, сразу открываем в режиме редактирования для создания новой
+      isEditing.value = !link.note;
+
+      // Фокусируем textarea при открытии
+      nextTick(() => {
+        if (noteTextarea.value) {
+          noteTextarea.value.focus();
+          // Если создаем новую заметку, помещаем курсор в начало
+          if (!link.note) {
+            noteTextarea.value.setSelectionRange(0, 0);
           }
-        });
-      }
+        }
+      });
     };
 
     const toggleEditMode = () => {
@@ -387,7 +392,16 @@ export default {
           sortedLinks.value[linkIndex].note = currentNoteText.value;
         }
 
+        // Также обновляем оригинальный массив links из props, если это необходимо
+        const originalLinkIndex = props.links.findIndex(l => l.id === currentNoteLink.value.id);
+        if (originalLinkIndex !== -1) {
+          props.links[originalLinkIndex].note = currentNoteText.value;
+        }
+
         isEditing.value = false;
+        showNoteModal.value = false;
+
+        console.log('Заметка успешно сохранена');
       } catch (error) {
         console.error('Ошибка при сохранении заметки:', error);
         alert('Не удалось сохранить заметку');
