@@ -151,7 +151,7 @@
         </tr>
         </thead>
         <tbody>
-          <tr
+        <tr
             v-for="link in sortedLinks"
             :key="link.id"
             :class="{
@@ -163,28 +163,28 @@
             @dragstart="onDragStart(link)"
             @dragend="onDragEnd"
         >
-            <td  class="content-padding note-column"
-                 @click="handleNoteClick(link)"
-                 @mouseenter="setNoteHover(true)"
-                 @mouseleave="setNoteHover(false)"
-            >
-              <img
-                  :src="link.note ? '/src/assets/images/document.png' : '/src/assets/images/document-empty.png'"
-                  class="note-icon"
-                  :title="link.note || ''"
-                  :style="{ opacity: link.note ? 0.8 : 0.3 }"
-                  :loading="'lazy'"
-              />
-            </td>
+          <td  class="content-padding note-column"
+               @click="handleNoteClick(link)"
+               @mouseenter="setNoteHover(true)"
+               @mouseleave="setNoteHover(false)"
+          >
+            <img
+                :src="link.note ? '/src/assets/images/document.png' : '/src/assets/images/document-empty.png'"
+                class="note-icon"
+                :title="link.note || ''"
+                :style="{ opacity: link.note ? 0.8 : 0.3 }"
+                :loading="'lazy'"
+            />
+          </td>
           <td class="content-padding fav-column" @click="handleFavClick(link)">
-                        <img
-                            v-if="link.favicon_hash"
-                            :src="getFaviconUrl(link.favicon_hash)"
-                            :title="getFaviconUrl(link.favicon_hash)"
-                            class="favicon"
-                            :loading="'lazy'"
+            <img
+                v-if="link.favicon_hash"
+                :src="getFaviconUrl(link.favicon_hash)"
+                :title="getFaviconUrl(link.favicon_hash)"
+                class="favicon"
+                :loading="'lazy'"
 
-                        />
+            />
             <span v-if="link.id === activeLinkId" class="delete-icon" @click.stop="deleteLink(link)">{{ DELETE_ICON }}</span>
           </td>
           <td class="truncate content-padding"
@@ -564,7 +564,7 @@ export default {
         isCtrlPressed.value = true;
       }
     };
-        // Обработчик отпускания клавиши Ctrl
+    // Обработчик отпускания клавиши Ctrl
     const handleKeyUp = (event) => {
       if (!event.ctrlKey) {
         isCtrlPressed.value = false;
@@ -648,15 +648,15 @@ export default {
         // Иначе используем переданный ключ
         const sortKey = (showAllDirs.value && key === 'date') ? 'dir_name' : key;
 
-          if (currentSortKey.value === sortKey) {
-            currentSortOrder.value = currentSortOrder.value === 'asc' ? 'desc' : 'asc';
-          } else {
-            currentSortOrder.value = 'asc';
-          }
-          currentSortKey.value = sortKey;
+        if (currentSortKey.value === sortKey) {
+          currentSortOrder.value = currentSortOrder.value === 'asc' ? 'desc' : 'asc';
+        } else {
+          currentSortOrder.value = 'asc';
+        }
+        currentSortKey.value = sortKey;
 
-          // Всегда эмитим событие сортировки, но родительский компонент должен учитывать showAllDirs
-          emit('sort', sortKey, currentSortOrder.value);
+        // Всегда эмитим событие сортировки, но родительский компонент должен учитывать showAllDirs
+        emit('sort', sortKey, currentSortOrder.value);
 
         // Если showAllDirs включен, загружаем данные для текущей страницы
         if (showAllDirs.value) {
@@ -700,7 +700,7 @@ export default {
         return `${pathBase}${favicon.storage_path}`;
       }
       if (favicon.fav_url) {
-          return favicon.fav_url;
+        return favicon.fav_url;
       }
 
       return favicon.fav_url || 'src/assets/images/lpicon.png';
@@ -842,6 +842,21 @@ export default {
         // Если showAllDirs включен и draggedLink изменился, обновляем данные
         const newLinks = await fetchPaginatedLinks(currentPage.value);
         sortedLinks.value = [...newLinks].sort((a, b) =>
+            sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+        );
+      }
+    });
+
+    watch(() => props.links, async (newLinks, oldLinks) => {
+      if (showAllDirs.value) {
+        // Если showAllDirs включен, обновляем данные по пагинации
+        const newLinks = await fetchPaginatedLinks(currentPage.value);
+        sortedLinks.value = [...newLinks].sort((a, b) =>
+            sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
+        );
+      } else {
+        // Если showAllDirs выключен, обновляем отфильтрованные данные
+        sortedLinks.value = [...filteredLinks.value].sort((a, b) =>
             sortByKey(a, b, currentSortKey.value, currentSortOrder.value)
         );
       }
