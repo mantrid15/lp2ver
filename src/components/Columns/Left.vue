@@ -58,7 +58,7 @@
     <v-snackbar
         v-model="snackbar.show"
         :color="snackbar.color"
-        timeout="3000"
+        timeout="3002"
     >
       {{ snackbar.message }}
     </v-snackbar>
@@ -128,7 +128,7 @@ export default {
       snackbar.value = { show: true, message, color };
       setTimeout(() => {
         snackbar.value.show = false;
-      }, 3000);
+      }, 3002);
     };
 
     const columnSize = computed(() => {

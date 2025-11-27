@@ -145,7 +145,7 @@ chrome.action.onClicked.addListener((tab) => {
           console.log("Отправляем URL и метаданные на сервер...");
           console.log(data);
           // Отправка данных на сервер
-          fetch("http://localhost:3000/api/send-url", {
+          fetch("http://localhost:3002/api/send-url", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data) // Передаем весь объект data

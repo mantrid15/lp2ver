@@ -233,7 +233,7 @@ export default {
         } catch (error) {
           console.error('Ошибка при загрузке напрямую, пробуем через прокси:', error);
           // Повторный вызов через прокси
-          response = await fetch(`http://localhost:3000/proxy-image?url=${encodeURIComponent(faviconUrl)}`);
+          response = await fetch(`http://localhost:3002/proxy-image?url=${encodeURIComponent(faviconUrl)}`);
         }
         // Проверяем, успешно ли получен ответ
         if (!response || !response.ok) {
@@ -333,7 +333,7 @@ export default {
     // это первый и основной запрос на получение  мета
     const getPageInfo = async (url) => {
       try {
-        const response = await axios.get(`http://localhost:3000/proxy?url=${encodeURIComponent(url)}`);
+        const response = await axios.get(`http://localhost:3002/proxy?url=${encodeURIComponent(url)}`);
         const $ = cheerio.load(response.data);
 
         // Получаем заголовок из тега <title> в любом месте документа
@@ -433,7 +433,7 @@ export default {
 
     const getPuppeteerData = async (url) => {
       try {
-        const response = await axios.get(`http://localhost:3000/fetch-metadata?url=${encodeURIComponent(url)}`);
+        const response = await axios.get(`http://localhost:3002/fetch-metadata?url=${encodeURIComponent(url)}`);
         console.log('Полученные мета-данные: (getPuppeteerData)', response.data);
         return response.data;
       } catch (error) {
@@ -700,7 +700,7 @@ export default {
     async function generateTags(title, description, keywords = "") {
       console.log("Отправка данных LLM для получения AITAG:", {title, description, keywords});
       try {
-        const response = await axios.post('http://localhost:3000/generate-tags', {
+        const response = await axios.post('http://localhost:3002/generate-tags', {
           title,
           description,
           keywords,
@@ -896,7 +896,7 @@ export default {
     onMounted(() => {
       // FIX: Добавлен флаг для обработки WebSocket сообщений
       let isProcessingWsMessage = false;
-      const ws = new WebSocket('ws://localhost:3000');
+      const ws = new WebSocket('ws://localhost:3002');
       ws.onopen = () => {
         console.log('WebSocket соединение установлено');
       };

@@ -1,13 +1,13 @@
 20250529
-npx vite --port 3000
-иногда не работает npm run dev и приходится использовать npx vite --port 3000
+npx vite --port 3002
+иногда не работает npm run dev и приходится использовать npx vite --port 3002
 Если процесс не останавливается
 Найти процесс Vite вручную (если он "завис"):
 
 Windows (PowerShell):
 
 powershell
-netstat -ano | findstr :3000  # Найти PID процесса на порту 3000
+netstat -ano | findstr :3002  # Найти PID процесса на порту 3002
 taskkill /PID <PID> /F        # Убить процесс (подставьте найденный PID)
 
 
@@ -36,10 +36,10 @@ git reset --hard origin/main
 
 Чтобы обновить коммиты на GitHub, вы можете использовать команду `git commit --amend` для изменения последнего коммита или `git rebase -i` для интерактивного перебазирования и изменения нескольких коммитов. Вот примеры
 
-свободен ли 3000 порт
+свободен ли 3002 порт
 в терминале
 
-$port = 3000
+$port = 3002
 $tcpConnection = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
 
 if (-not $tcpConnection) {
