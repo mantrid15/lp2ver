@@ -19,11 +19,11 @@ app.use((req, res, next) => {
     next();
 });
 // Создаем HTTP-сервер
-const server = app.listen(3000, () => {
-    console.log('Сервер запущен на порту 3000');
+const server = app.listen(3002, () => {
+    console.log('Сервер запущен на порту 3002');
 });
 /*const server =  app.listen(3001, '127.0.0.1', () => {
-    console.log('Сервер запущен на http://127.0.0.1:3001');
+    console.log('Сервер запущен на http://127.0.0.1:3002');
 });*/
 
 // Создаем WebSocket-сервер

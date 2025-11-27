@@ -32,7 +32,7 @@ export default defineConfig({
     // port: 5173, // Порт, на котором будет запущен Vite
     proxy: {
       '/api': {
-        target: 'http://localhost:3000', // URL вашего Node.js сервера
+        target: 'http://localhost:3002', // URL вашего Node.js сервера
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''), // Удаляет '/api' из пути
       },
