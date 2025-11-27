@@ -19,7 +19,7 @@ app.use((req, res, next) => {
     next();
 });
 // Создаем HTTP-сервер
-const server = app.listen(3002, () => {
+const server = app.listen(3002, '0.0.0.0', () => {
     console.log('Сервер запущен на порту 3002');
 });
 /*const server =  app.listen(3001, '127.0.0.1', () => {

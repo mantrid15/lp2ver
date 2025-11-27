@@ -28,8 +28,8 @@ export default defineConfig({
     },
   },
   server: {
-    // host: '127.0.0.1', // Явное указание на использование IPv4
-    // port: 5173, // Порт, на котором будет запущен Vite
+    host: '0.0.0.0', // Явное указание на использование IPv4
+    port: 5173, // Порт, на котором будет запущен Vite
     proxy: {
       '/api': {
         target: 'http://localhost:3002', // URL вашего Node.js сервера
