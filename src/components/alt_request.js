@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import stopword from 'stopword';
 import natural from 'natural';
 
-// dotenv.config({ path: '.env.local' });
+// dotenv.config({ path: '.env.development' });
 
 function filterTermsAndNouns(words) {
     const filteredTerms = [];

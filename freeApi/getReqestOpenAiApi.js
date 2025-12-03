@@ -2,7 +2,7 @@ import axios from 'axios';
 import dotenv from 'dotenv';
 
 // Загрузите переменные окружения из файла .env
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env.development.local' });
 
 const OPENAI_API_KEY = process.env.OPEN_AI_API_KEY;
 const OPENAI_API_URL = 'https://api.openai.com/v1/completions';

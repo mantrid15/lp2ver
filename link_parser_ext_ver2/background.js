@@ -1,6 +1,36 @@
 console.log("Фоновый скрипт активирован.");
+
+// Функция для определения URL сервера в зависимости от контекста
+function getServerUrl(tabUrl = '') {
+  // Если расширение используется на локальном сайте разработки
+  if (tabUrl.includes('localhost') || tabUrl.includes('127.0.0.1')) {
+    return 'http://localhost:3002';
+  }
+  // Если расширение используется на серверном сайте
+  else if (tabUrl.includes('192.168.0.40') || tabUrl.includes('linkparser.local')) {
+    return 'http://192.168.0.40:3002';
+  }
+  // По умолчанию для production (сервер)
+  return 'http://192.168.0.40:3002';
+}
+
+// Функция для безопасного получения URL
+function getServerUrlSafe(tab) {
+  try {
+    return getServerUrl(tab.url);
+  } catch (error) {
+    console.error("Ошибка определения URL сервера:", error);
+    return 'http://192.168.0.40:3002'; // fallback на сервер
+  }
+}
+
 chrome.action.onClicked.addListener((tab) => {
   console.log("Иконка расширения нажата.");
+
+  // Получаем URL сервера для текущей вкладки
+  const serverUrl = getServerUrlSafe(tab);
+  console.log(`Используем сервер: ${serverUrl}`);
+
   // Шаг 1: Извлечение метатегов, тегов <link> и атрибута lang из <html>
   chrome.scripting.executeScript({
     target: { tabId: tab.id },
@@ -139,13 +169,14 @@ chrome.action.onClicked.addListener((tab) => {
           if (meta.description && normalizedData['description'] && meta.description.length < normalizedData['description'].length) {
             data.description = normalizedData['description'];
           }
-          if (meta.keywords && normalizedData['keywords'] && meta.keywords.length < normalizedData['keywords'].length) {
+          if (meta.keywords && normalizedData['keywords'] && meta.keywords.length < normalizedizedData['keywords'].length) {
             data.keywords = normalizedData['keywords'];
           }
           console.log("Отправляем URL и метаданные на сервер...");
-          console.log(data);
-          // Отправка данных на сервер
-          fetch("http://localhost:3002/api/send-url", {
+          console.log("URL сервера:", serverUrl);
+          console.log("Данные:", data);
+          // Отправка данных на сервер (динамический URL)
+          fetch(`${serverUrl}/api/send-url`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data) // Передаем весь объект data
@@ -177,4 +208,29 @@ chrome.action.onClicked.addListener((tab) => {
       }, 1000); // Задержка в 1 секунду
     });
   });
+});
+
+// Дополнительная функция для ручной проверки сервера
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "checkServer") {
+    const serverUrl = getServerUrl(sender.tab?.url);
+    console.log(`Проверка сервера: ${serverUrl}`);
+
+    fetch(`${serverUrl}/api/send-url`, { method: "HEAD" })
+      .then(response => {
+        sendResponse({
+          status: response.ok ? "online" : "error",
+          url: serverUrl
+        });
+      })
+      .catch(error => {
+        sendResponse({
+          status: "offline",
+          url: serverUrl,
+          error: error.message
+        });
+      });
+
+    return true; // Для асинхронного ответа
+  }
 });

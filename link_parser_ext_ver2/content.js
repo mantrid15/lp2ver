@@ -66,7 +66,7 @@ function showPopupMessage(status, message) {
   // Удаляем popup через 3 секунды
   setTimeout(() => {
     popup.style.display = 'none';
-  }, 3002);
+  }, 3000);
 
   // Дополнительно можно генерировать CustomEvent для интеграции с Vue (если необходимо)
   const event = new CustomEvent('extensionPopup', { detail: { status, message } });

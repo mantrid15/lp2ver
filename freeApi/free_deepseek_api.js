@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env.development' });
 const DEEP_SEEK_API_KEY = process.env.DEEP_SEEK_API_KEY;
 
 

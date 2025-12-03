@@ -1,6 +1,6 @@
 import axios from 'axios';
 import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env.development' });
 // Установите ваш токен
 const HF_TOKEN = process.env.HF_TOKEN_AI; // Замените на ваш токен
 

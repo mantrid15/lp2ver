@@ -6,25 +6,42 @@ import {WebSocketServer} from 'ws';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from "fs";
+
+// Определяем окружение и загружаем правильный .env файл
+const isProduction = process.env.NODE_ENV === 'production';
+const envFile = isProduction ? '.env.production' : '.env.development';
+
 // Загружаем переменные окружения
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: envFile });
 const HF_TOKEN = process.env.VUE_APP_HF_TOKEN_AI;
+
+// Конфигурация сервера в зависимости от окружения
+const PORT = process.env.PORT || 3002;
+const HOST = isProduction ? '0.0.0.0' : 'localhost';
 
 // Инициализация Express
 const app = express();
-app.use(cors({ origin: '*' })); // Разрешаем запросы с любого домена
+
+// Настройка CORS в зависимости от окружения
+const corsOptions = {
+  origin: isProduction
+    ? ['http://192.168.0.40:5173', 'http://linkparser.local']
+    : ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*"); // Разрешает все источники
+    res.header("Access-Control-Allow-Origin", isProduction ? 'http://192.168.0.40:5173' : 'http://localhost:5173');
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
-// Создаем HTTP-сервер
-const server = app.listen(3002, '0.0.0.0', () => {
-    console.log('Сервер запущен на порту 3002');
+
+// Создаем HTTP-сервер с учетом окружения
+const server = app.listen(PORT, HOST, () => {
+    console.log(`Сервер запущен на ${HOST}:${PORT} (${isProduction ? 'production' : 'development'})`);
 });
-/*const server =  app.listen(3001, '127.0.0.1', () => {
-    console.log('Сервер запущен на http://127.0.0.1:3002');
-});*/
 
 // Создаем WebSocket-сервер
 const wss = new WebSocketServer({ server });
@@ -33,7 +50,6 @@ const wss = new WebSocketServer({ server });
 const clients = new Set();
 const clientLastData = new Map();
 
-// Эндпоинт для загрузки фавиконов
 // Эндпоинт для загрузки фавиконов
 app.post('/upload-favicon', async (req, res) => {
     const { faviconUrl, faviconName } = req.body;
@@ -101,7 +117,7 @@ app.get('/proxy-image', async (req, res) => {
         });
 
         // Устанавливаем заголовки для CORS
-        res.set('Access-Control-Allow-Origin', '*'); // Разрешаем запросы с любого источника
+        res.set('Access-Control-Allow-Origin', isProduction ? 'http://192.168.0.40:5173' : 'http://localhost:5173');
         res.set('Content-Type', response.headers['content-type']);
         res.send(response.data);
         console.log('Изображение успешно загружено', url);
@@ -109,7 +125,9 @@ app.get('/proxy-image', async (req, res) => {
         console.error('Ошибка при загрузке изображения:', error);
         res.status(500).json({ error: 'Ошибка при загрузке изображения' });
     }
-});// Эндпоинт для генерации тегов
+});
+
+// Эндпоинт для генерации тегов
 app.post('/generate-tags', async (req, res) => {
     const { title, description, keywords } = req.body;
     console.log('Получен запрос на /generate-tags:', req.body);
@@ -150,6 +168,7 @@ app.post('/generate-tags', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
 // Маршрут для приема URL от расширения Chrome
 app.post('/api/send-url', async (req, res) => {
     const data = req.body;
@@ -161,6 +180,7 @@ app.post('/api/send-url', async (req, res) => {
     broadcastUrl(data);
     res.json({ status: 'Data received', data });
 });
+
 // Маршрут для прокси-запросов
 app.get('/proxy', async (req, res) => {
     const url = req.query.url;
@@ -175,6 +195,7 @@ app.get('/proxy', async (req, res) => {
         res.status(500).json({ error: 'Ошибка при запросе к URL' });
     }
 });
+
 // Маршрут для извлечения метаданных с помощью Puppeteer
 app.get('/fetch-metadata', async (req, res) => {
     const url = req.query.url;
@@ -214,9 +235,13 @@ app.get('/proxy-favicon', async (req, res) => {
         res.status(500).json({ error: 'Ошибка при загрузке изображения' });
     }
 });
+
 // Функция для извлечения метаданных с помощью Puppeteer
 async function puppeteerMetaData(url) {
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({
+        headless: true,
+        args: isProduction ? ['--no-sandbox', '--disable-setuid-sandbox'] : []
+    });
     const page = await browser.newPage();
 
     try {
@@ -242,6 +267,7 @@ async function puppeteerMetaData(url) {
         await browser.close();
     }
 }
+
 // Функция для отправки данных всем подключенным клиентам WebSocket
 const broadcastUrl = (data) => {
     console.log('Broadcasting data to clients:', data);

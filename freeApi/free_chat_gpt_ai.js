@@ -2,7 +2,7 @@
 import { chat } from 'chatgpt-free-api';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '.env.local' });
+dotenv.config({ path: '.env.development' });
 
 async function startChat(message) {
     try {

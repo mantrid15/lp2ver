@@ -122,7 +122,7 @@ export default {
       "видео, поделиться, телефон с камерой, телефон с видео, бесплатно, загрузить": true,
     };
     const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-    // dotenv.config({ path: '.env.local' });
+    // dotenv.config({ path: '.env.development' });
     async function generateTagsNlp(title, description, keywords = []) {
       // Функция для фильтрации общеупотребительных терминов
       const isCommonTerm = (term) => {
