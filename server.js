@@ -38,6 +38,22 @@ app.use((req, res, next) => {
     next();
 });
 
+// Корневой маршрут для проверки
+app.get('/', (req, res) => {
+    res.json({
+        status: 'online',
+        service: 'LinkParser Backend',
+        environment: isProduction ? 'production' : 'development',
+        port: PORT,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Health check
+app.get('/health', (req, res) => {
+    res.json({ status: 'healthy' });
+});
+
 // Создаем HTTP-сервер с учетом окружения
 const server = app.listen(PORT, HOST, () => {
     console.log(`Сервер запущен на ${HOST}:${PORT} (${isProduction ? 'production' : 'development'})`);
