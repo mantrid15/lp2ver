@@ -30,7 +30,7 @@ Start-Process "chrome.exe" -ArgumentList '--user-data-dir="C:\Chrome dev session
 после
 git fetch origin
 потом
-git reset --hard origin/main
+git reset --hard origin/master
 
 
 

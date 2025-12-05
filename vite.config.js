@@ -20,6 +20,15 @@ export default defineConfig(({ command, mode }) => {
     ? 'http://192.168.0.40:3002'
     : 'http://localhost:3002'
 
+  const wsTarget = isProduction
+      ? 'ws://192.168.0.40:3002'
+      : 'ws://localhost:3002'
+
+  const supabaseUrl = env.VITE_SUPABASE_URL
+  const supabaseKey = env.VITE_SUPABASE_KEY
+
+
+
   return {
     plugins: [
       vue(),
@@ -68,8 +77,14 @@ export default defineConfig(({ command, mode }) => {
       '__APP_ENV__': JSON.stringify(mode),
       '__IS_PRODUCTION__': JSON.stringify(isProduction),
       '__IS_DEVELOPMENT__': JSON.stringify(isDevelopment),
+      '__WS_URL__': JSON.stringify(wsTarget),
+      '__API_URL__': JSON.stringify(apiTarget),
+
       // Переменные окружения для клиента
       'import.meta.env.VITE_API_URL': JSON.stringify(apiTarget),
+      'import.meta.env.VITE_WS_URL': JSON.stringify(wsTarget),
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(supabaseUrl),
+      'import.meta.env.VITE_SUPABASE_KEY': JSON.stringify(supabaseKey),
       'import.meta.env.MODE': JSON.stringify(mode),
       'import.meta.env.PROD': JSON.stringify(isProduction),
       'import.meta.env.DEV': JSON.stringify(isDevelopment),
