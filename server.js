@@ -55,10 +55,9 @@ app.get('/health', (req, res) => {
 });
 
 // Создаем HTTP-сервер с учетом окружения
-const server = app.listen(PORT, HOST, () => {
-    console.log(`Сервер запущен на ${HOST}:${PORT} (${isProduction ? 'production' : 'development'})`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Сервер запущен на 0.0.0.0:${PORT} (принудительно)`);
 });
-
 // Создаем WebSocket-сервер
 const wss = new WebSocketServer({ server });
 
@@ -299,3 +298,21 @@ const broadcastUrl = (data) => {
         }
     });
 };
+
+// SPA fallback для Vue Router (только в production)
+if (isProduction) {
+    const __dirname = path.dirname(new URL(import.meta.url).pathname);
+
+    // Раздаем статические файлы если папка dist существует
+    const distPath = path.join(__dirname, 'dist');
+    if (fs.existsSync(distPath)) {
+        app.use(express.static(distPath));
+
+        // Все остальные маршруты отдаем index.html для SPA
+        app.get('*', (req, res) => {
+            res.sendFile(path.join(distPath, 'index.html'));
+        });
+
+        console.log('SPA fallback настроен для Vue Router');
+    }
+}

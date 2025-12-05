@@ -1,3 +1,41 @@
+20251205 - набор команд для запуска сервера / PROD
+# Удаляем все процессы
+pm2 delete all
+
+# Проверяем что ничего не осталось
+pm2 status
+cd ~/WebstormProjects/lp2ver
+
+# Только бэкенд
+pm2 start server.js --name "linkparser-backend"
+
+# Только фронтенд
+pm2 start "npx vite --host 0.0.0.0 --port 5173" --name "linkparser-frontend"
+
+Вариант 2: Через npm run dev (оба вместе)
+bash
+cd ~/WebstormProjects/lp2ver
+
+# Один процесс запускает оба (бэкенд + фронтенд)
+pm2 start npm --name "linkparser-app" -- run dev
+
+pm2 status
+# Должно быть ИЛИ:
+# - 2 процесса (backend + frontend)
+# - ИЛИ 1 процесс (linkparser-app)
+
+sudo netstat -tulpn | grep -E '(:3002|:5173)'
+
+
+
+
+
+
+
+
+
+
+
 20250529
 npx vite --port 3002
 иногда не работает npm run dev и приходится использовать npx vite --port 3002
