@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "vite build",
+    "build:prod": "vite build --mode production",
     "dev": "concurrently \"vite\" \"nodemon server.js\"",
     "dev:server": "NODE_ENV=development nodemon server.js",
     "dev:frontend": "VITE_ENV=development vite",
-    "build": "VITE_ENV=production vite build",
     "build:dev": "VITE_ENV=development vite build",
     "preview": "vite preview",
     "start": "NODE_ENV=production node server.js",
@@ -69,14 +70,15 @@
     "@mdi/font": "^7.4.47",
     "@types/chrome": "^0.0.306",
     "@vitejs/plugin-vue": "^5.2.1",
-    "typescript": "^5.5.3",
-    "vue-tsc": "^2.1.4",
     "concurrently": "^9.1.0",
     "nodemon": "^3.1.7",
+    "terser": "^5.44.1",
+    "typescript": "^5.5.3",
     "vite": "^6.0.1",
     "vite-plugin-static-copy": "^2.3.0",
     "vite-plugin-vue-devtools": "^7.6.7",
     "vite-plugin-vuetify": "^2.1.0",
+    "vue-tsc": "^2.1.4",
     "vuetify": "^3.7.11"
   }
 }
