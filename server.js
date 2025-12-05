@@ -298,21 +298,3 @@ const broadcastUrl = (data) => {
         }
     });
 };
-
-// SPA fallback для Vue Router (только в production)
-if (isProduction) {
-    const __dirname = path.dirname(new URL(import.meta.url).pathname);
-
-    // Раздаем статические файлы если папка dist существует
-    const distPath = path.join(__dirname, 'dist');
-    if (fs.existsSync(distPath)) {
-        app.use(express.static(distPath));
-
-        // Все остальные маршруты отдаем index.html для SPA
-        app.get('*', (req, res) => {
-            res.sendFile(path.join(distPath, 'index.html'));
-        });
-
-        console.log('SPA fallback настроен для Vue Router');
-    }
-}
