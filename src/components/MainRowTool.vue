@@ -76,9 +76,8 @@ import * as cheerio from 'cheerio';
 import {supabase} from "@/clients/supabase";
 import {useStore} from 'vuex';
 import nlp from 'compromise';
-// @ts-ignore
-// import translateText from 'text_processor'; // Импортируйте функцию перевода
-// import translate from 'translate-google';
+import CryptoJS from 'crypto-js';
+
 export default {
   name: 'MainRowTool',
   props: {
@@ -896,7 +895,9 @@ export default {
     onMounted(() => {
       // FIX: Добавлен флаг для обработки WebSocket сообщений
       let isProcessingWsMessage = false;
-      const ws = new WebSocket('ws://localhost:3002');
+      //const ws = new WebSocket('ws://localhost/:3002');
+
+      const ws = new WebSocket('ws://192.168.0.40:3002');
       ws.onopen = () => {
         console.log('WebSocket соединение установлено');
       };
@@ -962,10 +963,22 @@ export default {
     }
 
     async function hashString(inputString) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(inputString);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+      try {
+        if (window.crypto && window.crypto.subtle) {
+          const encoder = new TextEncoder();
+          const data = encoder.encode(inputString);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        } else {
+          const hash = CryptoJS.SHA256(inputString);
+          return hash.toString(CryptoJS.enc.Hex);
+        }
+      } catch (error) {
+        console.warn('Ошибка при хэшировании, используем crypto-js:', error);
+        const hash = CryptoJS.SHA256(inputString);
+        return hash.toString(CryptoJS.enc.Hex);
+      }
     }
 
     return {

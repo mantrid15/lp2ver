@@ -1,16 +1,24 @@
+pm2 delete all
+NODE_ENV=production pm2 start server.js --name "linkparser-backend"
+pm2 start "npx vite --mode production --host 0.0.0.0 --port 5173" --name "linkparser-frontend"
+
 20251205 - набор команд для запуска сервера / PROD
 # Удаляем все процессы
 pm2 delete all
-
 # Проверяем что ничего не осталось
 pm2 status
-cd ~/WebstormProjects/lp2ver
-
+#cd ~/WebstormProjects/lp2ver
 # Только бэкенд
 pm2 start server.js --name "linkparser-backend"
-
 # Только фронтенд
 pm2 start "npx vite --host 0.0.0.0 --port 5173" --name "linkparser-frontend"
+pm2 status
+# Должно быть ИЛИ:
+# - 2 процесса (backend + frontend)
+# - ИЛИ 1 процесс (linkparser-app)
+sudo netstat -tulpn | grep -E '(:3002|:5173)'
+
+
 
 Вариант 2: Через npm run dev (оба вместе)
 bash
@@ -18,16 +26,6 @@ cd ~/WebstormProjects/lp2ver
 
 # Один процесс запускает оба (бэкенд + фронтенд)
 pm2 start npm --name "linkparser-app" -- run dev
-
-pm2 status
-# Должно быть ИЛИ:
-# - 2 процесса (backend + frontend)
-# - ИЛИ 1 процесс (linkparser-app)
-
-sudo netstat -tulpn | grep -E '(:3002|:5173)'
-
-
-
 
 
 
