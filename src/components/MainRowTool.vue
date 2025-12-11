@@ -113,7 +113,18 @@ export default {
       date: '',
     });
 
-    // FIX: Добавлен флаг для отслеживания обработки URL
+    // Определяем базовый URL для API
+    const getBackendUrl = () => {
+      if (process.env.NODE_ENV === 'development') {
+        return 'http://localhost:3002';
+      } else {
+        // В production используем текущий хост
+        return `http://${window.location.hostname}:3002`;
+      }
+    };
+
+    const BACKEND_URL = getBackendUrl();
+
     const isProcessingUrl = ref(false);
     // определение совокупности ключевых слов, которые нужно заменить на null
     const keywordsToNull = {
@@ -231,16 +242,15 @@ export default {
           response = await fetch(faviconUrl);
         } catch (error) {
           console.error('Ошибка при загрузке напрямую, пробуем через прокси:', error);
-          // Повторный вызов через прокси
-          response = await fetch(`http://localhost:3002/proxy-image?url=${encodeURIComponent(faviconUrl)}`);
+          response = await fetch(`${BACKEND_URL}/proxy-image?url=${encodeURIComponent(faviconUrl)}`);
         }
         // Проверяем, успешно ли получен ответ
         if (!response || !response.ok) {
           console.error('Ошибка при получении изображения:', response ? response.statusText : 'Нет ответа');
           return null; // Возвращаем null, если изображение не получено
         }
-        const blob = await response.blob(); // Преобразуем ответ в Blob
-        // Изменяем faviconName: делаем символ перед точкой заглавным и убираем точку
+
+        const blob = await response.blob();
         const modifiedFaviconName = faviconName.split('.')
             .map(part => part.charAt(0).toUpperCase() + part.slice(1))
             .join('');
@@ -250,6 +260,7 @@ export default {
         const filePath = trimmedFileExtension === 'svg'
             ? `${modifiedFaviconName}.png`
             : `${modifiedFaviconName}.${trimmedFileExtension}`;
+
         console.log('LOCAL: 2. Файл будет сохранен с именем:', filePath);
         // Создаем объект File
         const file = trimmedFileExtension === 'svg'
@@ -432,7 +443,7 @@ export default {
 
     const getPuppeteerData = async (url) => {
       try {
-        const response = await axios.get(`http://localhost:3002/fetch-metadata?url=${encodeURIComponent(url)}`);
+        const response = await axios.get(`${BACKEND_URL}/fetch-metadata?url=${encodeURIComponent(url)}`);
         console.log('Полученные мета-данные: (getPuppeteerData)', response.data);
         return response.data;
       } catch (error) {
@@ -442,26 +453,22 @@ export default {
 
     const fetchMetaSerp = async (url) => {
       try {
-        const response = await fetch('https://api.serp.tools/api/v1/tools/title-description-h1/', {
-          method: 'POST',
-          headers: {
-            'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,tr;q=0.6',
-            'content-type': 'application/json;charset=UTF-8',
-          },
-          body: JSON.stringify({links: [url]}),
+        const response = await axios.post(`${BACKEND_URL}/proxy-serp`, {
+          url: url
         });
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-        const data = await response.json();
-        const item = data.data.items[0];
-        return {
-          url: item.url,
-          title: item.content.title.value,
-          description: item.content.description.value,
-          keywords: '',
-          lang: '', // Убедитесь, что lang имеет значение по умолчанию
-          rss: '', // Убедитесь, что rss имеет значение по умолчанию
 
-        };
+        if (response.data && response.data.data && response.data.data.items) {
+          const item = response.data.data.items[0];
+          return {
+            url: item.url,
+            title: item.content.title.value,
+            description: item.content.description.value,
+            keywords: '',
+            lang: '',
+            rss: '',
+          };
+        }
+        return {error: 'Данные не получены'};
       } catch (error) {
         console.error('Ошибка при выполнении запроса: (fetchMetaSerp)', error);
         return {error: 'Ошибка при получении информации (fetchMetaSerp)'};
@@ -895,9 +902,18 @@ export default {
     onMounted(() => {
       // FIX: Добавлен флаг для обработки WebSocket сообщений
       let isProcessingWsMessage = false;
-      //const ws = new WebSocket('ws://localhost/:3002');
 
-      const ws = new WebSocket('ws://192.168.0.40:3002');
+      // Определяем WebSocket URL в зависимости от окружения
+      const getWebSocketUrl = () => {
+        if (process.env.NODE_ENV === 'development') {
+          return 'ws://localhost:3002';
+        } else {
+          return `ws://${window.location.hostname}:3002`;
+        }
+      };
+
+      const ws = new WebSocket(getWebSocketUrl());
+
       ws.onopen = () => {
         console.log('WebSocket соединение установлено');
       };
@@ -929,6 +945,7 @@ export default {
       ws.onclose = () => {
         console.log('WebSocket соединение закрыто');
       };
+
       ws.onerror = (error) => {
         console.error('Ошибка WebSocket:', error);
       };
@@ -937,6 +954,7 @@ export default {
         const {status, message} = event.detail;
         showSnackbar(message);
       });
+
       window.addEventListener('changeButtonColor', (event) => changeButtonColor(event.detail));
 
       if (urlInput.value) {
