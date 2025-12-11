@@ -655,15 +655,15 @@ export default {
     };
 
     const handleContextMenu = (event) => {
-  if (event.ctrlKey || event.shiftKey) {
-    return;
-  }
-  event.preventDefault();
+      if (event.ctrlKey || event.shiftKey) {
+        return;
+      }
+      event.preventDefault();
 
-  // Создаем кастомное меню
-  const menu = document.createElement('div');
-  menu.id = 'custom-paste-menu';
-  menu.style.cssText = `
+      // Создаем кастомное меню
+      const menu = document.createElement('div');
+      menu.id = 'custom-paste-menu';
+      menu.style.cssText = `
     position: fixed;
     left: ${event.clientX}px;
     top: ${event.clientY}px;
@@ -677,137 +677,148 @@ export default {
     font-family: Arial, sans-serif;
   `;
 
-  // Создаем пункт меню "Вставить"
-  const pasteItem = document.createElement('div');
-  pasteItem.textContent = '📋 Вставить URL';
-  pasteItem.style.cssText = `
+      const pasteItem = document.createElement('div');
+      pasteItem.textContent = '📋 Вставить URL';
+      pasteItem.style.cssText = `
     padding: 8px 16px;
     cursor: pointer;
     font-size: 14px;
     color: #333;
-    transition: background 0.2s;
   `;
 
-  // Эффект при наведении
-  pasteItem.addEventListener('mouseenter', () => {
-    pasteItem.style.background = '#f0f0f0';
-  });
+      pasteItem.addEventListener('mouseenter', () => pasteItem.style.background = '#f0f0f0');
+      pasteItem.addEventListener('mouseleave', () => pasteItem.style.background = 'transparent');
 
-  pasteItem.addEventListener('mouseleave', () => {
-    pasteItem.style.background = 'transparent';
-  });
-
-  // Функция для безопасного удаления меню
-  const safeRemoveMenu = () => {
-    if (menu && menu.parentNode) {
-      menu.parentNode.removeChild(menu);
-    }
-  };
-
-  // Обработчик клика на пункте меню
-  pasteItem.addEventListener('click', async () => {
-    safeRemoveMenu();
-
-    try {
-      // Пробуем разные методы вставки
-      let pastedText = null;
-
-      // 1. Modern Clipboard API
-      if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
-        try {
-          pastedText = await navigator.clipboard.readText();
-        } catch (err) {
-          console.log('Clipboard API не сработал:', err.message);
+      // Функция удаления меню
+      const removeMenu = () => {
+        if (menu.parentNode) {
+          menu.parentNode.removeChild(menu);
         }
-      }
+      };
 
-      // 2. Fallback метод через временный элемент
-      if (!pastedText) {
-        const tempElem = document.createElement('textarea');
-        tempElem.style.cssText = 'position:fixed;opacity:0;left:-9999px;top:0;';
-        document.body.appendChild(tempElem);
-        tempElem.focus();
+      // Обработчик клика на "Вставить"
+      pasteItem.addEventListener('click', () => {
+        removeMenu();
 
-        try {
-          const success = document.execCommand('paste');
-          if (success && tempElem.value) {
-            pastedText = tempElem.value;
+        if (!urlInput.value) return;
+
+        // 1. Пытаемся использовать Clipboard API если доступен (работает в HTTPS/localhost)
+        if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+          // Проверяем безопасный контекст
+          const isSecure = window.location.protocol === 'https:' ||
+              window.location.hostname === 'localhost' ||
+              window.location.hostname === '127.0.0.1';
+
+          if (isSecure) {
+            navigator.clipboard.readText()
+                .then(text => {
+                  if (text && text.trim()) {
+                    url.value = text.trim();
+                    if (urlInput.value) {
+                      urlInput.value.focus();
+                      urlInput.value.select();
+                    }
+                    showSnackbar('URL вставлен');
+                    return;
+                  }
+                  // Если текст не получен, используем fallback
+                  useFallbackPasteMethod();
+                })
+                .catch(err => {
+                  console.log('Clipboard API не сработал:', err);
+                  useFallbackPasteMethod();
+                });
+          } else {
+            // Не безопасный контекст, используем fallback
+            useFallbackPasteMethod();
           }
-        } catch (err) {
-          console.log('Fallback метод не сработал');
-        } finally {
-          if (tempElem.parentNode) {
-            document.body.removeChild(tempElem);
+        } else {
+          // Clipboard API не доступен, используем fallback
+          useFallbackPasteMethod();
+        }
+      });
+
+      // Fallback метод вставки
+      const useFallbackPasteMethod = () => {
+        // Фокусируемся на основном поле
+        urlInput.value.focus();
+
+        // Сохраняем текущее значение
+        const currentValue = url.value;
+
+        // Очищаем поле
+        url.value = '';
+
+        // Создаем обработчик для события paste на основном поле
+        const pasteHandler = (e) => {
+          e.preventDefault();
+          const pastedText = e.clipboardData.getData('text');
+          console.log('Вставлен текст через paste событие:', pastedText);
+
+          if (pastedText && pastedText.trim()) {
+            url.value = pastedText.trim();
+            showSnackbar('URL вставлен');
+          } else {
+            // Если ничего не вставилось, возвращаем старое значение
+            url.value = currentValue;
           }
-        }
-      }
 
-      // 3. Если что-то получили - вставляем
-      if (pastedText && pastedText.trim()) {
-        url.value = pastedText.trim();
-        if (urlInput.value) {
-          urlInput.value.focus();
-          urlInput.value.select();
-        }
-        showSnackbar('URL вставлен');
-      } else {
-        // 4. Если ничего не получилось - prompt
-        const manualText = prompt('Вставьте URL из буфера обмена:');
-        if (manualText && manualText.trim()) {
-          url.value = manualText.trim();
-          if (urlInput.value) {
-            urlInput.value.focus();
-            urlInput.value.select();
+          // Удаляем обработчик
+          urlInput.value.removeEventListener('paste', pasteHandler);
+        };
+
+        // Добавляем обработчик события paste
+        urlInput.value.addEventListener('paste', pasteHandler);
+
+        // Пытаемся инициировать вставку
+        setTimeout(() => {
+          try {
+            // Пробуем выполнить команду paste
+            const success = document.execCommand('paste');
+            console.log('execCommand paste результат:', success);
+
+            if (!success) {
+              // Если execCommand не сработал, показываем инструкцию
+              showSnackbar('Нажмите Ctrl+V для вставки URL');
+
+              // Удаляем обработчик через 5 секунд если не использован
+              setTimeout(() => {
+                urlInput.value.removeEventListener('paste', pasteHandler);
+                // Если поле всё еще пустое, возвращаем старое значение
+                if (!url.value) {
+                  url.value = currentValue;
+                }
+              }, 5000);
+            }
+          } catch (error) {
+            console.log('Ошибка execCommand:', error);
+            showSnackbar('Нажмите Ctrl+V для вставки URL');
+
+            // Удаляем обработчик через 5 секунд
+            setTimeout(() => {
+              urlInput.value.removeEventListener('paste', pasteHandler);
+              if (!url.value) {
+                url.value = currentValue;
+              }
+            }, 5000);
           }
-          showSnackbar('URL вставлен');
+        }, 100);
+      };
+
+      menu.appendChild(pasteItem);
+      document.body.appendChild(menu);
+
+      // Закрытие меню при клике вне его
+      const closeHandler = (e) => {
+        if (!menu.contains(e.target)) {
+          removeMenu();
+          document.removeEventListener('click', closeHandler);
         }
-      }
+      };
 
-    } catch (error) {
-      console.error('Ошибка при вставке:', error);
-      // В случае ошибки показываем prompt
-      const manualText = prompt('Вставьте URL из буфера обмена:');
-      if (manualText && manualText.trim()) {
-        url.value = manualText.trim();
-        if (urlInput.value) {
-          urlInput.value.focus();
-          urlInput.value.select();
-        }
-        showSnackbar('URL вставлен');
-      }
-    }
-  });
-
-  // Добавляем пункт в меню
-  menu.appendChild(pasteItem);
-  document.body.appendChild(menu);
-
-  // Функция для закрытия меню при клике вне его
-  const closeMenuHandler = (clickEvent) => {
-    // Проверяем, существует ли меню и не был ли клик по самому меню
-    if (menu && menu.parentNode && !menu.contains(clickEvent.target)) {
-      safeRemoveMenu();
-      // Удаляем этот обработчик
-      document.removeEventListener('click', closeMenuHandler);
-    }
-  };
-
-  // Функция для закрытия меню при скролле или ресайзе
-  const removeMenuOnWindowEvents = () => {
-    safeRemoveMenu();
-    document.removeEventListener('click', closeMenuHandler);
-    window.removeEventListener('scroll', removeMenuOnWindowEvents);
-    window.removeEventListener('resize', removeMenuOnWindowEvents);
-  };
-
-  // Ждем немного перед добавлением обработчика, чтобы не сработал сразу
-  setTimeout(() => {
-    document.addEventListener('click', closeMenuHandler);
-    window.addEventListener('scroll', removeMenuOnWindowEvents);
-    window.addEventListener('resize', removeMenuOnWindowEvents);
-  }, 10);
-};
-    const handleEnter = () => {
+      setTimeout(() => document.addEventListener('click', closeHandler), 10);
+      setTimeout(removeMenu, 5000);
+    };    const handleEnter = () => {
       if (url.value) {
         handleButtonClick();
       }
