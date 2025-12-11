@@ -24,16 +24,36 @@ const app = express();
 
 // Настройка CORS в зависимости от окружения
 const corsOptions = {
-  origin: isProduction
-    ? ['http://192.168.0.40:5173', 'http://linkparser.local']
-    : ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: function (origin, callback) {
+    // В production разрешаем все origins
+    if (isProduction) {
+      return callback(null, true);
+    }
+
+    // В development разрешаем только localhost
+    const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS in development'));
+    }
+  },
   credentials: true
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", isProduction ? 'http://192.168.0.40:5173' : 'http://localhost:5173');
+    // ФИКС CORS: Динамически устанавливаем origin в заголовке
+    const origin = req.headers.origin;
+    if (origin) {
+        res.header("Access-Control-Allow-Origin", origin);
+    } else if (isProduction) {
+        // В production разрешаем любые origins
+        res.header("Access-Control-Allow-Origin", "*");
+    } else {
+        res.header("Access-Control-Allow-Origin", "http://localhost:5173");
+    }
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
@@ -58,6 +78,7 @@ app.get('/health', (req, res) => {
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Сервер запущен на 0.0.0.0:${PORT} (принудительно)`);
 });
+
 // Создаем WebSocket-сервер
 const wss = new WebSocketServer({ server });
 
@@ -116,7 +137,8 @@ wss.on('connection', (ws) => {
         console.error('Ошибка WebSocket:', error);
     });
 });
-// НЕРАБОЧИЭндпоинт для загрузки изображений через прокси
+
+// Эндпоинт для загрузки изображений через прокси
 app.get('/proxy-image', async (req, res) => {
     const { url } = req.query; // Изменено с imageUrl на url
     console.log(url, 'Получен запрос на /proxy-image');
@@ -131,8 +153,15 @@ app.get('/proxy-image', async (req, res) => {
             maxRedirects: 2
         });
 
-        // Устанавливаем заголовки для CORS
-        res.set('Access-Control-Allow-Origin', isProduction ? 'http://192.168.0.40:5173' : 'http://localhost:5173');
+        // ФИКС CORS: Динамически устанавливаем origin
+        const origin = req.headers.origin;
+        if (origin) {
+            res.set('Access-Control-Allow-Origin', origin);
+        } else if (isProduction) {
+            res.set('Access-Control-Allow-Origin', '*');
+        } else {
+            res.set('Access-Control-Allow-Origin', 'http://localhost:5173');
+        }
         res.set('Content-Type', response.headers['content-type']);
         res.send(response.data);
         console.log('Изображение успешно загружено', url);
@@ -204,9 +233,20 @@ app.get('/proxy', async (req, res) => {
     }
     try {
         const response = await axios.get(url);
+
+        // ФИКС CORS: Динамически устанавливаем origin
+        const origin = req.headers.origin;
+        if (origin) {
+            res.set('Access-Control-Allow-Origin', origin);
+        } else if (isProduction) {
+            res.set('Access-Control-Allow-Origin', '*');
+        } else {
+            res.set('Access-Control-Allow-Origin', 'http://localhost:5173');
+        }
         res.set('Content-Type', response.headers['content-type']);
         res.send(response.data);
     } catch (error) {
+        console.error('Ошибка при запросе к URL:', error);
         res.status(500).json({ error: 'Ошибка при запросе к URL' });
     }
 });
@@ -228,6 +268,33 @@ app.get('/fetch-metadata', async (req, res) => {
     }
 });
 
+// ФИКС: Прокси для внешних API чтобы избежать CORS
+app.post('/proxy-serp', async (req, res) => {
+    const { url } = req.body;
+
+    if (!url) {
+        return res.status(400).json({ error: 'URL не предоставлен' });
+    }
+
+    try {
+        const response = await fetch('https://api.serp.tools/api/v1/tools/title-description-h1/', {
+            method: 'POST',
+            headers: {
+                'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,tr;q=0.6',
+                'content-type': 'application/json;charset=UTF-8',
+            },
+            body: JSON.stringify({links: [url]}),
+        });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+
+        res.json(data);
+    } catch (error) {
+        console.error('Ошибка при выполнении запроса: (proxy-serp)', error);
+        res.status(500).json({error: 'Ошибка при получении информации (proxy-serp)'});
+    }
+});
+
 app.get('/proxy-favicon', async (req, res) => {
     const faviconUrl = req.query.url;
 
@@ -238,6 +305,16 @@ app.get('/proxy-favicon', async (req, res) => {
     try {
         const response = await axios.get(faviconUrl, { responseType: 'arraybuffer' });
         console.log('Изображение успешно загружено', faviconUrl);
+
+        // ФИКС CORS: Динамически устанавливаем origin
+        const origin = req.headers.origin;
+        if (origin) {
+            res.set('Access-Control-Allow-Origin', origin);
+        } else if (isProduction) {
+            res.set('Access-Control-Allow-Origin', '*');
+        } else {
+            res.set('Access-Control-Allow-Origin', 'http://localhost:5173');
+        }
 
         // Устанавливаем заголовки для кэширования на 1 год
         res.set('Cache-Control', 'public, max-age=31536000');
